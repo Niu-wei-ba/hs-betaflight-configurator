@@ -5,7 +5,6 @@ import { gui_log } from "./gui_log.js";
 import { i18n } from "./localization.js";
 import GUI, { TABS } from "./gui.js";
 import { get as getConfig, set as setConfig } from "./ConfigStorage.js";
-import { checkSetupAnalytics } from "./Analytics.js";
 import { initializeSerialBackend } from "./serial_backend.js";
 import FC from "./fc.js";
 import CONFIGURATOR from "./data_storage.js";
@@ -17,6 +16,7 @@ import { mountVueTab, unmountVueTab } from "./vue_tab_mounter.js";
 import * as THREE from "three";
 import NotificationManager from "./utils/notifications.js";
 import { Capacitor } from "@capacitor/core";
+import { appConfig } from "./AppConfig.js";
 
 // Silence Capacitor bridge debug spam on native platforms
 if (Capacitor?.isNativePlatform?.() && typeof Capacitor.isLoggingEnabled === "boolean") {
@@ -39,7 +39,7 @@ $(document).ready(function () {
 
 function readConfiguratorVersionMetadata() {
     // These are injected by vite. Check for undefined is needed to prevent race conditions
-    CONFIGURATOR.productName = typeof __APP_PRODUCTNAME__ !== "undefined" ? __APP_PRODUCTNAME__ : "Betaflight App";
+    CONFIGURATOR.productName = typeof __APP_PRODUCTNAME__ !== "undefined" ? __APP_PRODUCTNAME__ : appConfig.appName;
     CONFIGURATOR.version = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
     CONFIGURATOR.gitRevision = typeof __APP_REVISION__ !== "undefined" ? __APP_REVISION__ : "unknown";
 }
@@ -73,17 +73,6 @@ function appReady() {
 
     i18n.init(function () {
         startProcess();
-
-        checkSetupAnalytics(function (analyticsService) {
-            analyticsService.sendEvent(analyticsService.EVENT_CATEGORIES.APPLICATION, "AppStart", {
-                sessionControl: "start",
-                configuratorVersion: CONFIGURATOR.getDisplayVersion(),
-                gitRevision: CONFIGURATOR.gitRevision,
-                productName: CONFIGURATOR.productName,
-                operatingSystem: GUI.operating_system,
-                language: i18n.selectedLanguage,
-            });
-        });
 
         $("a.connection_button__link").removeClass("disabled");
         $("a.firmware_flasher_button__link").removeClass("disabled");
@@ -224,10 +213,6 @@ function startProcess() {
                 function content_ready() {
                     GUI.tab_switch_in_progress = false;
                 }
-
-                checkSetupAnalytics(function (analyticsService) {
-                    analyticsService.sendAppView(tab);
-                });
 
                 switch (tab) {
                     case "landing":
@@ -450,12 +435,6 @@ function startProcess() {
 
     expertModeCheckbox.on("change", () => {
         const checked = expertModeCheckbox.is(":checked");
-
-        checkSetupAnalytics(function (analyticsService) {
-            analyticsService.sendEvent(analyticsService.EVENT_CATEGORIES.APPLICATION, "ExpertMode", {
-                status: checked ? "On" : "Off",
-            });
-        });
 
         if (FC.FEATURE_CONFIG && FC.FEATURE_CONFIG.features !== 0) {
             updateTabList(FC.FEATURE_CONFIG.features);

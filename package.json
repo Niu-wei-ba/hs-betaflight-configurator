@@ -1,8 +1,8 @@
 {
-  "name": "betaflight-app",
-  "productName": "Betaflight",
-  "displayName": "Betaflight - Configuration and management application",
-  "description": "Crossplatform configuration and management application for the Betaflight flight control firmware.",
+  "name": "betaflight-mirror-configurator",
+  "productName": "HS-FPV | Betaflight镜像站",
+  "displayName": "HS-FPV | Betaflight镜像站",
+  "description": "Mirror-focused Betaflight-compatible configurator with presets, firmware flashing, and local device setup.",
   "version": "2025.12.2",
   "type": "module",
   "main": "index.html",
@@ -29,13 +29,13 @@
     "id": "main-window",
     "min_width": 1024,
     "min_height": 550,
-    "title": "Betaflight App"
+    "title": "HS-FPV | Betaflight镜像站"
   },
   "repository": {
     "type": "git",
-    "url": "github.com/betaflight/betaflight-configurator"
+    "url": "github.com/Niu-wei-ba/betaflight-configurator"
   },
-  "author": "The Betaflight open source project.",
+  "author": "Mirror site contributors.",
   "license": "GPL-3.0",
   "engines": {
     "node": "20.x"

@@ -19,6 +19,7 @@ import { gui_log } from "../gui_log";
 import { usbDevices } from "./devices";
 import NotificationManager from "../utils/notifications";
 import { get as getConfig } from "../ConfigStorage";
+import { appConfig } from "../AppConfig";
 
 class WEBUSBDFU_protocol extends EventTarget {
     constructor() {
@@ -1211,7 +1212,7 @@ class WEBUSBDFU_protocol extends EventTarget {
 
                                 // Show notification
                                 if (getConfig("showNotifications").showNotifications) {
-                                    NotificationManager.showNotification("Betaflight App", {
+                                    NotificationManager.showNotification(appConfig.appName, {
                                         body: i18n.getMessage("programmingSuccessfulNotification"),
                                         icon: "/images/pwa/favicon.ico",
                                     });
@@ -1229,7 +1230,7 @@ class WEBUSBDFU_protocol extends EventTarget {
 
                                 // Show notification
                                 if (getConfig("showNotifications").showNotifications) {
-                                    NotificationManager.showNotification("Betaflight App", {
+                                    NotificationManager.showNotification(appConfig.appName, {
                                         body: i18n.getMessage("programmingFailedNotification"),
                                         icon: "/images/pwa/favicon.ico",
                                     });

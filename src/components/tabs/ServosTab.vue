@@ -5,7 +5,7 @@
             <div class="cf_doc_version_bt">
                 <a
                     id="button-documentation"
-                    href="https://betaflight.com/docs/wiki/app/servos-tab"
+                    :href="docUrl"
                     target="_blank"
                     rel="noopener noreferrer"
                     :aria-label="$t('betaflightSupportButton')"
@@ -144,6 +144,7 @@ import MSPCodes from "../../js/msp/MSPCodes";
 import { mspHelper } from "../../js/msp/MSPHelper";
 import { gui_log } from "../../js/gui_log";
 import { i18n } from "../../js/localization";
+import { buildDocsUrl } from "../../js/AppConfig";
 
 // Calculate bar style for servo visualization
 function getBarStyle(value) {
@@ -175,6 +176,7 @@ export default defineComponent({
         const liveMode = ref(false);
         const servoConfigs = reactive([]);
         const servoData = reactive([]);
+        const docUrl = buildDocsUrl("app/servos-tab");
 
         // Track local intervals for cleanup
         const localIntervals = [];
@@ -337,6 +339,7 @@ export default defineComponent({
             totalChannels,
             auxChannelCount,
             rateOptions,
+            docUrl,
             getBarStyle,
             setChannelForward,
             onServoChange,

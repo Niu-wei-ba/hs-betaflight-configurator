@@ -3,6 +3,7 @@ import { get as getConfig, set as setConfig } from "../../../js/ConfigStorage";
 import PresetSource from "./PresetSource";
 import SourcePanel from "./SourcePanel";
 import $ from "jquery";
+import { appConfig } from "../../../js/AppConfig";
 
 export default class PresetsSourcesDialog {
     constructor(domDialog) {
@@ -73,8 +74,8 @@ export default class PresetsSourcesDialog {
 
     _createOfficialSource() {
         const officialSource = new PresetSource(
-            "Betaflight Official Presets",
-            "https://presets.betaflight.com/firmware-presets/",
+            "Mirror Presets",
+            appConfig.presetsOfficialUrl,
             "",
         );
         officialSource.official = true;
@@ -83,11 +84,11 @@ export default class PresetsSourcesDialog {
 
     _createSecondaryOfficialSource() {
         const officialSource = new PresetSource(
-            "Betaflight Presets - GitHub BACKUP",
-            "https://github.com/betaflight/firmware-presets",
+            "Mirror Presets Backup",
+            appConfig.presetsBackupUrl,
             "backup",
         );
-        officialSource.official = false;
+        officialSource.official = true;
         return officialSource;
     }
 

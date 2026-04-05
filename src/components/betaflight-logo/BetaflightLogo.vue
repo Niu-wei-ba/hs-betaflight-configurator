@@ -1,17 +1,19 @@
 <template>
     <div class="logo">
+        <div class="brand">{{ appName }}</div>
         <div class="logo_text">
-            <span> {{ $t("versionLabelConfigurator") }}: {{ configuratorVersion }} </span>
+            <span>{{ $t("versionLabelConfigurator") }}: {{ configuratorVersion }}</span>
             <span v-if="firmwareVersion && firmwareId">
-                {{ $t("versionLabelFirmware") }}: {{ firmwareVersion }}
-                {{ firmwareId }}
+                {{ $t("versionLabelFirmware") }}: {{ firmwareVersion }} {{ firmwareId }}
             </span>
-            <span v-if="hardwareId"> {{ $t("versionLabelTarget") }}: {{ hardwareId }} </span>
+            <span v-if="hardwareId">{{ $t("versionLabelTarget") }}: {{ hardwareId }}</span>
         </div>
     </div>
 </template>
 
 <script>
+import { appConfig } from "../../js/AppConfig";
+
 export default {
     props: {
         configuratorVersion: {
@@ -31,28 +33,34 @@ export default {
             default: "",
         },
     },
+    data() {
+        return {
+            appName: appConfig.appName,
+        };
+    },
 };
 </script>
 
 <style>
 .logo {
-    height: 70px;
-    width: 240px;
-    background-image: url(../../images/dark-wide-2.svg);
-    background-repeat: no-repeat;
-    background-position: left center;
-    background-size: contain;
-    position: relative;
+    min-height: 70px;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-left: 3px solid var(--accent, #eea600);
 }
 
-.dark-theme .logo {
-    background-image: url(../../images/light-wide-2.svg);
+.brand {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
 }
 
 .logo_text {
-    position: absolute;
-    left: 80px;
-    top: 49px;
     color: var(--text);
     font-size: 10px;
     display: flex;
@@ -65,45 +73,41 @@ export default {
 
 @media all and (max-width: 575px) {
     .logo {
-        height: 24px;
-        width: 150px;
-        background-image: url(../../images/dark-wide-2-compact.svg);
-        background-position: left center;
+        min-height: 24px;
+        min-width: 150px;
         order: 2;
         margin-top: 0;
+        padding: 6px 10px;
     }
-    .dark-theme .logo {
-        background-image: url(../../images/light-wide-2-compact.svg);
+
+    .brand {
+        font-size: 14px;
     }
+
     .logo_text {
         display: none !important;
     }
+
     .tab_container .logo {
-        display: block;
-        background-image: url(../../images/dark-wide-2.svg);
-        background-repeat: no-repeat;
-        background-position: center 20px;
-        background-position-x: 12px;
-        background-size: 80%;
-        height: 120px;
+        display: flex;
+        min-height: 120px;
         width: auto;
         margin-top: unset;
         position: relative;
         border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+        border-left: 0;
+        padding: 20px 12px;
+        justify-content: center;
     }
-    .dark-theme .tab_container .logo {
-        background-image: url(../../images/light-wide-2.svg);
-    }
+
     .tab_container .logo .logo_text {
         display: flex !important;
-        left: 82px;
-        top: 62px;
     }
 }
 
 @media all and (min-width: 1125px) {
     .logo {
-        width: 340px;
+        min-width: 340px;
     }
 
     .logo_text {

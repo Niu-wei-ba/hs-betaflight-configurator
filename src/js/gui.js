@@ -9,6 +9,7 @@ import CONFIGURATOR from "./data_storage";
 import { i18n } from "./localization";
 import MSPCodes from "./msp/MSPCodes";
 import { gui_log } from "./gui_log";
+import { appConfig, buildDocsUrl } from "./AppConfig";
 
 const TABS = {};
 
@@ -298,8 +299,8 @@ class GuiControl {
         const tRex = GUI.active_tab.replaceAll("_", "-").toLowerCase();
 
         $("div#content #button-documentation")
-            .html(i18n.getMessage("betaflightSupportButton"))
-            .attr("href", `https://betaflight.com/docs/wiki/app/${tRex}-tab`);
+            .html(appConfig.documentationLabel)
+            .attr("href", buildDocsUrl(`app/${tRex}-tab`));
 
         // Create tooltips once page is "ready"
         $(function () {

@@ -2,10 +2,10 @@ import { gui_log } from "./gui_log";
 import { i18n } from "./localization";
 import { get as getStorage, set as setStorage } from "./SessionStorage";
 import CONFIGURATOR from "./data_storage.js";
+import { buildApiUrl, resolveMirrorAssetUrl } from "./AppConfig";
 
 export default class BuildApi {
     constructor() {
-        this._url = "https://build.betaflight.com";
         this._cacheExpirationPeriod = 3600 * 1000;
     }
 
@@ -104,32 +104,32 @@ export default class BuildApi {
     }
 
     async loadTargets() {
-        const url = `${this._url}/api/targets`;
+        const url = buildApiUrl("/targets");
         return await this.fetchCachedJson(url);
     }
 
     async loadTargetReleases(target) {
-        const url = `${this._url}/api/targets/${target}`;
+        const url = buildApiUrl(`/targets/${target}`);
         return await this.fetchCachedJson(url);
     }
 
     async loadTarget(target, release) {
-        const url = `${this._url}/api/builds/${release}/${target}`;
+        const url = buildApiUrl(`/builds/${release}/${target}`);
         return await this.fetchCachedJson(url);
     }
 
     async loadTargetFirmware(path) {
-        const url = `${this._url}${path}`;
+        const url = resolveMirrorAssetUrl(path);
         return await this.fetchBytes(url);
     }
 
     async getSupportCommands() {
-        const url = `${this._url}/api/support/commands`;
+        const url = buildApiUrl("/support/commands");
         return await this.fetchJson(url);
     }
 
     async submitSupportData(data) {
-        const url = `${this._url}/api/support`;
+        const url = buildApiUrl("/support");
 
         const response = await fetch(url, {
             method: "POST",
@@ -150,7 +150,7 @@ export default class BuildApi {
     }
 
     async requestBuild(request) {
-        const url = `${this._url}/api/builds`;
+        const url = buildApiUrl("/builds");
 
         const response = await fetch(url, {
             method: "POST",
@@ -171,37 +171,32 @@ export default class BuildApi {
     }
 
     async requestBuildStatus(key) {
-        const url = `${this._url}/api/builds/${key}/status`;
+        const url = buildApiUrl(`/builds/${key}/status`);
         return await this.fetchJson(url);
     }
 
     async requestBuildOptions(key) {
-        const url = `${this._url}/api/builds/${key}/json`;
+        const url = buildApiUrl(`/builds/${key}/json`);
         return await this.fetchJson(url);
     }
 
     async loadOptions(release) {
-        const url = `${this._url}/api/options/${release}`;
+        const url = buildApiUrl(`/options/${release}`);
         return await this.fetchJson(url);
     }
 
     async loadOptionsByBuildKey(release, key) {
-        const url = `${this._url}/api/options/${release}/${key}`;
+        const url = buildApiUrl(`/options/${release}/${key}`);
         return await this.fetchJson(url);
     }
 
     async loadCommits(release) {
-        const url = `${this._url}/api/releases/${release}/commits`;
+        const url = buildApiUrl(`/releases/${release}/commits`);
         return await this.fetchJson(url);
     }
 
     async loadConfiguratorRelease(type) {
-        const url = `${this._url}/api/configurator/releases/${type}`;
+        const url = buildApiUrl(`/configurator/releases/${type}`);
         return await this.fetchJson(url);
-    }
-
-    async loadSponsorTile(mode, page) {
-        const url = `${this._url}/api/configurator/sponsors/${mode}/${page}`;
-        return await this.fetchText(url);
     }
 }

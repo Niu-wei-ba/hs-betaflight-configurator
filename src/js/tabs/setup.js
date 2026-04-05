@@ -1,5 +1,6 @@
 import { i18n } from "../localization";
 import semver from "semver";
+import { buildRootUrl } from "../AppConfig";
 import { isExpertModeEnabled } from "../utils/isExpertModeEnabled";
 import GUI, { TABS } from "../gui";
 import { have_sensor } from "../sensor_helpers";
@@ -387,9 +388,9 @@ setup.initialize = function (callback) {
             }
         }
 
-        // Gets the build root base URI for build.betaflight.com
+        // Gets the build root base URI for the configured mirror build service
         const getBuildRootBaseUri = function () {
-            return `https://build.betaflight.com/api/builds/${FC.CONFIG.buildKey}`;
+            return buildRootUrl(FC.CONFIG.buildKey);
         };
 
         // Fills in the "Build info" part of the "Firmware info" box

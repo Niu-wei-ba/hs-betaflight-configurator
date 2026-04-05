@@ -5,7 +5,7 @@
             <div class="cf_doc_version_bt">
                 <a
                     id="button-documentation"
-                    href="https://betaflight.com/docs/wiki/app/configuration-tab"
+                    :href="docUrl"
                     target="_blank"
                     rel="noopener noreferrer"
                     :aria-label="$t('betaflightSupportButton')"
@@ -745,6 +745,7 @@ import semver from "semver";
 import { API_VERSION_1_45, API_VERSION_1_46, API_VERSION_1_47 } from "../../js/data_storage";
 import { bit_check, bit_set, bit_clear } from "../../js/bit";
 import { updateTabList } from "../../js/utils/updateTabList";
+import { buildDocsUrl } from "../../js/AppConfig";
 
 export default defineComponent({
     name: "ConfigurationTab",
@@ -769,6 +770,7 @@ export default defineComponent({
         });
 
         const fpvCamAngleDegrees = ref(0);
+        const docUrl = buildDocsUrl("app/configuration-tab");
 
         const craftName = ref("");
         const pilotName = ref("");
@@ -1508,6 +1510,7 @@ export default defineComponent({
             hasSecondGyro,
             hasDualGyros,
             showGyro1Align,
+            docUrl,
             showGyro2Align,
             showMagAlign,
             showSensorAlignment,

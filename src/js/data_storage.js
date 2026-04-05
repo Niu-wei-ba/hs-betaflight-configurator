@@ -1,3 +1,5 @@
+import { appConfig } from "./AppConfig";
+
 export const API_VERSION_1_39 = "1.39.0";
 export const API_VERSION_1_44 = "1.44.0";
 export const API_VERSION_1_45 = "1.45.0";
@@ -16,14 +18,14 @@ const CONFIGURATOR = {
     virtualApiVersion: "0.0.1",
     cliActive: false,
     cliValid: false,
-    productName: "Betaflight App",
+    productName: appConfig.appName,
     cliEngineActive: false,
     cliEngineValid: false,
     gitChangesetId: "unknown",
     version: "0.0.1",
     gitRevision: "norevision",
     latestVersion: "0.0.1",
-    latestVersionReleaseUrl: "https://github.com/betaflight/betaflight-configurator/releases",
+    latestVersionReleaseUrl: appConfig.sourceCodeUrl,
 
     getDisplayVersion: function () {
         if (this.version.indexOf(this.gitRevision) === -1) {

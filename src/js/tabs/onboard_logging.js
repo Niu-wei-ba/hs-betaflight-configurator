@@ -16,6 +16,7 @@ import { isExpertModeEnabled } from "../utils/isExpertModeEnabled";
 import NotificationManager from "../../js/utils/notifications";
 import { get as getConfig } from "../ConfigStorage";
 import { sensorTypes } from "../sensor_types";
+import { appConfig } from "../AppConfig";
 
 let sdcardTimer;
 
@@ -469,7 +470,7 @@ onboard_logging.initialize = function (callback) {
         $(".dataflash-saving").addClass("done");
 
         if (getConfig("showNotifications").showNotifications) {
-            NotificationManager.showNotification("Betaflight App", {
+            NotificationManager.showNotification(appConfig.appName, {
                 body: i18n.getMessage("flashDownloadDoneNotification"),
                 icon: "/images/pwa/favicon.ico",
             });
@@ -615,7 +616,7 @@ onboard_logging.initialize = function (callback) {
                         dialog.close();
                     }
                     if (getConfig("showNotifications").showNotifications) {
-                        NotificationManager.showNotification("Betaflight App", {
+                        NotificationManager.showNotification(appConfig.appName, {
                             body: i18n.getMessage("flashEraseDoneNotification"),
                             icon: "/images/pwa/favicon.ico",
                         });

@@ -23,14 +23,6 @@
                         <span class="freelabel" v-html="$t('meteredConnection')"></span>
                     </div>
 
-                    <!-- Analytics Opt Out -->
-                    <div class="analyticsOptOut margin-bottom">
-                        <div>
-                            <input type="checkbox" class="toggle" v-model="settings.analyticsOptOut" />
-                        </div>
-                        <span class="freelabel" v-html="$t('analyticsOptOut')"></span>
-                    </div>
-
                     <!-- CLI Auto Complete -->
                     <div class="cliAutoComplete margin-bottom">
                         <div>
@@ -171,7 +163,6 @@ import { i18n } from "../../js/localization";
 import PortHandler from "../../js/port_handler";
 import CliAutoComplete from "../../js/CliAutoComplete";
 import DarkTheme, { setDarkTheme } from "../../js/DarkTheme";
-import { checkSetupAnalytics } from "../../js/Analytics";
 import NotificationManager from "../../js/utils/notifications";
 import { ispConnected } from "../../js/utils/connection";
 
@@ -185,7 +176,6 @@ export default defineComponent({
         const settings = reactive({
             rememberLastTab: !!getConfig("rememberLastTab").rememberLastTab,
             meteredConnection: !!getConfig("meteredConnection").meteredConnection,
-            analyticsOptOut: !!getConfig("analyticsOptOut").analyticsOptOut,
             cliAutoComplete: CliAutoComplete.configEnabled,
             showManualMode: !!getConfig("showManualMode").showManualMode,
             showVirtualMode: !!getConfig("showVirtualMode").showVirtualMode,
@@ -213,16 +203,6 @@ export default defineComponent({
             (value) => {
                 setConfig({ meteredConnection: value });
                 ispConnected(); // Update network status
-            },
-        );
-
-        watch(
-            () => settings.analyticsOptOut,
-            (value) => {
-                setConfig({ analyticsOptOut: value });
-                checkSetupAnalytics((analyticsService) => {
-                    analyticsService.setOptOut(value);
-                });
             },
         );
 

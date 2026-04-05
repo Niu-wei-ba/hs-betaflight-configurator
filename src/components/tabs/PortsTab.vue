@@ -5,7 +5,7 @@
             <div class="cf_doc_version_bt">
                 <a
                     id="button-documentation"
-                    href="https://betaflight.com/docs/wiki/app/ports-tab"
+                    :href="docUrl"
                     target="_blank"
                     rel="noopener noreferrer"
                     :aria-label="$t('betaflightSupportButton')"
@@ -163,6 +163,7 @@ import { i18n } from "../../js/localization";
 import { tracking } from "../../js/Analytics";
 import semver from "semver";
 import { API_VERSION_1_45, API_VERSION_1_47 } from "../../js/data_storage";
+import { buildDocsUrl } from "../../js/AppConfig";
 
 export default defineComponent({
     name: "PortsTab",
@@ -170,6 +171,7 @@ export default defineComponent({
     setup() {
         const ports = reactive([]);
         const analyticsChanges = reactive({});
+        const docUrl = buildDocsUrl("app/ports-tab");
 
         // --- Constants & Rules ---
         const functionRules = [
@@ -527,6 +529,7 @@ export default defineComponent({
             onPeripheralChange,
             saveConfig,
             vtxTableNotConfigured,
+            docUrl,
         };
     },
 });

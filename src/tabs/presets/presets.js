@@ -18,6 +18,7 @@ import PresetsWebsiteRepo from "./PresetsRepoIndexed/PresetsWebsiteRepo";
 import PresetTitlePanel from "./TitlePanel/PresetTitlePanel";
 import PresetsSourcesDialog from "./SourcesDialog/SourcesDialog";
 import PresetSource from "./SourcesDialog/PresetSource";
+import { buildDocsUrl } from "../../js/AppConfig";
 
 const presets = {
     presetsRepo: [],
@@ -311,6 +312,7 @@ presets.onLoadConfigClick = function () {
 presets.onHtmlLoad = function (callback) {
     i18n.localizePage();
     this.readDom();
+    $(".presetsWikiButton").attr("href", buildDocsUrl("app/presets-tab"));
     this.setupMenuButtons();
     this.setupBackupWarning();
     this._inputTextFilter.attr("placeholder", 'example: "karate race", or "5\'\' freestyle"');

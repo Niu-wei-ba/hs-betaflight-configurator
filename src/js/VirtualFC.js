@@ -195,7 +195,7 @@ const VirtualFC = {
             virtualFC.RC.channels[i] = 1500;
         }
 
-        // from https://betaflight.com/docs/development/Modes or msp/msp_box.c
+        // Derived from the Betaflight modes documentation or msp/msp_box.c
         virtualFC.AUX_CONFIG = [
             "ARM",
             "ANGLE",

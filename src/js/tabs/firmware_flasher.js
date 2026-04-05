@@ -10,7 +10,6 @@ import PortHandler from "../port_handler";
 import { gui_log } from "../gui_log";
 import semver from "semver";
 import read_hex_file from "../workers/hex_parser.js";
-import Sponsor from "../Sponsor";
 import FileSystem from "../FileSystem";
 import STM32 from "../protocols/webstm32";
 import DFU from "../protocols/webusbdfu";
@@ -19,11 +18,11 @@ import AutoDetect from "../utils/AutoDetect.js";
 import { EventBus } from "../../components/eventBus";
 import { ispConnected } from "../utils/connection.js";
 import FC from "../fc";
+import { buildDocsUrl, buildLogUrl } from "../AppConfig";
 
 const firmware_flasher = {
     targets: null,
     buildApi: new BuildApi(),
-    sponsor: new Sponsor(),
     localFirmwareLoaded: false,
     selectedBoard: undefined,
     cloudBuildKey: null,
@@ -498,8 +497,6 @@ firmware_flasher.initialize = async function (callback) {
 
         // translate to user-selected language
         i18n.localizePage();
-
-        await self.sponsor.loadSponsorTile("flash", $("div.tab_sponsor"));
 
         buildType_e.on("change", async function () {
             self.enableLoadRemoteFileButton(false);
@@ -1100,7 +1097,7 @@ firmware_flasher.initialize = async function (callback) {
                 if (showLog === true) {
                     $("div.release_info #cloudTargetLog")
                         .text(i18n.getMessage(`firmwareFlasherCloudBuildLogUrl`))
-                        .prop("href", `https://build.betaflight.com/api/builds/${key}/log`);
+                        .prop("href", buildLogUrl(key));
                 }
                 $("div.release_info #cloudTargetStatus").text(i18n.getMessage(`firmwareFlasherCloudBuild${status}`));
                 $(".buildProgress").val(val);
@@ -1282,12 +1279,12 @@ firmware_flasher.initialize = async function (callback) {
         const targetSupportInfo = $("#targetSupportInfoUrl");
 
         targetSupportInfo.on("click", function () {
-            const baseBoardUrl = "https://betaflight.com/docs/wiki/boards/current";
+            const baseBoardUrl = buildDocsUrl("boards/current");
             const hasBoardSelection = self.selectedBoard && self.selectedBoard !== "0";
 
             const urlSupport = hasBoardSelection
                 ? `${baseBoardUrl}/${encodeURIComponent(self.selectedBoard)}` // selected board description
-                : "https://betaflight.com/docs/wiki/boards/archive/Missing"; // general board missing
+                : buildDocsUrl("boards/archive/Missing"); // general board missing
 
             targetSupportInfo.attr("href", urlSupport);
         });

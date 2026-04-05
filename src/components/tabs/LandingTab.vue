@@ -1,87 +1,39 @@
 <template>
     <BaseTab tab-name="landing">
-        <div class="content_wrapper">
-            <div class="content_top">
-                <div class="logowrapper">
-                    <img src="/images/bf_logo_white.svg" alt="" />
-                    <div v-html="$t('defaultWelcomeIntro')"></div>
-                </div>
+        <div class="content_wrapper mirror-landing">
+            <div class="hero">
+                <div class="eyebrow">Mirror</div>
+                <h1>{{ appConfig.appName }}</h1>
+                <p class="tagline">{{ appConfig.appTagline }}</p>
+                <p class="notice">
+                    当前部署是 Betaflight Configurator 的独立镜像 / 分叉版本。使用前请先查看源码、
+                    隐私政策与镜像文档说明。
+                </p>
             </div>
-            <div class="tab_sponsor" ref="sponsorContainer"></div>
-            <div class="content_mid grid-row">
-                <div class="column third_left text1 grid-col col4">
-                    <div class="wrap">
-                        <h2 v-html="$t('defaultWelcomeHead')"></h2>
-                        <div v-html="$t('defaultWelcomeText')"></div>
-                    </div>
-                </div>
-                <div class="column third_center text2 grid-col col5">
-                    <div class="wrap">
-                        <h2 v-html="$t('defaultContributingHead')"></h2>
-                        <div v-html="$t('defaultContributingText')"></div>
-                    </div>
-                </div>
-                <div class="column third_right text3 grid-col col3">
-                    <div class="wrap2">
-                        <h3 v-html="$t('defaultDonateHead')"></h3>
-                        <div v-html="$t('defaultDonateText')"></div>
-                        <div class="donate">
-                            <a
-                                href="https://paypal.me/betaflight"
-                                rel="noopener noreferrer"
-                                target="_blank"
-                                :title="$t('defaultDonate')"
-                            >
-                                <img src="/images/btn-donate.png" alt="Paypal" height="30" />
-                            </a>
-                        </div>
-                        <div v-html="$t('defaultDonateBottom')"></div>
-                    </div>
-                </div>
-                <div class="content_mid_bottom">
-                    <div class="socialMediaParagraph">
-                        <div class="logoSocialMedia">
-                            <img src="/images/flogo_RGB_HEX-1024.svg" alt="Facebook" class="facebookLogo" />
-                        </div>
-                        <div class="socialMediaText" v-html="$t('defaultFacebookText')"></div>
-                    </div>
-                    <div class="socialMediaParagraph">
-                        <div class="logoSocialMedia">
-                            <img src="/images/discord-logo-color.svg" alt="Discord" class="discordLogo" />
-                        </div>
-                        <div class="socialMediaText" v-html="$t('defaultDiscordText')"></div>
-                    </div>
-                </div>
-                <div class="content_bottom">
-                    <div class="statsCollection" v-html="$t('statisticsDisclaimer')"></div>
-                </div>
-                <div class="content_foot">
-                    <div class="languageSwitcher">
-                        <span>{{ $t("language_choice_message") }}</span>
-                        <a
-                            v-for="lang in availableLanguages"
-                            :key="lang"
-                            href="#"
-                            :lang="lang"
-                            :class="{ selected_language: lang === selectedLanguage }"
-                            @click.prevent="changeLanguage(lang)"
-                        >
-                            {{ $t(`language_${lang}`) }}
-                        </a>
-                    </div>
-                </div>
+
+            <div class="languageSwitcher">
+                <span>{{ $t("language_choice_message") }}</span>
+                <a
+                    v-for="lang in availableLanguages"
+                    :key="lang"
+                    href="#"
+                    :lang="lang"
+                    :class="{ selected_language: lang === selectedLanguage }"
+                    @click.prevent="changeLanguage(lang)"
+                >
+                    {{ $t(`language_${lang}`) }}
+                </a>
             </div>
         </div>
     </BaseTab>
 </template>
 
 <script>
-import { defineComponent, ref, onMounted } from "vue";
-import $ from "jquery";
+import { defineComponent, onMounted, ref } from "vue";
 import BaseTab from "./BaseTab.vue";
 import GUI from "../../js/gui";
 import { i18n } from "../../js/localization";
-import Sponsor from "../../js/Sponsor";
+import { appConfig } from "../../js/AppConfig";
 
 export default defineComponent({
     name: "LandingTab",
@@ -89,10 +41,6 @@ export default defineComponent({
         BaseTab,
     },
     setup() {
-        const sponsorContainer = ref(null);
-        const sponsor = new Sponsor();
-
-        // Get available languages including DEFAULT
         const availableLanguages = ref(["DEFAULT", ...i18n.getLanguagesAvailables()]);
         const selectedLanguage = ref(i18n.selectedLanguage);
 
@@ -104,15 +52,11 @@ export default defineComponent({
         }
 
         onMounted(() => {
-            // Load sponsor tile - wrap with jQuery for Sponsor.js compatibility
-            if (sponsorContainer.value) {
-                sponsor.loadSponsorTile("landing", $(sponsorContainer.value));
-            }
             GUI.content_ready();
         });
 
         return {
-            sponsorContainer,
+            appConfig,
             availableLanguages,
             selectedLanguage,
             changeLanguage,
@@ -122,13 +66,39 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.logowrapper,
-.logowrapper > div {
-    text-align: center;
+.mirror-landing {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
+
+.hero {
+    padding: 28px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(238, 166, 0, 0.18), rgba(20, 20, 20, 0.08));
+    border: 1px solid rgba(238, 166, 0, 0.28);
+}
+
+.eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.hero h1 {
+    margin: 8px 0 10px;
+}
+
+.tagline,
+.notice {
+    max-width: 900px;
+}
+
 .selected_language {
     font-weight: bold;
 }
+
 .languageSwitcher a {
     margin-left: 8px;
 }
