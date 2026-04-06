@@ -274,7 +274,13 @@ firmware_flasher.initialize = async function (callback) {
         }
 
         async function populateTargetList(targets) {
-            if (!targets || !ispConnected()) {
+            const targetDescriptors = Array.isArray(targets)
+                ? targets
+                : Array.isArray(targets?.targetDescriptors)
+                    ? targets.targetDescriptors
+                    : [];
+
+            if (targetDescriptors.length === 0 || !ispConnected()) {
                 $('select[name="board"]').empty().append('<option value="0">Offline</option>');
                 $('select[name="firmware_version"]').empty().append('<option value="0">Offline</option>');
 
@@ -305,9 +311,12 @@ firmware_flasher.initialize = async function (callback) {
                 legacy: i18n.getMessage("firmwareFlasherOptionLabelLegacy"),
             };
 
-            const groupTargets = Object.groupBy(targets, (descriptor) =>
-                descriptor.group ? descriptor.group : "unsupported",
-            );
+            const groupTargets = targetDescriptors.reduce((groups, descriptor) => {
+                const group = descriptor.group ? descriptor.group : "unsupported";
+                groups[group] = groups[group] || [];
+                groups[group].push(descriptor);
+                return groups;
+            }, {});
 
             const groupSorted = Object.keys(groupTargets).sort((a, b) => {
                 const groupA = groupOrder[a] ?? 999;
@@ -326,7 +335,7 @@ firmware_flasher.initialize = async function (callback) {
                 boards_e.append(optgroup);
             });
 
-            TABS.firmware_flasher.targets = targets;
+            TABS.firmware_flasher.targets = targetDescriptors;
 
             // For discussion. Rather remove build configuration and let user use auto-detect. Often I think already had pressed the button.
             $("div.build_configuration").slideUp();
