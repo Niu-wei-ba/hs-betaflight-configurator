@@ -36,6 +36,7 @@ An example frontend environment file is available at [`.env.example`](/Users/lih
 This repository now includes the first implementation layer for the firmware mirror workflow:
 - hot-set manifest source
 - metadata generation script
+- firmware artifact mirror script
 - GitHub Actions metadata sync workflow
 - metadata-backed local firmware API
 - Vite mock API wired to the same metadata adapter
@@ -44,6 +45,7 @@ Key files:
 - [Phase One API doc](/Users/lihao/Documents/betaflight-configurator/docs/phase-one-firmware-api.md)
 - [Phase One manifest](/Users/lihao/Documents/betaflight-configurator/resources/firmware-mirror/phase-one-manifest.json)
 - [Metadata generator](/Users/lihao/Documents/betaflight-configurator/scripts/generate-firmware-metadata.mjs)
+- [Firmware artifact mirror](/Users/lihao/Documents/betaflight-configurator/scripts/mirror-firmware-artifacts.mjs)
 - [Firmware API adapter](/Users/lihao/Documents/betaflight-configurator/scripts/firmware-api-adapter.mjs)
 - [Standalone firmware API server](/Users/lihao/Documents/betaflight-configurator/scripts/serve-firmware-api.mjs)
 - [Remote metadata sync](/Users/lihao/Documents/betaflight-configurator/scripts/sync-firmware-metadata.mjs)
@@ -129,6 +131,16 @@ Sync the metadata bundle from COS/CDN without starting the API:
 ```bash
 FIRMWARE_METADATA_BASE_URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/mirror-metadata yarn firmware:metadata:sync
 ```
+
+Mirror firmware artifacts declared in the manifest:
+
+```bash
+yarn firmware:artifacts
+```
+
+By default this requests official Betaflight Cloud Build with `CORE_BUILD` for each manifest target and writes files under `artifacts/firmware-files/`. For older releases with GitHub release assets, set a target `source.type` to `github-release-asset` or `url` in the manifest.
+
+Important: the current manifest target names are phase-one placeholders. Replace them with real Betaflight target names, or set `source.buildTarget`, before enabling firmware artifact mirroring in GitHub Actions.
 
 ## Presets
 

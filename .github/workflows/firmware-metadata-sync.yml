@@ -8,6 +8,16 @@ on:
         required: false
         default: true
         type: boolean
+      sync_firmware_artifacts:
+        description: "Build or download firmware artifacts declared in the manifest"
+        required: false
+        default: false
+        type: boolean
+      upload_firmware_artifacts:
+        description: "Upload mirrored firmware artifacts to Tencent COS"
+        required: false
+        default: true
+        type: boolean
   schedule:
     - cron: "0 18 * * *"
 
@@ -21,12 +31,16 @@ jobs:
     env:
       MANIFEST_PATH: resources/firmware-mirror/phase-one-manifest.json
       OUTPUT_DIR: artifacts/firmware-metadata
+      FIRMWARE_OUTPUT_DIR: artifacts/firmware-files
       COS_BUCKET: ${{ secrets.TENCENT_COS_BUCKET }}
       COS_REGION: ${{ secrets.TENCENT_COS_REGION }}
       COS_SECRET_ID: ${{ secrets.TENCENT_COS_SECRET_ID }}
       COS_SECRET_KEY: ${{ secrets.TENCENT_COS_SECRET_KEY }}
       COS_PREFIX: ${{ vars.FIRMWARE_COS_PREFIX || 'mirror-metadata' }}
+      FIRMWARE_ARTIFACT_COS_PREFIX: ${{ vars.FIRMWARE_ARTIFACT_COS_PREFIX || 'firmware' }}
       SHOULD_UPLOAD_COS: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.upload_to_cos == true) }}
+      SHOULD_SYNC_FIRMWARE_ARTIFACTS: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_firmware_artifacts == true }}
+      SHOULD_UPLOAD_FIRMWARE_ARTIFACTS: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_firmware_artifacts == true && inputs.upload_firmware_artifacts == true }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -59,9 +73,28 @@ jobs:
           path: ${{ env.OUTPUT_DIR }}
           retention-days: 14
 
+      - name: Mirror firmware artifacts
+        if: env.SHOULD_SYNC_FIRMWARE_ARTIFACTS == 'true'
+        run: node scripts/mirror-firmware-artifacts.mjs "$MANIFEST_PATH" "$FIRMWARE_OUTPUT_DIR"
+
+      - name: Print firmware artifact summary
+        if: env.SHOULD_SYNC_FIRMWARE_ARTIFACTS == 'true'
+        run: |
+          echo "Firmware artifact output:"
+          find "$FIRMWARE_OUTPUT_DIR" -type f | sort
+          echo "Firmware artifact COS prefix: $FIRMWARE_ARTIFACT_COS_PREFIX"
+
+      - name: Upload firmware artifact bundle
+        if: env.SHOULD_SYNC_FIRMWARE_ARTIFACTS == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-files
+          path: ${{ env.FIRMWARE_OUTPUT_DIR }}
+          retention-days: 14
+
       - name: Install coscmd
         if: |
-          env.SHOULD_UPLOAD_COS == 'true' &&
+          (env.SHOULD_UPLOAD_COS == 'true' || env.SHOULD_UPLOAD_FIRMWARE_ARTIFACTS == 'true') &&
           env.COS_SECRET_ID != '' &&
           env.COS_SECRET_KEY != '' &&
           env.COS_BUCKET != '' &&
@@ -78,6 +111,17 @@ jobs:
         run: |
           coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
           coscmd upload -rs "$OUTPUT_DIR/" "$COS_PREFIX/"
+
+      - name: Upload firmware artifacts to Tencent COS
+        if: |
+          env.SHOULD_UPLOAD_FIRMWARE_ARTIFACTS == 'true' &&
+          env.COS_SECRET_ID != '' &&
+          env.COS_SECRET_KEY != '' &&
+          env.COS_BUCKET != '' &&
+          env.COS_REGION != ''
+        run: |
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
+          coscmd upload -rs "$FIRMWARE_OUTPUT_DIR/" "$FIRMWARE_ARTIFACT_COS_PREFIX/"
 
       - name: Skip COS upload
         if: |

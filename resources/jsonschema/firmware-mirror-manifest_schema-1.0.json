@@ -121,6 +121,63 @@
                     "type": "string"
                   }
                 },
+                "buildTarget": {
+                  "type": "string"
+                },
+                "buildOptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "source": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "betaflight-cloud-build",
+                        "github-release-asset",
+                        "url"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "pattern": "^https?://"
+                    },
+                    "repo": {
+                      "type": "string"
+                    },
+                    "tag": {
+                      "type": "string"
+                    },
+                    "assetName": {
+                      "type": "string"
+                    },
+                    "buildTarget": {
+                      "type": "string"
+                    },
+                    "buildApiBaseUrl": {
+                      "type": "string",
+                      "pattern": "^https?://"
+                    },
+                    "release": {
+                      "type": "string"
+                    },
+                    "commit": {
+                      "type": "string"
+                    },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
                 "artifact": {
                   "type": "object",
                   "required": [

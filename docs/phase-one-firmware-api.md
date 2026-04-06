@@ -273,6 +273,7 @@
 - 源清单在 [phase-one-manifest.json](/Users/lihao/Documents/betaflight-configurator/resources/firmware-mirror/phase-one-manifest.json)
 - schema 在 [firmware-mirror-manifest_schema-1.0.json](/Users/lihao/Documents/betaflight-configurator/resources/jsonschema/firmware-mirror-manifest_schema-1.0.json)
 - 生成脚本在 [generate-firmware-metadata.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/generate-firmware-metadata.mjs)
+- 固件产物镜像脚本在 [mirror-firmware-artifacts.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/mirror-firmware-artifacts.mjs)
 - 工作流在 [firmware-metadata-sync.yml](/Users/lihao/Documents/betaflight-configurator/.github/workflows/firmware-metadata-sync.yml)
 - 本地 mock API 会优先读取 `artifacts/firmware-metadata/manifest.json`，不存在时回退到源 manifest
 
@@ -340,6 +341,7 @@ workflow: [firmware-metadata-sync.yml](/Users/lihao/Documents/betaflight-configu
 触发方式：
 - 每天北京时间 02:00 自动运行并尝试上传 COS
 - 支持手动运行，`upload_to_cos` 默认开启
+- 支持手动开启 `sync_firmware_artifacts`，用于生成或拉取 manifest 声明的真实固件 `.hex`
 
 需要配置的 GitHub Secrets：
 - `TENCENT_COS_BUCKET`
@@ -366,6 +368,31 @@ mirror-metadata/builds/2025.12.3-rc.1/HSF405.json
 mirror-metadata/builds/2025.12.3-rc.1/HSF722.json
 mirror-metadata/builds/2025.9.8/LEGACYF411.json
 ```
+
+真实固件来源不是手工上传。按一期计划，GitHub Actions 的固件产物镜像有三种来源：
+
+- `betaflight-cloud-build`: 默认来源，请求官方 Betaflight Cloud Build，适合当前 2025.12.x 这类 GitHub release 不再附带 `.hex` assets 的版本
+- `github-release-asset`: 直接拉取官方 GitHub release asset，适合 4.5.0/4.5.1 这类仍带 `.hex` assets 的版本
+- `url`: 从显式 URL 下载，适合你已经有稳定上游产物地址的场景
+
+manifest target 可以声明：
+
+```json
+{
+  "target": "HSF405",
+  "source": {
+    "type": "betaflight-cloud-build",
+    "buildTarget": "REAL_BETAFLIGHT_TARGET",
+    "options": ["CORE_BUILD"]
+  },
+  "artifact": {
+    "fileName": "REAL_BETAFLIGHT_TARGET_2025.12.2.hex",
+    "objectKey": "/firmware/stable/2025.12.2/REAL_BETAFLIGHT_TARGET/firmware.hex"
+  }
+}
+```
+
+注意：当前 `HSF405`、`HSF722`、`LEGACYF411` 是前期打通链路用的占位 target。开启 `sync_firmware_artifacts` 前，需要替换成真实 Betaflight target 名，或在 `source.buildTarget` 里映射到真实 target，否则官方 Cloud Build 会找不到目标板。
 
 ## 当前阶段的实施顺序
 
