@@ -53,7 +53,7 @@ npm run firmware:metadata
 ssh_server "mkdir -p '$SITE_ROOT/releases/$RELEASE_ID' '$SITE_ROOT/api/releases/$RELEASE_ID' '$SITE_ROOT/api/cache'"
 
 rsync -az --delete -e "$RSYNC_SSH" \
-    dist/ \
+    src/dist/ \
     "$SSH_HOST:$SITE_ROOT/releases/$RELEASE_ID/"
 
 rsync -az --delete -e "$RSYNC_SSH" \
