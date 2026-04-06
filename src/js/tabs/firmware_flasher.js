@@ -15,6 +15,7 @@ import STM32 from "../protocols/webstm32";
 import DFU from "../protocols/webusbdfu";
 import AutoBackup from "../utils/AutoBackup.js";
 import AutoDetect from "../utils/AutoDetect.js";
+import { groupFirmwareTargetDescriptors, normalizeFirmwareTargetDescriptors } from "../utils/firmwareTargets.js";
 import { EventBus } from "../../components/eventBus";
 import { ispConnected } from "../utils/connection.js";
 import FC from "../fc";
@@ -274,13 +275,9 @@ firmware_flasher.initialize = async function (callback) {
         }
 
         async function populateTargetList(targets) {
-            const targetDescriptors = Array.isArray(targets)
-                ? targets
-                : Array.isArray(targets?.targetDescriptors)
-                    ? targets.targetDescriptors
-                    : [];
+            const targetDescriptors = normalizeFirmwareTargetDescriptors(targets);
 
-            if (targetDescriptors.length === 0 || !ispConnected()) {
+            if (targetDescriptors.length === 0) {
                 $('select[name="board"]').empty().append('<option value="0">Offline</option>');
                 $('select[name="firmware_version"]').empty().append('<option value="0">Offline</option>');
 
@@ -311,12 +308,7 @@ firmware_flasher.initialize = async function (callback) {
                 legacy: i18n.getMessage("firmwareFlasherOptionLabelLegacy"),
             };
 
-            const groupTargets = targetDescriptors.reduce((groups, descriptor) => {
-                const group = descriptor.group ? descriptor.group : "unsupported";
-                groups[group] = groups[group] || [];
-                groups[group].push(descriptor);
-                return groups;
-            }, {});
+            const groupTargets = groupFirmwareTargetDescriptors(targetDescriptors);
 
             const groupSorted = Object.keys(groupTargets).sort((a, b) => {
                 const groupA = groupOrder[a] ?? 999;
