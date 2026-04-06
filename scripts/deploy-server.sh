@@ -13,7 +13,7 @@ API_CONTAINER="${BFC_DEPLOY_API_CONTAINER:-bfc_firmware_api}"
 API_PORT="${BFC_DEPLOY_API_PORT:-4180}"
 KEEP_RELEASES="${BFC_DEPLOY_KEEP_RELEASES:-5}"
 NODE_VERSION="${BFC_DEPLOY_NODE_VERSION:-20.19.0}"
-FIRMWARE_METADATA_BASE_URL="${FIRMWARE_METADATA_BASE_URL:-}"
+FIRMWARE_METADATA_BASE_URL="${FIRMWARE_METADATA_BASE_URL:-__LOCAL_BUNDLE__}"
 FIRMWARE_ARTIFACT_BASE_URL="${FIRMWARE_ARTIFACT_BASE_URL:-https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com}"
 VITE_SOURCE_CODE_URL="${VITE_SOURCE_CODE_URL:-https://github.com/Niu-wei-ba/hs-betaflight-configurator}"
 RELEASE_ID="${BFC_DEPLOY_RELEASE_ID:-$(git rev-parse --short HEAD)}"
@@ -79,6 +79,10 @@ api_port="$5"
 keep_releases="$6"
 firmware_metadata_base_url="$7"
 firmware_artifact_base_url="$8"
+
+if [[ "$firmware_metadata_base_url" == "__LOCAL_BUNDLE__" ]]; then
+    firmware_metadata_base_url=""
+fi
 
 app="$site_root/api/releases/$release_id"
 cache="$site_root/api/cache"
