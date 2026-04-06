@@ -309,8 +309,8 @@ artifacts/firmware-metadata/
 - `FIRMWARE_ARTIFACT_BASE_URL`
 
 生产形态建议：
-- `FIRMWARE_METADATA_BASE_URL`: 指向 COS/CDN 中的 metadata bundle 前缀，例如 `https://cdn.example.com/mirror-metadata`
-- `FIRMWARE_ARTIFACT_BASE_URL`: 指向固件对象 CDN 根路径，例如 `https://cdn.example.com`
+- `FIRMWARE_METADATA_BASE_URL`: 指向 COS/CDN 中的 metadata bundle 前缀，例如 `https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/mirror-metadata`
+- `FIRMWARE_ARTIFACT_BASE_URL`: 指向固件对象 COS/CDN 根路径，例如 `https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com`
 
 如果设置了 `FIRMWARE_METADATA_BASE_URL`，服务启动时会先下载：
 
@@ -328,9 +328,9 @@ builds/{release}/{target}.json
 如果设置了 `FIRMWARE_ARTIFACT_BASE_URL`，下载地址会从 metadata 中的 `artifact.objectKey` 拼出。例如：
 
 ```text
-FIRMWARE_ARTIFACT_BASE_URL=https://cdn.example.com
+FIRMWARE_ARTIFACT_BASE_URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com
 artifact.objectKey=/firmware/stable/2025.12.2/HSF405/firmware.hex
-返回 URL=https://cdn.example.com/firmware/stable/2025.12.2/HSF405/firmware.hex
+返回 URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/stable/2025.12.2/HSF405/firmware.hex
 ```
 
 ## GitHub Actions 与 COS 上传

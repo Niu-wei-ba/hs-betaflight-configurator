@@ -105,14 +105,14 @@ Use this after `Firmware Metadata Sync` has uploaded the metadata bundle to COS:
 ```bash
 nvm use
 yarn install
-FIRMWARE_METADATA_BASE_URL=https://your-cdn.example.com/mirror-metadata \
-FIRMWARE_ARTIFACT_BASE_URL=https://your-cdn.example.com \
+FIRMWARE_METADATA_BASE_URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/mirror-metadata \
+FIRMWARE_ARTIFACT_BASE_URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com \
 yarn firmware:api
 ```
 
 At startup, the API downloads `manifest.json`, `index/*.json`, `targets/*.json`, and `builds/*/*.json` into `artifacts/firmware-metadata/`, then serves the normal `/api/*` interface from that local cache.
 
-`FIRMWARE_ARTIFACT_BASE_URL` is used with each metadata `artifact.objectKey`, so `/firmware/stable/2025.12.2/HSF405/firmware.hex` becomes `https://your-cdn.example.com/firmware/stable/2025.12.2/HSF405/firmware.hex`.
+`FIRMWARE_ARTIFACT_BASE_URL` is used with each metadata `artifact.objectKey`, so `/firmware/stable/2025.12.2/HSF405/firmware.hex` becomes `https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/stable/2025.12.2/HSF405/firmware.hex`.
 
 ### Metadata Generation
 
@@ -127,7 +127,7 @@ Output is written to `artifacts/firmware-metadata/`.
 Sync the metadata bundle from COS/CDN without starting the API:
 
 ```bash
-FIRMWARE_METADATA_BASE_URL=https://your-cdn.example.com/mirror-metadata yarn firmware:metadata:sync
+FIRMWARE_METADATA_BASE_URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/mirror-metadata yarn firmware:metadata:sync
 ```
 
 ## Presets
