@@ -28,7 +28,8 @@ function resolveUrl(baseUrl, urlOrPath) {
 function resolveOutputPath(outputDir, objectKey, objectPrefix = DEFAULT_OBJECT_PREFIX) {
     const cleanKey = String(objectKey || "").replace(/^\/+/, "");
     const cleanPrefix = String(objectPrefix || "").replace(/^\/+|\/+$/g, "");
-    const relativeKey = cleanPrefix && cleanKey.startsWith(`${cleanPrefix}/`) ? cleanKey.slice(cleanPrefix.length + 1) : cleanKey;
+    const relativeKey =
+        cleanPrefix && cleanKey.startsWith(`${cleanPrefix}/`) ? cleanKey.slice(cleanPrefix.length + 1) : cleanKey;
     return path.join(outputDir, relativeKey);
 }
 
@@ -50,12 +51,10 @@ function buildSourceUrl({ version, targetEntry }) {
 }
 
 function buildRequestPayload({ version, targetEntry }) {
-    const source = targetEntry.source || { type: "betaflight-cloud-build" };
     return {
-        target: source.buildTarget || targetEntry.buildTarget || targetEntry.target,
-        release: source.release || version.version,
-        options: source.options || targetEntry.buildOptions || DEFAULT_BUILD_OPTIONS,
-        ...(source.commit ? { commit: source.commit } : {}),
+        target: targetEntry.target,
+        release: version.version,
+        options: DEFAULT_BUILD_OPTIONS,
     };
 }
 
@@ -108,9 +107,17 @@ async function sleep(ms) {
     await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function buildWithBetaflightCloud({ version, targetEntry, outputPath, buildApiBaseUrl, pollSeconds, timeoutSeconds, log }) {
+async function buildWithBetaflightCloud({
+    version,
+    targetEntry,
+    outputPath,
+    buildApiBaseUrl,
+    pollSeconds,
+    timeoutSeconds,
+    log,
+}) {
     const requestPayload = buildRequestPayload({ version, targetEntry });
-    const buildApi = cleanBaseUrl(targetEntry.source?.buildApiBaseUrl || buildApiBaseUrl);
+    const buildApi = cleanBaseUrl(buildApiBaseUrl);
     log(`Requesting Betaflight Cloud Build: ${JSON.stringify(requestPayload)}`);
 
     const build = await fetchJson(`${buildApi}/api/builds`, {
@@ -122,7 +129,9 @@ async function buildWithBetaflightCloud({ version, targetEntry, outputPath, buil
     });
 
     if (!build?.key || !build?.url) {
-        throw new Error(`Unexpected build response for ${requestPayload.release}/${requestPayload.target}: ${JSON.stringify(build)}`);
+        throw new Error(
+            `Unexpected build response for ${requestPayload.release}/${requestPayload.target}: ${JSON.stringify(build)}`,
+        );
     }
 
     const startedAt = Date.now();
@@ -140,7 +149,9 @@ async function buildWithBetaflightCloud({ version, targetEntry, outputPath, buil
         }
 
         if (status.status === "failed") {
-            throw new Error(`Betaflight Cloud Build failed for ${requestPayload.release}/${requestPayload.target}: ${JSON.stringify(status)}`);
+            throw new Error(
+                `Betaflight Cloud Build failed for ${requestPayload.release}/${requestPayload.target}: ${JSON.stringify(status)}`,
+            );
         }
 
         await sleep(pollSeconds * 1000);
@@ -207,7 +218,12 @@ export async function mirrorFirmwareArtifacts(options = {}) {
                     timeoutSeconds,
                     log,
                 });
-                mirrored.push({ version: version.version, target: targetEntry.target, outputPath, buildKey: result.key });
+                mirrored.push({
+                    version: version.version,
+                    target: targetEntry.target,
+                    outputPath,
+                    buildKey: result.key,
+                });
                 continue;
             }
 

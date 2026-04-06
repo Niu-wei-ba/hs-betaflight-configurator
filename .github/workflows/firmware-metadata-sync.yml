@@ -53,7 +53,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable --immutable-cache --check-cache
 
-      - name: Run firmware metadata tests
+      - name: Validate firmware manifest and run metadata tests
         run: yarn test:firmware-metadata
 
       - name: Generate firmware metadata bundle

@@ -13,15 +13,15 @@ describe("firmware artifact mirroring", () => {
             expect.arrayContaining([
                 expect.objectContaining({
                     version: "2025.12.2",
-                    target: "HSF405",
+                    target: "SPEEDYBEEF405V3",
                     sourceType: "betaflight-cloud-build",
                     buildRequest: {
-                        target: "HSF405",
+                        target: "SPEEDYBEEF405V3",
                         release: "2025.12.2",
                         options: ["CORE_BUILD"],
                     },
-                    objectKey: "/firmware/stable/2025.12.2/HSF405/firmware.hex",
-                    outputPath: "artifacts/firmware-files/stable/2025.12.2/HSF405/firmware.hex",
+                    objectKey: "/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex",
+                    outputPath: "artifacts/firmware-files/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex",
                 }),
             ]),
         );

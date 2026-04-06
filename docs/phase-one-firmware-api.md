@@ -3,6 +3,7 @@
 本文件定义一期固件分发系统的接口基线。
 
 目标有两点：
+
 - 对现有 BFC 前端保持兼容，避免一开始大改刷机逻辑
 - 为后续接入 GitHub Actions、COS、CDN 和冷门回源预留统一契约
 
@@ -25,13 +26,14 @@
 
 ```json
 [
-  { "target": "HSF405", "group": "supported" },
-  { "target": "HSF722", "group": "supported" },
-  { "target": "LEGACYF411", "group": "legacy" }
+    { "target": "SPEEDYBEEF405V3", "group": "supported" },
+    { "target": "MATEKF722", "group": "supported" },
+    { "target": "IFLIGHT_BLITZ_F722", "group": "supported" }
 ]
 ```
 
 字段说明：
+
 - `target`: 目标板名称
 - `group`: 分组，当前前端会用 `supported`、`unsupported`、`legacy`
 
@@ -43,12 +45,8 @@
 
 ```json
 {
-  "target": "HSF405",
-  "releases": [
-    { "release": "2025.12.2", "type": "Stable", "label": "Stable" },
-    { "release": "2025.12.3-rc.1", "type": "ReleaseCandidate", "label": "RC" },
-    { "release": "2026.1.0-alpha.1", "type": "Unstable", "label": "Dev" }
-  ]
+    "target": "SPEEDYBEEF405V3",
+    "releases": [{ "release": "2025.12.2", "type": "Stable", "label": "Stable" }]
 }
 ```
 
@@ -60,23 +58,20 @@
 
 ```json
 {
-  "target": "HSF405",
-  "release": "2025.12.2",
-  "releaseType": "Stable",
-  "releaseUrl": "https://bf.hs-fpv.com/releases/2025.12.2",
-  "date": "2026-04-06",
-  "mcu": "STM32F405",
-  "manufacturer": "HS-FPV",
-  "cloudBuild": false,
-  "configuration": [
-    "defaults nosave",
-    "feature OSD",
-    "set name = HS-FPV"
-  ]
+    "target": "SPEEDYBEEF405V3",
+    "release": "2025.12.2",
+    "releaseType": "Stable",
+    "releaseUrl": "https://bf.hs-fpv.com/releases/2025.12.2",
+    "date": "2026-02-08",
+    "mcu": "STM32F405",
+    "manufacturer": "SPBE",
+    "cloudBuild": false,
+    "configuration": ["defaults nosave"]
 }
 ```
 
 字段说明：
+
 - `cloudBuild`: `false` 表示可直接下载缓存产物，`true` 表示仍需走构建/异步任务路径
 - `configuration`: 可选，作为默认 CLI 配置注入
 
@@ -85,6 +80,7 @@
 兼容当前前端的“加载在线固件”动作。
 
 对于一期镜像系统，这个接口不一定真的触发构建，也可以：
+
 - 命中热资源时直接返回缓存文件地址
 - 冷门资源时创建异步任务并返回任务 key
 
@@ -92,9 +88,9 @@
 
 ```json
 {
-  "target": "HSF405",
-  "release": "2025.12.2",
-  "options": ["CORE_BUILD"]
+    "target": "SPEEDYBEEF405V3",
+    "release": "2025.12.2",
+    "options": ["CORE_BUILD"]
 }
 ```
 
@@ -102,9 +98,9 @@
 
 ```json
 {
-  "key": "mockhsf4052025122000000000000000",
-  "file": "HSF405_2025.12.2.hex",
-  "url": "/mock-api/firmware/HSF405_2025.12.2.hex"
+    "key": "mockspeedybeef405v320251220000",
+    "file": "SPEEDYBEEF405V3_2025.12.2.hex",
+    "url": "/mock-api/firmware/SPEEDYBEEF405V3_2025.12.2.hex"
 }
 ```
 
@@ -116,16 +112,13 @@
 
 ```json
 {
-  "status": "success",
-  "configuration": [
-    "defaults nosave",
-    "feature OSD",
-    "set name = HS-FPV"
-  ]
+    "status": "success",
+    "configuration": ["defaults nosave", "feature OSD", "set name = HS-FPV"]
 }
 ```
 
 状态约定：
+
 - `queued`
 - `success`
 - `failed`
@@ -138,9 +131,9 @@
 
 ```json
 {
-  "Request": {
-    "Options": ["USE_SERIALRX_CRSF", "USE_OSD_MSP_DISPLAYPORT"]
-  }
+    "Request": {
+        "Options": ["USE_SERIALRX_CRSF", "USE_OSD_MSP_DISPLAYPORT"]
+    }
 }
 ```
 
@@ -152,25 +145,19 @@
 
 ```json
 {
-  "radioProtocols": [
-    { "name": "CRSF", "value": "USE_SERIALRX_CRSF", "default": true }
-  ],
-  "telemetryProtocols": [
-    { "name": "SmartPort", "value": "USE_TELEMETRY_SMARTPORT", "default": false }
-  ],
-  "generalOptions": [
-    { "name": "Blackbox", "value": "USE_BLACKBOX", "default": true },
-    {
-      "name": "OSD MSP DisplayPort",
-      "group": "OSD",
-      "groupedName": "MSP DisplayPort",
-      "value": "USE_OSD_MSP_DISPLAYPORT",
-      "default": true
-    }
-  ],
-  "motorProtocols": [
-    { "name": "DShot300", "value": "USE_DSHOT300", "default": true }
-  ]
+    "radioProtocols": [{ "name": "CRSF", "value": "USE_SERIALRX_CRSF", "default": true }],
+    "telemetryProtocols": [{ "name": "SmartPort", "value": "USE_TELEMETRY_SMARTPORT", "default": false }],
+    "generalOptions": [
+        { "name": "Blackbox", "value": "USE_BLACKBOX", "default": true },
+        {
+            "name": "OSD MSP DisplayPort",
+            "group": "OSD",
+            "groupedName": "MSP DisplayPort",
+            "value": "USE_OSD_MSP_DISPLAYPORT",
+            "default": true
+        }
+    ],
+    "motorProtocols": [{ "name": "DShot300", "value": "USE_DSHOT300", "default": true }]
 }
 ```
 
@@ -186,10 +173,10 @@
 
 ```json
 [
-  {
-    "sha": "a1b2c3d4",
-    "message": "mock: add firmware mirror metadata"
-  }
+    {
+        "sha": "a1b2c3d4",
+        "message": "mock: add firmware mirror metadata"
+    }
 ]
 ```
 
@@ -202,10 +189,7 @@
 返回镜像站可用版本列表。
 
 ```json
-[
-  { "version": "2025.12.2", "channel": "stable" },
-  { "version": "2025.12.3-rc.1", "channel": "rc" }
-]
+[{ "version": "2025.12.2", "channel": "stable" }]
 ```
 
 ### `GET /api/firmware/targets?version=2025.12.2`
@@ -214,15 +198,15 @@
 
 ```json
 {
-  "version": "2025.12.2",
-  "targets": [
-    { "target": "HSF405", "cached": true, "channel": "stable" },
-    { "target": "HSF722", "cached": true, "channel": "stable" }
-  ]
+    "version": "2025.12.2",
+    "targets": [
+        { "target": "SPEEDYBEEF405V3", "cached": true, "channel": "stable" },
+        { "target": "MATEKF722", "cached": true, "channel": "stable" }
+    ]
 }
 ```
 
-### `GET /api/firmware/url?version=2025.12.2&target=HSF405`
+### `GET /api/firmware/url?version=2025.12.2&target=SPEEDYBEEF405V3`
 
 返回下载地址或任务状态。
 
@@ -230,10 +214,10 @@
 
 ```json
 {
-  "hit": true,
-  "source": "cos",
-  "file": "HSF405_2025.12.2.hex",
-  "url": "/mock-api/firmware/HSF405_2025.12.2.hex"
+    "hit": true,
+    "source": "cos",
+    "file": "SPEEDYBEEF405V3_2025.12.2.hex",
+    "url": "/mock-api/firmware/SPEEDYBEEF405V3_2025.12.2.hex"
 }
 ```
 
@@ -241,10 +225,10 @@
 
 ```json
 {
-  "hit": false,
-  "source": "building",
-  "taskId": "bf_hsf405_2026010a1",
-  "status": "pending"
+    "hit": false,
+    "source": "building",
+    "taskId": "bf_hsf405_2026010a1",
+    "status": "pending"
 }
 ```
 
@@ -254,9 +238,9 @@
 
 ```json
 {
-  "taskId": "bf_hsf405_2026010a1",
-  "status": "success",
-  "url": "/mock-api/firmware/HSF405_2026.1.0-alpha.1.hex"
+    "taskId": "bf_speedybeef405v3_2026010a1",
+    "status": "success",
+    "url": "/mock-api/firmware/SPEEDYBEEF405V3_2026.1.0-alpha.1.hex"
 }
 ```
 
@@ -270,8 +254,10 @@
 - `GET /api/firmware/*`：逐步替代旧式 build 接口，直接表达镜像分发语义
 
 当前仓库已经补上第一版生成链路：
+
 - 源清单在 [phase-one-manifest.json](/Users/lihao/Documents/betaflight-configurator/resources/firmware-mirror/phase-one-manifest.json)
 - schema 在 [firmware-mirror-manifest_schema-1.0.json](/Users/lihao/Documents/betaflight-configurator/resources/jsonschema/firmware-mirror-manifest_schema-1.0.json)
+- 官方 target 校验脚本在 [validate-firmware-manifest.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/validate-firmware-manifest.mjs)
 - 生成脚本在 [generate-firmware-metadata.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/generate-firmware-metadata.mjs)
 - 固件产物镜像脚本在 [mirror-firmware-artifacts.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/mirror-firmware-artifacts.mjs)
 - 工作流在 [firmware-metadata-sync.yml](/Users/lihao/Documents/betaflight-configurator/.github/workflows/firmware-metadata-sync.yml)
@@ -290,17 +276,20 @@ artifacts/firmware-metadata/
 ```
 
 建议后端映射关系：
+
 - `GET /api/targets` -> `index/targets.json`
 - `GET /api/targets/{target}` -> `targets/{target}.json`
 - `GET /api/builds/{release}/{target}` -> `builds/{release}/{target}.json`
 - `GET /api/firmware/versions` -> `index/versions.json`
 
 当前仓库还提供了一个最小独立后端服务：
+
 - 启动命令：`yarn firmware:api`
 - 入口文件： [serve-firmware-api.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/serve-firmware-api.mjs)
 - 共享适配层： [firmware-api-adapter.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/firmware-api-adapter.mjs)
 
 常用环境变量：
+
 - `PORT` / `HOST`
 - `FIRMWARE_METADATA_DIR`
 - `FIRMWARE_MANIFEST_PATH`
@@ -310,6 +299,7 @@ artifacts/firmware-metadata/
 - `FIRMWARE_ARTIFACT_BASE_URL`
 
 生产形态建议：
+
 - `FIRMWARE_METADATA_BASE_URL`: 指向 COS/CDN 中的 metadata bundle 前缀，例如 `https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/mirror-metadata`
 - `FIRMWARE_ARTIFACT_BASE_URL`: 指向固件对象 COS/CDN 根路径，例如 `https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com`
 
@@ -330,8 +320,8 @@ builds/{release}/{target}.json
 
 ```text
 FIRMWARE_ARTIFACT_BASE_URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com
-artifact.objectKey=/firmware/stable/2025.12.2/HSF405/firmware.hex
-返回 URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/stable/2025.12.2/HSF405/firmware.hex
+artifact.objectKey=/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex
+返回 URL=https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex
 ```
 
 ## GitHub Actions 与 COS 上传
@@ -339,17 +329,20 @@ artifact.objectKey=/firmware/stable/2025.12.2/HSF405/firmware.hex
 workflow: [firmware-metadata-sync.yml](/Users/lihao/Documents/betaflight-configurator/.github/workflows/firmware-metadata-sync.yml)
 
 触发方式：
+
 - 每天北京时间 02:00 自动运行并尝试上传 COS
 - 支持手动运行，`upload_to_cos` 默认开启
 - 支持手动开启 `sync_firmware_artifacts`，用于生成或拉取 manifest 声明的真实固件 `.hex`
 
 需要配置的 GitHub Secrets：
+
 - `TENCENT_COS_BUCKET`
 - `TENCENT_COS_REGION`
 - `TENCENT_COS_SECRET_ID`
 - `TENCENT_COS_SECRET_KEY`
 
 需要配置的 GitHub Variable：
+
 - `FIRMWARE_COS_PREFIX`
 
 如果 `FIRMWARE_COS_PREFIX=mirror-metadata`，成功后 COS 中应出现：
@@ -359,14 +352,10 @@ mirror-metadata/manifest.json
 mirror-metadata/index/versions.json
 mirror-metadata/index/targets.json
 mirror-metadata/index/hot.json
-mirror-metadata/targets/HSF405.json
-mirror-metadata/targets/HSF722.json
-mirror-metadata/targets/LEGACYF411.json
-mirror-metadata/builds/2025.12.2/HSF405.json
-mirror-metadata/builds/2025.12.2/HSF722.json
-mirror-metadata/builds/2025.12.3-rc.1/HSF405.json
-mirror-metadata/builds/2025.12.3-rc.1/HSF722.json
-mirror-metadata/builds/2025.9.8/LEGACYF411.json
+mirror-metadata/targets/SPEEDYBEEF405V3.json
+mirror-metadata/targets/MATEKF722.json
+mirror-metadata/builds/2025.12.2/SPEEDYBEEF405V3.json
+mirror-metadata/builds/2025.12.2/MATEKF722.json
 ```
 
 真实固件来源不是手工上传。按一期计划，GitHub Actions 的固件产物镜像有三种来源：
@@ -379,20 +368,18 @@ manifest target 可以声明：
 
 ```json
 {
-  "target": "HSF405",
-  "source": {
-    "type": "betaflight-cloud-build",
-    "buildTarget": "REAL_BETAFLIGHT_TARGET",
-    "options": ["CORE_BUILD"]
-  },
-  "artifact": {
-    "fileName": "REAL_BETAFLIGHT_TARGET_2025.12.2.hex",
-    "objectKey": "/firmware/stable/2025.12.2/REAL_BETAFLIGHT_TARGET/firmware.hex"
-  }
+    "target": "SPEEDYBEEF405V3",
+    "source": {
+        "type": "betaflight-cloud-build"
+    },
+    "artifact": {
+        "fileName": "SPEEDYBEEF405V3_2025.12.2.hex",
+        "objectKey": "/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex"
+    }
 }
 ```
 
-注意：当前 `HSF405`、`HSF722`、`LEGACYF411` 是前期打通链路用的占位 target。开启 `sync_firmware_artifacts` 前，需要替换成真实 Betaflight target 名，或在 `source.buildTarget` 里映射到真实 target，否则官方 Cloud Build 会找不到目标板。
+注意：manifest 里的 `target` 必须是官方 `betaflight/config` 里的 target ID。开启 `sync_firmware_artifacts` 前会运行 `npm run firmware:manifest:validate`，校验 target 是否存在、`mcu/manufacturer` 是否匹配官方 `config.h`，以及 `artifact.objectKey` 是否包含官方 target 段。
 
 ## 当前阶段的实施顺序
 
@@ -404,11 +391,13 @@ manifest target 可以声明：
 ## 本地联调说明
 
 当前仓库已内置一套 Vite mock API：
+
 - `/api/*` 由 [mock-api/vite-plugin.js](/Users/lihao/Documents/betaflight-configurator/mock-api/vite-plugin.js) 注入
 - 示例数据位于 [mock-api/data.js](/Users/lihao/Documents/betaflight-configurator/mock-api/data.js)
 - 示例固件位于 [mock-api/assets/firmware](/Users/lihao/Documents/betaflight-configurator/mock-api/assets/firmware)
 
 这层 mock 的作用是先跑通：
+
 - target 列表
 - release 列表
 - 在线固件加载

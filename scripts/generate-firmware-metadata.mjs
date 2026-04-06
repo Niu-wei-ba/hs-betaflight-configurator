@@ -27,27 +27,58 @@ function releaseLabelForChannel(channel) {
 function validateManifest(manifest) {
     assert(manifest && typeof manifest === "object", "Manifest must be an object.");
     assert(manifest.schemaVersion === "1.0", "Manifest schemaVersion must be 1.0.");
-    assert(typeof manifest.releaseBaseUrl === "string" && manifest.releaseBaseUrl.startsWith("http"), "Manifest releaseBaseUrl must be an absolute URL.");
+    assert(
+        typeof manifest.releaseBaseUrl === "string" && manifest.releaseBaseUrl.startsWith("http"),
+        "Manifest releaseBaseUrl must be an absolute URL.",
+    );
     assert(Array.isArray(manifest.defaults?.configuration), "Manifest defaults.configuration must be an array.");
-    assert(Array.isArray(manifest.versions) && manifest.versions.length > 0, "Manifest versions must be a non-empty array.");
+    assert(
+        Array.isArray(manifest.versions) && manifest.versions.length > 0,
+        "Manifest versions must be a non-empty array.",
+    );
 
     manifest.versions.forEach((versionEntry) => {
-        assert(typeof versionEntry.version === "string" && versionEntry.version.length > 0, "Each version must define version.");
+        assert(
+            typeof versionEntry.version === "string" && versionEntry.version.length > 0,
+            "Each version must define version.",
+        );
         assert(["stable", "rc", "dev"].includes(versionEntry.channel), `Unsupported channel: ${versionEntry.channel}`);
         assert(
             ["Stable", "ReleaseCandidate", "Unstable"].includes(versionEntry.releaseType),
             `Unsupported releaseType: ${versionEntry.releaseType}`,
         );
-        assert(Array.isArray(versionEntry.targets) && versionEntry.targets.length > 0, `Version ${versionEntry.version} must declare targets.`);
+        assert(
+            Array.isArray(versionEntry.targets) && versionEntry.targets.length > 0,
+            `Version ${versionEntry.version} must declare targets.`,
+        );
 
         versionEntry.targets.forEach((targetEntry) => {
-            assert(typeof targetEntry.target === "string" && targetEntry.target.length > 0, `Version ${versionEntry.version} has target without name.`);
-            assert(["supported", "unsupported", "legacy"].includes(targetEntry.group), `Target ${targetEntry.target} has invalid group.`);
-            assert(typeof targetEntry.mcu === "string" && targetEntry.mcu.length > 0, `Target ${targetEntry.target} must define mcu.`);
+            assert(
+                typeof targetEntry.target === "string" && targetEntry.target.length > 0,
+                `Version ${versionEntry.version} has target without name.`,
+            );
+            assert(
+                ["supported", "unsupported", "legacy"].includes(targetEntry.group),
+                `Target ${targetEntry.target} has invalid group.`,
+            );
+            assert(
+                typeof targetEntry.mcu === "string" && targetEntry.mcu.length > 0,
+                `Target ${targetEntry.target} must define mcu.`,
+            );
+            assert(
+                typeof targetEntry.manufacturer === "string" && targetEntry.manufacturer.length > 0,
+                `Target ${targetEntry.target} must define manufacturer.`,
+            );
             assert(typeof targetEntry.cloudBuild === "boolean", `Target ${targetEntry.target} must define cloudBuild.`);
             assert(typeof targetEntry.hot === "boolean", `Target ${targetEntry.target} must define hot.`);
-            assert(typeof targetEntry.artifact?.fileName === "string", `Target ${targetEntry.target} must define artifact.fileName.`);
-            assert(typeof targetEntry.artifact?.objectKey === "string" && targetEntry.artifact.objectKey.startsWith("/"), `Target ${targetEntry.target} must define artifact.objectKey.`);
+            assert(
+                typeof targetEntry.artifact?.fileName === "string",
+                `Target ${targetEntry.target} must define artifact.fileName.`,
+            );
+            assert(
+                typeof targetEntry.artifact?.objectKey === "string" && targetEntry.artifact.objectKey.startsWith("/"),
+                `Target ${targetEntry.target} must define artifact.objectKey.`,
+            );
         });
     });
 
@@ -78,6 +109,7 @@ export function buildFirmwareMetadata(manifest) {
                     target: targetEntry.target,
                     group: targetEntry.group,
                     mcu: targetEntry.mcu,
+                    manufacturer: targetEntry.manufacturer,
                     releases: [],
                 });
             }
@@ -97,6 +129,7 @@ export function buildFirmwareMetadata(manifest) {
             target: entry.target,
             group: entry.group,
             mcu: entry.mcu,
+            manufacturer: entry.manufacturer,
             releaseCount: entry.releases.length,
             releases: entry.releases.sort((a, b) => b.release.localeCompare(a.release, undefined, { numeric: true })),
         }))
@@ -110,9 +143,7 @@ export function buildFirmwareMetadata(manifest) {
                 version: entry.version,
                 channel: entry.channel,
             })),
-        targets: targets
-            .filter((entry) => entry.releases.some((release) => release.hot))
-            .map((entry) => entry.target),
+        targets: targets.filter((entry) => entry.releases.some((release) => release.hot)).map((entry) => entry.target),
     };
 
     const targetDetails = Object.fromEntries(
@@ -141,7 +172,7 @@ export function buildFirmwareMetadata(manifest) {
                 releaseUrl: `${manifest.releaseBaseUrl}/${versionEntry.version}`,
                 date: versionEntry.date,
                 mcu: targetEntry.mcu,
-                manufacturer: manifest.defaults.manufacturer,
+                manufacturer: targetEntry.manufacturer,
                 cloudBuild: targetEntry.cloudBuild,
                 configuration: targetEntry.configuration || manifest.defaults.configuration,
                 artifact: targetEntry.artifact,
@@ -193,7 +224,12 @@ export async function writeFirmwareMetadata(metadata, outputDir) {
         Object.entries(metadata.buildDetails).map(([key, payload]) => {
             const [release, target] = key.split(":");
             return writeJson(
-                path.join(resolvedOutputDir, "builds", normalizePathSegment(release), `${normalizePathSegment(target)}.json`),
+                path.join(
+                    resolvedOutputDir,
+                    "builds",
+                    normalizePathSegment(release),
+                    `${normalizePathSegment(target)}.json`,
+                ),
                 payload,
             );
         }),

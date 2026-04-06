@@ -1,98 +1,164 @@
 {
-  "schemaVersion": "1.0",
-  "generatedAt": "2026-04-06T00:00:00Z",
-  "releaseBaseUrl": "https://bf.hs-fpv.com/releases",
-  "defaults": {
-    "manufacturer": "HS-FPV",
-    "configuration": [
-      "defaults nosave",
-      "feature OSD",
-      "feature TELEMETRY",
-      "set name = HS-FPV"
+    "schemaVersion": "1.0",
+    "generatedAt": "2026-04-06T00:00:00Z",
+    "releaseBaseUrl": "https://bf.hs-fpv.com/releases",
+    "defaults": {
+        "manufacturer": "Betaflight",
+        "configuration": ["defaults nosave"]
+    },
+    "versions": [
+        {
+            "version": "2025.12.2",
+            "channel": "stable",
+            "releaseType": "Stable",
+            "date": "2026-02-08",
+            "hot": true,
+            "targets": [
+                {
+                    "target": "BETAFPVF405",
+                    "mcu": "STM32F405",
+                    "manufacturer": "BEFH",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "BETAFPVF405_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/BETAFPVF405/firmware.hex"
+                    }
+                },
+                {
+                    "target": "IFLIGHT_BLITZ_F405",
+                    "mcu": "STM32F405",
+                    "manufacturer": "IFRC",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "IFLIGHT_BLITZ_F405_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/IFLIGHT_BLITZ_F405/firmware.hex"
+                    }
+                },
+                {
+                    "target": "IFLIGHT_BLITZ_F722",
+                    "mcu": "STM32F7X2",
+                    "manufacturer": "IFRC",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "IFLIGHT_BLITZ_F722_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/IFLIGHT_BLITZ_F722/firmware.hex"
+                    }
+                },
+                {
+                    "target": "KAKUTEF7",
+                    "mcu": "STM32F745",
+                    "manufacturer": "HBRO",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "KAKUTEF7_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/KAKUTEF7/firmware.hex"
+                    }
+                },
+                {
+                    "target": "KAKUTEH7",
+                    "mcu": "STM32H743",
+                    "manufacturer": "HBRO",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "KAKUTEH7_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/KAKUTEH7/firmware.hex"
+                    }
+                },
+                {
+                    "target": "MAMBAF405_2022B",
+                    "mcu": "STM32F405",
+                    "manufacturer": "DIAT",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "MAMBAF405_2022B_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/MAMBAF405_2022B/firmware.hex"
+                    }
+                },
+                {
+                    "target": "MAMBAF722_2022B",
+                    "mcu": "STM32F7X2",
+                    "manufacturer": "DIAT",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "MAMBAF722_2022B_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/MAMBAF722_2022B/firmware.hex"
+                    }
+                },
+                {
+                    "target": "MATEKF405TE",
+                    "mcu": "STM32F405",
+                    "manufacturer": "MTKS",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "MATEKF405TE_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/MATEKF405TE/firmware.hex"
+                    }
+                },
+                {
+                    "target": "MATEKF722",
+                    "mcu": "STM32F7X2",
+                    "manufacturer": "MTKS",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "MATEKF722_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/MATEKF722/firmware.hex"
+                    }
+                },
+                {
+                    "target": "SPEEDYBEEF405MINI",
+                    "mcu": "STM32F405",
+                    "manufacturer": "SPBE",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "SPEEDYBEEF405MINI_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/SPEEDYBEEF405MINI/firmware.hex"
+                    }
+                },
+                {
+                    "target": "SPEEDYBEEF405V3",
+                    "mcu": "STM32F405",
+                    "manufacturer": "SPBE",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "SPEEDYBEEF405V3_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex"
+                    }
+                },
+                {
+                    "target": "SPEEDYBEEF405V4",
+                    "mcu": "STM32F405",
+                    "manufacturer": "SPBE",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "SPEEDYBEEF405V4_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/SPEEDYBEEF405V4/firmware.hex"
+                    }
+                }
+            ]
+        }
     ]
-  },
-  "versions": [
-    {
-      "version": "2025.12.2",
-      "channel": "stable",
-      "releaseType": "Stable",
-      "date": "2026-04-06",
-      "hot": true,
-      "targets": [
-        {
-          "target": "HSF405",
-          "mcu": "STM32F405",
-          "group": "supported",
-          "cloudBuild": false,
-          "hot": true,
-          "artifact": {
-            "fileName": "HSF405_2025.12.2.hex",
-            "objectKey": "/firmware/stable/2025.12.2/HSF405/firmware.hex"
-          }
-        },
-        {
-          "target": "HSF722",
-          "mcu": "STM32F722",
-          "group": "supported",
-          "cloudBuild": false,
-          "hot": true,
-          "artifact": {
-            "fileName": "HSF722_2025.12.2.hex",
-            "objectKey": "/firmware/stable/2025.12.2/HSF722/firmware.hex"
-          }
-        }
-      ]
-    },
-    {
-      "version": "2025.12.3-rc.1",
-      "channel": "rc",
-      "releaseType": "ReleaseCandidate",
-      "date": "2026-04-06",
-      "hot": true,
-      "targets": [
-        {
-          "target": "HSF405",
-          "mcu": "STM32F405",
-          "group": "supported",
-          "cloudBuild": true,
-          "hot": true,
-          "artifact": {
-            "fileName": "HSF405_2025.12.3-rc.1.hex",
-            "objectKey": "/firmware/rc/2025.12.3-rc.1/HSF405/firmware.hex"
-          }
-        },
-        {
-          "target": "HSF722",
-          "mcu": "STM32F722",
-          "group": "supported",
-          "cloudBuild": true,
-          "hot": true,
-          "artifact": {
-            "fileName": "HSF722_2025.12.3-rc.1.hex",
-            "objectKey": "/firmware/rc/2025.12.3-rc.1/HSF722/firmware.hex"
-          }
-        }
-      ]
-    },
-    {
-      "version": "2025.9.8",
-      "channel": "stable",
-      "releaseType": "Stable",
-      "date": "2025-12-01",
-      "hot": false,
-      "targets": [
-        {
-          "target": "LEGACYF411",
-          "mcu": "STM32F411",
-          "group": "legacy",
-          "cloudBuild": false,
-          "hot": false,
-          "artifact": {
-            "fileName": "LEGACYF411_2025.9.8.hex",
-            "objectKey": "/firmware/stable/2025.9.8/LEGACYF411/firmware.hex"
-          }
-        }
-      ]
-    }
-  ]
 }

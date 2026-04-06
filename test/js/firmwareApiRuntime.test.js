@@ -20,7 +20,7 @@ describe("firmware api runtime", () => {
         expect(response.matched).toBe(true);
         expect(response.statusCode).toBe(200);
         expect(JSON.parse(response.body)).toEqual(
-            expect.arrayContaining([expect.objectContaining({ target: "HSF405", group: "supported" })]),
+            expect.arrayContaining([expect.objectContaining({ target: "SPEEDYBEEF405V3", group: "supported" })]),
         );
     });
 
@@ -37,7 +37,7 @@ describe("firmware api runtime", () => {
             pathname: "/api/builds",
             searchParams: new URLSearchParams(),
             body: JSON.stringify({
-                target: "HSF405",
+                target: "SPEEDYBEEF405V3",
                 release: "2025.12.2",
                 options: ["CORE_BUILD"],
             }),
@@ -48,8 +48,8 @@ describe("firmware api runtime", () => {
         expect(buildResponse.statusCode).toBe(202);
         expect(buildPayload).toEqual(
             expect.objectContaining({
-                key: "mockhsf4052025122000000000000000",
-                file: "HSF405_2025.12.2.hex",
+                key: "mockspeedybeef405v32025122000000",
+                file: "SPEEDYBEEF405V3_2025.12.2.hex",
             }),
         );
 
@@ -92,7 +92,7 @@ describe("firmware api runtime", () => {
 
         expect(logResponse.statusCode).toBe(200);
         expect(logResponse.body).toContain(`buildKey=${buildPayload.key}`);
-        expect(logResponse.body).toContain("target=HSF405");
+        expect(logResponse.body).toContain("target=SPEEDYBEEF405V3");
     });
 
     it("can return CDN object-key artifact URLs for production deployments", () => {
@@ -108,7 +108,7 @@ describe("firmware api runtime", () => {
             pathname: "/api/firmware/url",
             searchParams: new URLSearchParams({
                 version: "2025.12.2",
-                target: "HSF405",
+                target: "SPEEDYBEEF405V3",
             }),
             body: "",
         });
@@ -118,7 +118,7 @@ describe("firmware api runtime", () => {
             expect.objectContaining({
                 hit: true,
                 source: "cos",
-                url: "https://cdn.example.com/firmware/stable/2025.12.2/HSF405/firmware.hex",
+                url: "https://cdn.example.com/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex",
             }),
         );
     });

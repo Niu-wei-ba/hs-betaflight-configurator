@@ -5,12 +5,14 @@ HS-FPV | Betaflight镜像站 is a mirror-focused Betaflight-compatible configura
 ## Scope
 
 This fork keeps the full flight-controller workflow, including:
+
 - firmware flashing
 - presets
 - configuration and tuning tabs
 - privacy policy and legal/help pages
 
 This fork removes or disables these external dependencies from the default deployment:
+
 - sponsor tiles
 - third-party analytics
 - official community redirects in the main help flow
@@ -18,6 +20,7 @@ This fork removes or disables these external dependencies from the default deplo
 ## Mirror Configuration
 
 The deployment is configured through Vite environment variables:
+
 - `VITE_APP_NAME`
 - `VITE_APP_TAGLINE`
 - `VITE_SOURCE_CODE_URL`
@@ -34,6 +37,7 @@ An example frontend environment file is available at [`.env.example`](/Users/lih
 ## Firmware Distribution Phase One
 
 This repository now includes the first implementation layer for the firmware mirror workflow:
+
 - hot-set manifest source
 - metadata generation script
 - firmware artifact mirror script
@@ -42,6 +46,7 @@ This repository now includes the first implementation layer for the firmware mir
 - Vite mock API wired to the same metadata adapter
 
 Key files:
+
 - [Phase One API doc](/Users/lihao/Documents/betaflight-configurator/docs/phase-one-firmware-api.md)
 - [Phase One manifest](/Users/lihao/Documents/betaflight-configurator/resources/firmware-mirror/phase-one-manifest.json)
 - [Metadata generator](/Users/lihao/Documents/betaflight-configurator/scripts/generate-firmware-metadata.mjs)
@@ -97,7 +102,7 @@ Useful checks:
 ```bash
 curl http://127.0.0.1:4180/healthz
 curl http://127.0.0.1:4180/api/targets
-curl "http://127.0.0.1:4180/api/firmware/url?version=2025.12.2&target=HSF405"
+curl "http://127.0.0.1:4180/api/firmware/url?version=2025.12.2&target=SPEEDYBEEF405V3"
 ```
 
 ### Option 3: Standalone firmware API with COS/CDN metadata
@@ -114,7 +119,7 @@ yarn firmware:api
 
 At startup, the API downloads `manifest.json`, `index/*.json`, `targets/*.json`, and `builds/*/*.json` into `artifacts/firmware-metadata/`, then serves the normal `/api/*` interface from that local cache.
 
-`FIRMWARE_ARTIFACT_BASE_URL` is used with each metadata `artifact.objectKey`, so `/firmware/stable/2025.12.2/HSF405/firmware.hex` becomes `https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/stable/2025.12.2/HSF405/firmware.hex`.
+`FIRMWARE_ARTIFACT_BASE_URL` is used with each metadata `artifact.objectKey`, so `/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex` becomes `https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex`.
 
 ### Metadata Generation
 
@@ -140,7 +145,7 @@ yarn firmware:artifacts
 
 By default this requests official Betaflight Cloud Build with `CORE_BUILD` for each manifest target and writes files under `artifacts/firmware-files/`. For older releases with GitHub release assets, set a target `source.type` to `github-release-asset` or `url` in the manifest.
 
-Important: the current manifest target names are phase-one placeholders. Replace them with real Betaflight target names, or set `source.buildTarget`, before enabling firmware artifact mirroring in GitHub Actions.
+Important: manifest `target` values must be official Betaflight target IDs from `betaflight/config`. Run `npm run firmware:manifest:validate` before enabling firmware artifact mirroring in GitHub Actions.
 
 ## Presets
 
@@ -157,4 +162,5 @@ This project remains distributed under GPLv3, consistent with the upstream Betaf
 ## Source
 
 Current fork repository:
+
 - [https://github.com/Niu-wei-ba/hs-betaflight-configurator](https://github.com/Niu-wei-ba/hs-betaflight-configurator)

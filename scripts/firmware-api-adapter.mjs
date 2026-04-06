@@ -121,7 +121,10 @@ export function createFirmwareApiAdapter(options = {}) {
     const projectRoot =
         projectRootInput instanceof URL ? fileURLToPath(projectRootInput) : path.resolve(String(projectRootInput));
     const metadataDir = path.resolve(projectRoot, options.metadataDir || "artifacts/firmware-metadata");
-    const manifestPath = path.resolve(projectRoot, options.manifestPath || "resources/firmware-mirror/phase-one-manifest.json");
+    const manifestPath = path.resolve(
+        projectRoot,
+        options.manifestPath || "resources/firmware-mirror/phase-one-manifest.json",
+    );
     const assetDirectory = path.resolve(projectRoot, options.assetDirectory || "mock-api/assets/firmware");
     const assetUrlPrefix = options.assetUrlPrefix || "/firmware-files";
     const artifactUrlPrefix = options.artifactUrlPrefix || "";
@@ -257,12 +260,13 @@ export function createFirmwareApiAdapter(options = {}) {
         },
         getBuildJson,
         getConfiguratorRelease(type) {
-            const match = this.getFirmwareVersions().find((entry) => entry.channel === type) || this.getFirmwareVersions()[0];
+            const match =
+                this.getFirmwareVersions().find((entry) => entry.channel === type) || this.getFirmwareVersions()[0];
 
             return {
                 type,
                 version: match?.version || "2025.12.2",
-                url: `https://github.com/Niu-wei-ba/betaflight-configurator/releases/tag/${match?.version || "2025.12.2"}`,
+                url: `https://github.com/Niu-wei-ba/hs-betaflight-configurator/releases/tag/${match?.version || "2025.12.2"}`,
             };
         },
         resolveAssetFile(fileName) {
@@ -313,7 +317,10 @@ export function createFirmwareApiRuntime(options = {}) {
             matched: true,
             statusCode: 200,
             headers: {
-                "Content-Type": path.extname(filePath).toLowerCase() === ".hex" ? "text/plain; charset=utf-8" : "application/octet-stream",
+                "Content-Type":
+                    path.extname(filePath).toLowerCase() === ".hex"
+                        ? "text/plain; charset=utf-8"
+                        : "application/octet-stream",
             },
             body: fs.readFileSync(filePath),
         };

@@ -7,30 +7,39 @@ describe("buildFirmwareMetadata", () => {
         const metadata = buildFirmwareMetadata(manifest);
 
         expect(metadata.schemaVersion).toBe("1.0");
-        expect(metadata.index.versions).toHaveLength(3);
+        expect(metadata.index.versions).toHaveLength(1);
         expect(metadata.index.targets).toEqual(
             expect.arrayContaining([
-                expect.objectContaining({ target: "HSF405", group: "supported", releaseCount: 2 }),
-                expect.objectContaining({ target: "HSF722", group: "supported", releaseCount: 2 }),
-                expect.objectContaining({ target: "LEGACYF411", group: "legacy", releaseCount: 1 }),
+                expect.objectContaining({
+                    target: "SPEEDYBEEF405V3",
+                    group: "supported",
+                    mcu: "STM32F405",
+                    manufacturer: "SPBE",
+                    releaseCount: 1,
+                }),
+                expect.objectContaining({
+                    target: "MATEKF722",
+                    group: "supported",
+                    mcu: "STM32F7X2",
+                    manufacturer: "MTKS",
+                    releaseCount: 1,
+                }),
             ]),
         );
-        expect(metadata.index.hot.versions).toEqual([
-            { version: "2025.12.2", channel: "stable" },
-            { version: "2025.12.3-rc.1", channel: "rc" },
-        ]);
-        expect(metadata.targetDetails.HSF405.releases).toEqual([
-            { release: "2025.12.3-rc.1", type: "ReleaseCandidate", label: "RC" },
+        expect(metadata.index.hot.versions).toEqual([{ version: "2025.12.2", channel: "stable" }]);
+        expect(metadata.index.hot.targets).toHaveLength(12);
+        expect(metadata.targetDetails.SPEEDYBEEF405V3.releases).toEqual([
             { release: "2025.12.2", type: "Stable", label: "Stable" },
         ]);
-        expect(metadata.buildDetails["2025.12.2:HSF405"]).toEqual(
+        expect(metadata.buildDetails["2025.12.2:SPEEDYBEEF405V3"]).toEqual(
             expect.objectContaining({
-                target: "HSF405",
+                target: "SPEEDYBEEF405V3",
                 release: "2025.12.2",
+                manufacturer: "SPBE",
                 cloudBuild: false,
                 channel: "stable",
                 artifact: expect.objectContaining({
-                    fileName: "HSF405_2025.12.2.hex",
+                    fileName: "SPEEDYBEEF405V3_2025.12.2.hex",
                 }),
             }),
         );
