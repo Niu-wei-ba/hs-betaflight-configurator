@@ -305,6 +305,33 @@ artifacts/firmware-metadata/
 - `FIRMWARE_MANIFEST_PATH`
 - `FIRMWARE_ASSET_DIR`
 - `FIRMWARE_ASSET_PREFIX`
+- `FIRMWARE_METADATA_BASE_URL`
+- `FIRMWARE_ARTIFACT_BASE_URL`
+
+生产形态建议：
+- `FIRMWARE_METADATA_BASE_URL`: 指向 COS/CDN 中的 metadata bundle 前缀，例如 `https://cdn.example.com/mirror-metadata`
+- `FIRMWARE_ARTIFACT_BASE_URL`: 指向固件对象 CDN 根路径，例如 `https://cdn.example.com`
+
+如果设置了 `FIRMWARE_METADATA_BASE_URL`，服务启动时会先下载：
+
+```text
+manifest.json
+index/versions.json
+index/targets.json
+index/hot.json
+targets/{target}.json
+builds/{release}/{target}.json
+```
+
+下载后仍写入 `FIRMWARE_METADATA_DIR`，运行时继续从本地缓存读取，避免每个用户请求都回源 COS。
+
+如果设置了 `FIRMWARE_ARTIFACT_BASE_URL`，下载地址会从 metadata 中的 `artifact.objectKey` 拼出。例如：
+
+```text
+FIRMWARE_ARTIFACT_BASE_URL=https://cdn.example.com
+artifact.objectKey=/firmware/stable/2025.12.2/HSF405/firmware.hex
+返回 URL=https://cdn.example.com/firmware/stable/2025.12.2/HSF405/firmware.hex
+```
 
 ## GitHub Actions 与 COS 上传
 

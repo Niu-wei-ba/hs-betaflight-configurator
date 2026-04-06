@@ -46,6 +46,7 @@ Key files:
 - [Metadata generator](/Users/lihao/Documents/betaflight-configurator/scripts/generate-firmware-metadata.mjs)
 - [Firmware API adapter](/Users/lihao/Documents/betaflight-configurator/scripts/firmware-api-adapter.mjs)
 - [Standalone firmware API server](/Users/lihao/Documents/betaflight-configurator/scripts/serve-firmware-api.mjs)
+- [Remote metadata sync](/Users/lihao/Documents/betaflight-configurator/scripts/sync-firmware-metadata.mjs)
 - [Metadata sync workflow](/Users/lihao/Documents/betaflight-configurator/.github/workflows/firmware-metadata-sync.yml)
 
 ## Local Development
@@ -97,6 +98,22 @@ curl http://127.0.0.1:4180/api/targets
 curl "http://127.0.0.1:4180/api/firmware/url?version=2025.12.2&target=HSF405"
 ```
 
+### Option 3: Standalone firmware API with COS/CDN metadata
+
+Use this after `Firmware Metadata Sync` has uploaded the metadata bundle to COS:
+
+```bash
+nvm use
+yarn install
+FIRMWARE_METADATA_BASE_URL=https://your-cdn.example.com/mirror-metadata \
+FIRMWARE_ARTIFACT_BASE_URL=https://your-cdn.example.com \
+yarn firmware:api
+```
+
+At startup, the API downloads `manifest.json`, `index/*.json`, `targets/*.json`, and `builds/*/*.json` into `artifacts/firmware-metadata/`, then serves the normal `/api/*` interface from that local cache.
+
+`FIRMWARE_ARTIFACT_BASE_URL` is used with each metadata `artifact.objectKey`, so `/firmware/stable/2025.12.2/HSF405/firmware.hex` becomes `https://your-cdn.example.com/firmware/stable/2025.12.2/HSF405/firmware.hex`.
+
 ### Metadata Generation
 
 Generate the current metadata bundle locally:
@@ -106,6 +123,12 @@ yarn firmware:metadata
 ```
 
 Output is written to `artifacts/firmware-metadata/`.
+
+Sync the metadata bundle from COS/CDN without starting the API:
+
+```bash
+FIRMWARE_METADATA_BASE_URL=https://your-cdn.example.com/mirror-metadata yarn firmware:metadata:sync
+```
 
 ## Presets
 
@@ -122,4 +145,4 @@ This project remains distributed under GPLv3, consistent with the upstream Betaf
 ## Source
 
 Current fork repository:
-- [https://github.com/Niu-wei-ba/betaflight-configurator](https://github.com/Niu-wei-ba/betaflight-configurator)
+- [https://github.com/Niu-wei-ba/hs-betaflight-configurator](https://github.com/Niu-wei-ba/hs-betaflight-configurator)

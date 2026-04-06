@@ -26,9 +26,20 @@ function buildKey(release, target) {
     return `mock${seed}`.padEnd(32, "0").slice(0, 32);
 }
 
+function buildUrlFromPrefix(prefix, suffix) {
+    const normalizedPrefix = String(prefix || "").replace(/\/+$/, "");
+    const normalizedSuffix = String(suffix || "").replace(/^\/+/, "");
+    return normalizedPrefix ? `${normalizedPrefix}/${normalizedSuffix}` : `/${normalizedSuffix}`;
+}
+
 function buildAssetUrl(assetUrlPrefix, fileName) {
-    const normalizedPrefix = String(assetUrlPrefix || "/firmware-files").replace(/\/+$/, "");
-    return `${normalizedPrefix}/${fileName}`;
+    return buildUrlFromPrefix(assetUrlPrefix || "/firmware-files", fileName);
+}
+
+function buildArtifactUrl(detail, { artifactUrlPrefix, assetUrlPrefix }) {
+    return artifactUrlPrefix
+        ? buildUrlFromPrefix(artifactUrlPrefix, detail.artifact.objectKey)
+        : buildAssetUrl(assetUrlPrefix, detail.artifact.fileName);
 }
 
 function createManifestBackedStore(manifestPath) {
@@ -113,6 +124,7 @@ export function createFirmwareApiAdapter(options = {}) {
     const manifestPath = path.resolve(projectRoot, options.manifestPath || "resources/firmware-mirror/phase-one-manifest.json");
     const assetDirectory = path.resolve(projectRoot, options.assetDirectory || "mock-api/assets/firmware");
     const assetUrlPrefix = options.assetUrlPrefix || "/firmware-files";
+    const artifactUrlPrefix = options.artifactUrlPrefix || "";
     const supportCommands = options.supportCommands || defaultSupportCommands;
     const commitHistoryByRelease = options.commitHistoryByRelease || {
         "2026.1.0-alpha.1": [
@@ -186,13 +198,14 @@ export function createFirmwareApiAdapter(options = {}) {
         return {
             key: buildKey(release, target),
             file: detail.artifact.fileName,
-            url: buildAssetUrl(assetUrlPrefix, detail.artifact.fileName),
+            url: buildArtifactUrl(detail, { artifactUrlPrefix, assetUrlPrefix }),
         };
     }
 
     return {
         assetDirectory,
         assetUrlPrefix,
+        artifactUrlPrefix,
         buildKey,
         defaultOptions,
         supportCommands,
@@ -228,7 +241,7 @@ export function createFirmwareApiAdapter(options = {}) {
 
             return {
                 file: detail.artifact.fileName,
-                url: buildAssetUrl(assetUrlPrefix, detail.artifact.fileName),
+                url: buildArtifactUrl(detail, { artifactUrlPrefix, assetUrlPrefix }),
                 objectKey: detail.artifact.objectKey,
             };
         },

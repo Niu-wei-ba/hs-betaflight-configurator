@@ -24,6 +24,7 @@
     "storybook": "start-storybook -p 6006",
     "prepare": "husky install",
     "firmware:metadata": "node scripts/generate-firmware-metadata.mjs",
+    "firmware:metadata:sync": "node scripts/sync-firmware-metadata.mjs",
     "firmware:api": "node scripts/serve-firmware-api.mjs",
     "test:firmware-metadata": "vitest run test/js/firmwareMetadata.test.js"
   },
@@ -36,7 +37,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "github.com/Niu-wei-ba/betaflight-configurator"
+    "url": "github.com/Niu-wei-ba/hs-betaflight-configurator"
   },
   "author": "Mirror site contributors.",
   "license": "GPL-3.0",

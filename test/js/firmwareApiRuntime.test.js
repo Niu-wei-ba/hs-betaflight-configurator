@@ -94,4 +94,32 @@ describe("firmware api runtime", () => {
         expect(logResponse.body).toContain(`buildKey=${buildPayload.key}`);
         expect(logResponse.body).toContain("target=HSF405");
     });
+
+    it("can return CDN object-key artifact URLs for production deployments", () => {
+        const runtime = createFirmwareApiRuntime({
+            projectRoot: process.cwd(),
+            assetUrlPrefix: "/mock-api/firmware",
+            artifactUrlPrefix: "https://cdn.example.com",
+            supportIdPrefix: "TEST-SUPPORT",
+        });
+
+        const response = runtime.handleApiRequest({
+            method: "GET",
+            pathname: "/api/firmware/url",
+            searchParams: new URLSearchParams({
+                version: "2025.12.2",
+                target: "HSF405",
+            }),
+            body: "",
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(JSON.parse(response.body)).toEqual(
+            expect.objectContaining({
+                hit: true,
+                source: "cos",
+                url: "https://cdn.example.com/firmware/stable/2025.12.2/HSF405/firmware.hex",
+            }),
+        );
+    });
 });
