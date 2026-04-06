@@ -1,0 +1,91 @@
+name: Firmware Metadata Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_to_cos:
+        description: "Upload generated metadata to Tencent COS"
+        required: false
+        default: true
+        type: boolean
+  schedule:
+    - cron: "0 18 * * *"
+
+concurrency:
+  group: firmware-metadata-sync
+  cancel-in-progress: false
+
+jobs:
+  generate-metadata:
+    runs-on: ubuntu-latest
+    env:
+      MANIFEST_PATH: resources/firmware-mirror/phase-one-manifest.json
+      OUTPUT_DIR: artifacts/firmware-metadata
+      COS_BUCKET: ${{ secrets.TENCENT_COS_BUCKET }}
+      COS_REGION: ${{ secrets.TENCENT_COS_REGION }}
+      COS_SECRET_ID: ${{ secrets.TENCENT_COS_SECRET_ID }}
+      COS_SECRET_KEY: ${{ secrets.TENCENT_COS_SECRET_KEY }}
+      COS_PREFIX: ${{ vars.FIRMWARE_COS_PREFIX || 'mirror-metadata' }}
+      SHOULD_UPLOAD_COS: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.upload_to_cos == true) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install dependencies
+        run: yarn install --immutable --immutable-cache --check-cache
+
+      - name: Run firmware metadata tests
+        run: yarn test:firmware-metadata
+
+      - name: Generate firmware metadata bundle
+        run: node scripts/generate-firmware-metadata.mjs "$MANIFEST_PATH" "$OUTPUT_DIR"
+
+      - name: Print metadata bundle summary
+        run: |
+          echo "Metadata output:"
+          find "$OUTPUT_DIR" -type f | sort
+          echo "COS upload requested: $SHOULD_UPLOAD_COS"
+          echo "COS prefix: $COS_PREFIX"
+
+      - name: Upload metadata artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-metadata
+          path: ${{ env.OUTPUT_DIR }}
+          retention-days: 14
+
+      - name: Install coscmd
+        if: |
+          env.SHOULD_UPLOAD_COS == 'true' &&
+          env.COS_SECRET_ID != '' &&
+          env.COS_SECRET_KEY != '' &&
+          env.COS_BUCKET != '' &&
+          env.COS_REGION != ''
+        run: pip3 install coscmd
+
+      - name: Upload metadata to Tencent COS
+        if: |
+          env.SHOULD_UPLOAD_COS == 'true' &&
+          env.COS_SECRET_ID != '' &&
+          env.COS_SECRET_KEY != '' &&
+          env.COS_BUCKET != '' &&
+          env.COS_REGION != ''
+        run: |
+          coscmd config -a "$COS_SECRET_ID" -s "$COS_SECRET_KEY" -b "$COS_BUCKET" -r "$COS_REGION"
+          coscmd upload -rs "$OUTPUT_DIR/" "$COS_PREFIX/"
+
+      - name: Skip COS upload
+        if: |
+          env.SHOULD_UPLOAD_COS != 'true' ||
+          env.COS_SECRET_ID == '' ||
+          env.COS_SECRET_KEY == '' ||
+          env.COS_BUCKET == '' ||
+          env.COS_REGION == ''
+        run: |
+          echo "COS upload skipped."
+          echo "To enable it, run workflow_dispatch with upload_to_cos=true and set COS secrets."

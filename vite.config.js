@@ -8,8 +8,10 @@ import pkg from "./package.json";
 import * as child from "child_process";
 import { VitePWA } from "vite-plugin-pwa";
 import { resolve } from "path";
+import { mockBuildApiPlugin } from "./mock-api/vite-plugin.js";
 
 const commitHash = child.execSync("git rev-parse --short HEAD").toString().trim();
+const enableMockBuildApi = process.env.BFC_ENABLE_MOCK_FIRMWARE_API !== "false";
 
 function serveFileFromDirectory(directory) {
     return (req, res, next) => {
@@ -50,7 +52,7 @@ function serveLocalesPlugin() {
 }
 
 export default defineConfig({
-    base: './',  // Important for production APK asset paths
+    base: "./", // Important for production APK asset paths
     define: {
         __APP_VERSION__: JSON.stringify(pkg.version),
         __APP_PRODUCTNAME__: JSON.stringify(pkg.productName),
@@ -73,6 +75,7 @@ export default defineConfig({
     plugins: [
         vue(),
         serveLocalesPlugin(),
+        ...(enableMockBuildApi ? [mockBuildApiPlugin()] : []),
         copy({
             targets: [
                 { src: "locales/**/*", dest: "src/dist/locales" },

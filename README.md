@@ -29,6 +29,84 @@ The deployment is configured through Vite environment variables:
 
 Defaults assume same-origin mirror services for build APIs and preset hosting.
 
+An example frontend environment file is available at [`.env.example`](/Users/lihao/Documents/betaflight-configurator/.env.example).
+
+## Firmware Distribution Phase One
+
+This repository now includes the first implementation layer for the firmware mirror workflow:
+- hot-set manifest source
+- metadata generation script
+- GitHub Actions metadata sync workflow
+- metadata-backed local firmware API
+- Vite mock API wired to the same metadata adapter
+
+Key files:
+- [Phase One API doc](/Users/lihao/Documents/betaflight-configurator/docs/phase-one-firmware-api.md)
+- [Phase One manifest](/Users/lihao/Documents/betaflight-configurator/resources/firmware-mirror/phase-one-manifest.json)
+- [Metadata generator](/Users/lihao/Documents/betaflight-configurator/scripts/generate-firmware-metadata.mjs)
+- [Firmware API adapter](/Users/lihao/Documents/betaflight-configurator/scripts/firmware-api-adapter.mjs)
+- [Standalone firmware API server](/Users/lihao/Documents/betaflight-configurator/scripts/serve-firmware-api.mjs)
+- [Metadata sync workflow](/Users/lihao/Documents/betaflight-configurator/.github/workflows/firmware-metadata-sync.yml)
+
+## Local Development
+
+### Option 1: Built-in Vite mock
+
+Use this when you only need frontend development with local metadata-backed mock data:
+
+```bash
+nvm use
+yarn install
+yarn firmware:metadata
+yarn dev
+```
+
+This path uses the Vite middleware mock and reads generated metadata when available, otherwise falls back to the manifest source.
+
+If you want to disable the built-in Vite mock explicitly:
+
+```bash
+BFC_ENABLE_MOCK_FIRMWARE_API=false yarn dev
+```
+
+### Option 2: Standalone firmware API
+
+Use this when you want the frontend to call an actual local backend service:
+
+Terminal 1:
+
+```bash
+nvm use
+yarn install
+yarn firmware:metadata
+yarn firmware:api
+```
+
+Terminal 2:
+
+```bash
+nvm use
+VITE_BUILD_API_BASE_URL=http://127.0.0.1:4180 yarn dev
+```
+
+Useful checks:
+
+```bash
+curl http://127.0.0.1:4180/healthz
+curl http://127.0.0.1:4180/api/targets
+curl "http://127.0.0.1:4180/api/firmware/url?version=2025.12.2&target=HSF405"
+```
+
+### Metadata Generation
+
+Generate the current metadata bundle locally:
+
+```bash
+yarn firmware:metadata
+```
+
+Output is written to `artifacts/firmware-metadata/`.
+
 ## Presets
 
 The presets page is retained. Default preset sources are expected to point to your mirror infrastructure rather than the official presets service.
