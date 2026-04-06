@@ -282,12 +282,17 @@ export function createFirmwareApiRuntime(options = {}) {
     const buildRequests = new Map();
     let supportCounter = 1;
     const supportIdPrefix = options.supportIdPrefix || "LOCAL-SUPPORT";
+    const corsHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,User-Agent,X-CFG-VER",
+    };
 
     function jsonResponse(statusCode, body) {
         return {
             matched: true,
             statusCode,
-            headers: { "Content-Type": "application/json; charset=utf-8" },
+            headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" },
             body: JSON.stringify(body),
         };
     }
@@ -296,7 +301,7 @@ export function createFirmwareApiRuntime(options = {}) {
         return {
             matched: true,
             statusCode,
-            headers: { "Content-Type": "text/plain; charset=utf-8" },
+            headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
             body,
         };
     }
@@ -318,6 +323,7 @@ export function createFirmwareApiRuntime(options = {}) {
             matched: true,
             statusCode: 200,
             headers: {
+                ...corsHeaders,
                 "Content-Type":
                     path.extname(filePath).toLowerCase() === ".hex"
                         ? "text/plain; charset=utf-8"
@@ -330,6 +336,15 @@ export function createFirmwareApiRuntime(options = {}) {
     function handleApiRequest({ method, pathname, searchParams, body }) {
         if (!pathname.startsWith("/api/")) {
             return { matched: false };
+        }
+
+        if (method === "OPTIONS") {
+            return {
+                matched: true,
+                statusCode: 204,
+                headers: corsHeaders,
+                body: "",
+            };
         }
 
         if (method === "GET" && pathname === "/api/targets") {

@@ -49,7 +49,12 @@ async function main() {
         if (req.method === "GET" && url.pathname === "/healthz") {
             sendResponse(res, {
                 statusCode: 200,
-                headers: { "Content-Type": "application/json; charset=utf-8" },
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type,User-Agent,X-CFG-VER",
+                    "Content-Type": "application/json; charset=utf-8",
+                },
                 body: JSON.stringify({
                     status: "ok",
                     metadataSource: runtime.adapter.getSnapshot().hasGeneratedBundle ? "bundle" : "manifest",
@@ -79,7 +84,12 @@ async function main() {
 
         sendResponse(res, {
             statusCode: 404,
-            headers: { "Content-Type": "application/json; charset=utf-8" },
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type,User-Agent,X-CFG-VER",
+                "Content-Type": "application/json; charset=utf-8",
+            },
             body: JSON.stringify({ error: "Not found" }),
         });
     });

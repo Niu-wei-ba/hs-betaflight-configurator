@@ -3217,7 +3217,10 @@
         "message": "请<span class=\"message-negative\">不要<\/span>在此刷写<strong> Betaflight 不支持的飞控板<\/strong>。<br \/>刷写时，<span class=\"message-negative\">不要<\/span><strong>断开<\/strong>飞控板或<strong>关闭电脑<\/strong>。<br \/><br \/><strong>注意：<\/strong>STM32 的 bootloader 储存在 ROM 区域，所以不会有变砖可能。<br \/><strong>注意：<\/strong>进入「固件烧写工具」后，<span class=\"message-negative\">自动连接<\/span>始终处于禁用。<br \/><strong>注意：<\/strong>务必备份好你的数据；升级\/降级后可能会清空你的设置项。<br \/><strong>注意：<\/strong>如果刷写遇到问题，首先<strong>拔掉连接到飞控的所有连线<\/strong> ，接着重启飞控，升级驱动。<br \/><strong>注意：<\/strong>当直接使用飞控板 USB 接口进行刷写时（多数较新的飞控板都是如此），确保你已经阅读 Betaflight 手册中 USB Flashing 这一部分，并确保驱动和软件已正确安装。"
     },
     "firmwareFlasherRecoveryHead": {
-        "message": "<strong> 恢复\/丢失通信 <\/strong>"
+        "message": "<strong>恢复\/丢失通信<\/strong>"
+    },
+    "firmwareFlasherRecoveryText": {
+        "message": "如果你与飞控板失去通信，请按以下步骤恢复连接：<ul><li>关闭飞控电源。<\/li><li>启用“无重启序列”，并启用“全盘擦除”。<\/li><li>短接 BOOT 引脚，或按住 BOOT 按钮。<\/li><li>接通飞控电源（如果操作正确，活动 LED 不会闪烁）。<\/li><li>如有需要，安装所有 STM32 驱动和 Zadig（参见 Betaflight 手册中的 <a href=\"https:\/\/betaflight.com\/docs\/wiki\/guides\/current\/Installing-Betaflight\" target=\"_blank\" rel=\"noopener noreferrer\">USB Flashing<\/a> 章节）。<\/li><li>关闭本应用，然后重新启动。<\/li><li>如果飞控有 BOOT 按钮，请松开 BOOT 按钮。<\/li><li>刷写正确的固件（如果飞控手册要求，请使用手动波特率）。<\/li><li>关闭飞控电源。<\/li><li>移除 BOOT 跳线。<\/li><li>接通飞控电源（活动 LED 应该会闪烁）。<\/li><li>按正常方式连接。<\/li><\/ul>"
     },
     "firmwareFlasherButtonLeave": {
         "message": "关闭固件烧写"

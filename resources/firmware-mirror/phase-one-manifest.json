@@ -157,6 +157,18 @@
                         "fileName": "SPEEDYBEEF405V4_2025.12.2.hex",
                         "objectKey": "/firmware/stable/2025.12.2/SPEEDYBEEF405V4/firmware.hex"
                     }
+                },
+                {
+                    "target": "SPEEDYBEEF435AIOELRS",
+                    "mcu": "AT32F435G",
+                    "manufacturer": "SPBE",
+                    "group": "supported",
+                    "cloudBuild": false,
+                    "hot": true,
+                    "artifact": {
+                        "fileName": "SPEEDYBEEF435AIOELRS_2025.12.2.hex",
+                        "objectKey": "/firmware/stable/2025.12.2/SPEEDYBEEF435AIOELRS/firmware.hex"
+                    }
                 }
             ]
         }

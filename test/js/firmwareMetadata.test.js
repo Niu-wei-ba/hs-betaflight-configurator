@@ -27,7 +27,7 @@ describe("buildFirmwareMetadata", () => {
             ]),
         );
         expect(metadata.index.hot.versions).toEqual([{ version: "2025.12.2", channel: "stable" }]);
-        expect(metadata.index.hot.targets).toHaveLength(12);
+        expect(metadata.index.hot.targets).toHaveLength(13);
         expect(metadata.targetDetails.SPEEDYBEEF405V3.releases).toEqual([
             { release: "2025.12.2", type: "Stable", label: "Stable" },
         ]);
