@@ -101,7 +101,7 @@ if [[ -n "$firmware_metadata_base_url" ]]; then
     )
 else
     docker_env+=(
-        -e FIRMWARE_METADATA_DIR=/app/artifacts/firmware-metadata
+        -e FIRMWARE_METADATA_DIR=/app/firmware-metadata
     )
 fi
 
