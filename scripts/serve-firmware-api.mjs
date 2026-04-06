@@ -33,7 +33,7 @@ async function createRuntime() {
         projectRoot: process.cwd(),
         metadataDir,
         manifestPath: process.env.FIRMWARE_MANIFEST_PATH || "resources/firmware-mirror/phase-one-manifest.json",
-        assetDirectory: process.env.FIRMWARE_ASSET_DIR || "mock-api/assets/firmware",
+        assetDirectory: process.env.FIRMWARE_ASSET_DIR || "artifacts/firmware-files",
         assetUrlPrefix: process.env.FIRMWARE_ASSET_PREFIX || "/firmware-files",
         artifactUrlPrefix: process.env.FIRMWARE_ARTIFACT_BASE_URL || "",
         supportIdPrefix: "LOCAL-SUPPORT",

@@ -23,7 +23,7 @@ function listJsonFiles(directory) {
 
 function buildKey(release, target) {
     const seed = `${target}-${release}`.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-    return `mock${seed}`.padEnd(32, "0").slice(0, 32);
+    return `bf${seed}`.padEnd(32, "0").slice(0, 32);
 }
 
 function buildUrlFromPrefix(prefix, suffix) {
@@ -32,14 +32,15 @@ function buildUrlFromPrefix(prefix, suffix) {
     return normalizedPrefix ? `${normalizedPrefix}/${normalizedSuffix}` : `/${normalizedSuffix}`;
 }
 
-function buildAssetUrl(assetUrlPrefix, fileName) {
-    return buildUrlFromPrefix(assetUrlPrefix || "/firmware-files", fileName);
+function buildAssetUrl(assetUrlPrefix, objectKey) {
+    const relativeObjectKey = String(objectKey || "").replace(/^\/?firmware\//, "");
+    return buildUrlFromPrefix(assetUrlPrefix || "/firmware-files", relativeObjectKey);
 }
 
 function buildArtifactUrl(detail, { artifactUrlPrefix, assetUrlPrefix }) {
     return artifactUrlPrefix
         ? buildUrlFromPrefix(artifactUrlPrefix, detail.artifact.objectKey)
-        : buildAssetUrl(assetUrlPrefix, detail.artifact.fileName);
+        : buildAssetUrl(assetUrlPrefix, detail.artifact.objectKey);
 }
 
 function createManifestBackedStore(manifestPath) {
@@ -125,14 +126,14 @@ export function createFirmwareApiAdapter(options = {}) {
         projectRoot,
         options.manifestPath || "resources/firmware-mirror/phase-one-manifest.json",
     );
-    const assetDirectory = path.resolve(projectRoot, options.assetDirectory || "mock-api/assets/firmware");
+    const assetDirectory = path.resolve(projectRoot, options.assetDirectory || "artifacts/firmware-files");
     const assetUrlPrefix = options.assetUrlPrefix || "/firmware-files";
     const artifactUrlPrefix = options.artifactUrlPrefix || "";
     const supportCommands = options.supportCommands || defaultSupportCommands;
     const commitHistoryByRelease = options.commitHistoryByRelease || {
         "2026.1.0-alpha.1": [
-            { sha: "a1b2c3d4", message: "mock: add firmware mirror metadata" },
-            { sha: "d4c3b2a1", message: "mock: tighten target cache strategy" },
+            { sha: "a1b2c3d4", message: "mirror: add firmware metadata" },
+            { sha: "d4c3b2a1", message: "mirror: tighten target cache strategy" },
         ],
     };
     const defaultOptions = options.defaultOptions || {
@@ -270,7 +271,7 @@ export function createFirmwareApiAdapter(options = {}) {
             };
         },
         resolveAssetFile(fileName) {
-            const absolutePath = path.join(assetDirectory, fileName);
+            const absolutePath = path.join(assetDirectory, String(fileName || "").replace(/^\/?firmware\//, ""));
             return fileExists(absolutePath) ? absolutePath : null;
         },
     };
@@ -280,7 +281,7 @@ export function createFirmwareApiRuntime(options = {}) {
     const adapter = options.adapter || createFirmwareApiAdapter(options);
     const buildRequests = new Map();
     let supportCounter = 1;
-    const supportIdPrefix = options.supportIdPrefix || "MOCK-SUPPORT";
+    const supportIdPrefix = options.supportIdPrefix || "LOCAL-SUPPORT";
 
     function jsonResponse(statusCode, body) {
         return {

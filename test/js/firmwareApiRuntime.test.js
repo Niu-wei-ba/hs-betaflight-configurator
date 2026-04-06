@@ -5,8 +5,8 @@ describe("firmware api runtime", () => {
     it("serves metadata-backed GET endpoints", () => {
         const runtime = createFirmwareApiRuntime({
             projectRoot: process.cwd(),
-            assetUrlPrefix: "/mock-api/firmware",
-            assetDirectory: "mock-api/assets/firmware",
+            assetUrlPrefix: "/firmware-files",
+            assetDirectory: "artifacts/firmware-files",
             supportIdPrefix: "TEST-SUPPORT",
         });
 
@@ -27,8 +27,8 @@ describe("firmware api runtime", () => {
     it("creates build requests and exposes their status", () => {
         const runtime = createFirmwareApiRuntime({
             projectRoot: process.cwd(),
-            assetUrlPrefix: "/mock-api/firmware",
-            assetDirectory: "mock-api/assets/firmware",
+            assetUrlPrefix: "/firmware-files",
+            assetDirectory: "artifacts/firmware-files",
             supportIdPrefix: "TEST-SUPPORT",
         });
 
@@ -48,7 +48,7 @@ describe("firmware api runtime", () => {
         expect(buildResponse.statusCode).toBe(202);
         expect(buildPayload).toEqual(
             expect.objectContaining({
-                key: "mockspeedybeef405v32025122000000",
+                key: "bfspeedybeef405v3202512200000000",
                 file: "SPEEDYBEEF405V3_2025.12.2.hex",
             }),
         );
@@ -98,7 +98,7 @@ describe("firmware api runtime", () => {
     it("can return CDN object-key artifact URLs for production deployments", () => {
         const runtime = createFirmwareApiRuntime({
             projectRoot: process.cwd(),
-            assetUrlPrefix: "/mock-api/firmware",
+            assetUrlPrefix: "/firmware-files",
             artifactUrlPrefix: "https://cdn.example.com",
             supportIdPrefix: "TEST-SUPPORT",
         });

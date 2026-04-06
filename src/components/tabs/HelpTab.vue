@@ -23,7 +23,7 @@
                                 >
                             </li>
                             <li>
-                                <a href="#" @click.prevent="openPrivacyPolicy">Review privacy policy</a>
+                                <a href="#" @click.prevent="openPrivacyPolicy">查看隐私政策</a>
                             </li>
                         </ul>
                     </div>
@@ -45,7 +45,10 @@
                             <li>Build and preset traffic should be served by your mirror infrastructure</li>
                         </ul>
                         <p class="legal-links">
-                            <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer"
+                            <a
+                                href="https://www.gnu.org/licenses/gpl-3.0.html"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 >GPLv3</a
                             >
                         </p>

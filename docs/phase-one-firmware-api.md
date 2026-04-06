@@ -98,9 +98,9 @@
 
 ```json
 {
-    "key": "mockspeedybeef405v320251220000",
+    "key": "bfspeedybeef405v3202512200000000",
     "file": "SPEEDYBEEF405V3_2025.12.2.hex",
-    "url": "/mock-api/firmware/SPEEDYBEEF405V3_2025.12.2.hex"
+    "url": "https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex"
 }
 ```
 
@@ -175,7 +175,7 @@
 [
     {
         "sha": "a1b2c3d4",
-        "message": "mock: add firmware mirror metadata"
+        "message": "mirror: add firmware metadata"
     }
 ]
 ```
@@ -217,7 +217,7 @@
     "hit": true,
     "source": "cos",
     "file": "SPEEDYBEEF405V3_2025.12.2.hex",
-    "url": "/mock-api/firmware/SPEEDYBEEF405V3_2025.12.2.hex"
+    "url": "https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex"
 }
 ```
 
@@ -240,7 +240,7 @@
 {
     "taskId": "bf_speedybeef405v3_2026010a1",
     "status": "success",
-    "url": "/mock-api/firmware/SPEEDYBEEF405V3_2026.1.0-alpha.1.hex"
+    "url": "https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com/firmware/rc/2026.1.0-alpha.1/SPEEDYBEEF405V3/firmware.hex"
 }
 ```
 
@@ -261,7 +261,7 @@
 - 生成脚本在 [generate-firmware-metadata.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/generate-firmware-metadata.mjs)
 - 固件产物镜像脚本在 [mirror-firmware-artifacts.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/mirror-firmware-artifacts.mjs)
 - 工作流在 [firmware-metadata-sync.yml](/Users/lihao/Documents/betaflight-configurator/.github/workflows/firmware-metadata-sync.yml)
-- 本地 mock API 会优先读取 `artifacts/firmware-metadata/manifest.json`，不存在时回退到源 manifest
+- 独立 firmware API 会优先读取 `artifacts/firmware-metadata/manifest.json`，不存在时回退到源 manifest
 
 生成结果目录结构：
 
@@ -383,20 +383,22 @@ manifest target 可以声明：
 
 ## 当前阶段的实施顺序
 
-1. 先用 mock 服务实现本文件中的兼容接口。
-2. 让前端本地可联调、可加载在线固件。
-3. 再把数据源从 mock 替换成 GitHub Actions 生成的 metadata 和 COS 对象。
+1. 用独立 firmware API 实现本文件中的兼容接口。
+2. 让前端通过 `VITE_BUILD_API_BASE_URL` 连接本地或生产 firmware API。
+3. 使用 GitHub Actions 生成 metadata 并上传 COS，同时通过官方 Betaflight Cloud Build 镜像真实固件对象。
 4. 最后补冷门回源和任务调度。
 
 ## 本地联调说明
 
-当前仓库已内置一套 Vite mock API：
+当前仓库的本地联调使用独立 firmware API：
 
-- `/api/*` 由 [mock-api/vite-plugin.js](/Users/lihao/Documents/betaflight-configurator/mock-api/vite-plugin.js) 注入
-- 示例数据位于 [mock-api/data.js](/Users/lihao/Documents/betaflight-configurator/mock-api/data.js)
-- 示例固件位于 [mock-api/assets/firmware](/Users/lihao/Documents/betaflight-configurator/mock-api/assets/firmware)
+- 启动 API：[serve-firmware-api.mjs](/Users/lihao/Documents/betaflight-configurator/scripts/serve-firmware-api.mjs)
+- 读取本地 metadata：`artifacts/firmware-metadata`
+- 读取本地固件文件：`artifacts/firmware-files`
+- 生产环境 metadata 来源：`FIRMWARE_METADATA_BASE_URL`
+- 生产环境固件对象来源：`FIRMWARE_ARTIFACT_BASE_URL`
 
-这层 mock 的作用是先跑通：
+这条联调链路用于跑通：
 
 - target 列表
 - release 列表

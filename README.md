@@ -43,7 +43,7 @@ This repository now includes the first implementation layer for the firmware mir
 - firmware artifact mirror script
 - GitHub Actions metadata sync workflow
 - metadata-backed local firmware API
-- Vite mock API wired to the same metadata adapter
+- standalone firmware API backed by COS or local artifact bundles
 
 Key files:
 
@@ -58,26 +58,7 @@ Key files:
 
 ## Local Development
 
-### Option 1: Built-in Vite mock
-
-Use this when you only need frontend development with local metadata-backed mock data:
-
-```bash
-nvm use
-yarn install
-yarn firmware:metadata
-yarn dev
-```
-
-This path uses the Vite middleware mock and reads generated metadata when available, otherwise falls back to the manifest source.
-
-If you want to disable the built-in Vite mock explicitly:
-
-```bash
-BFC_ENABLE_MOCK_FIRMWARE_API=false yarn dev
-```
-
-### Option 2: Standalone firmware API
+### Option 1: Standalone firmware API
 
 Use this when you want the frontend to call an actual local backend service:
 
@@ -105,7 +86,7 @@ curl http://127.0.0.1:4180/api/targets
 curl "http://127.0.0.1:4180/api/firmware/url?version=2025.12.2&target=SPEEDYBEEF405V3"
 ```
 
-### Option 3: Standalone firmware API with COS/CDN metadata
+### Option 2: Standalone firmware API with COS metadata
 
 Use this after `Firmware Metadata Sync` has uploaded the metadata bundle to COS:
 
