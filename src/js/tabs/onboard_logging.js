@@ -17,6 +17,7 @@ import NotificationManager from "../../js/utils/notifications";
 import { get as getConfig } from "../ConfigStorage";
 import { sensorTypes } from "../sensor_types";
 import { appConfig } from "../AppConfig";
+import { tracking } from "../Analytics";
 
 let sdcardTimer;
 

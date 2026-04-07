@@ -462,29 +462,6 @@ export default defineComponent({
     backdrop-filter: blur(12px);
 }
 
-/* Scanner line effect for light mode */
-.community-card::after {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(243, 156, 18, 0.8), transparent);
-    box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
-    animation: scan 4s linear infinite;
-    opacity: 0.6;
-}
-
-@keyframes scan {
-    0% {
-        top: -10%;
-    }
-    100% {
-        top: 110%;
-    }
-}
-
 .card-header {
     text-align: center;
     position: relative;
@@ -619,31 +596,6 @@ export default defineComponent({
     transition: all 0.3s ease;
     text-transform: uppercase;
     position: relative;
-    overflow: hidden;
-}
-
-.primary-cta::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-    transform: skewX(-25deg);
-    animation: shine 3s infinite;
-}
-
-@keyframes shine {
-    0% {
-        left: -100%;
-    }
-    20% {
-        left: 200%;
-    }
-    100% {
-        left: 200%;
-    }
 }
 
 .primary-cta:hover {

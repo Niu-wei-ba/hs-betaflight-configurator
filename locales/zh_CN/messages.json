@@ -1341,7 +1341,7 @@
         "message": "RSSI（接收机信号强度）"
     },
     "configurationRSSIHelp": {
-        "message": "RSSI 是接受信号的强度，对判断飞机是否受到无线信号干扰或者即将超出范围很有用。"
+        "message": "RSSI 表示接收信号强度，对判断飞行器是否受到无线干扰或即将失控很有用。"
     },
     "configurationEscFeatures": {
         "message": "电调\/电机功能"
@@ -1349,8 +1349,20 @@
     "configurationFeaturesHelp": {
         "message": "<strong>注意:<\/strong> 不是所有的功能都能同时被启用。当飞控检测到有冲突时会禁用相应的功能。<br \/><strong>注意:<\/strong>  <span class=\"message-negative\">先<\/span> 设置串口，再启用需要用到串口的功能。"
     },
+    "configurationSerialRX": {
+        "message": "串行接收机协议"
+    },
+    "someRXTypesDisabled": {
+        "message": "当前编译配置不支持部分接收机协议。"
+    },
+    "serialRXNotSupported": {
+        "message": "所选接收机协议与当前编译配置不兼容。请选择其他协议，或重新刷写固件并在编译配置中选择正确的无线电协议。"
+    },
     "configurationSerialRXHelp": {
         "message": "&#8226; 接收机对应的 UART 端口必须启用「串行接收机」(在 <i>端口<\/i> 选项页)<br>&#8226; 从下拉列表中选择正确的数据格式，如下："
+    },
+    "configurationSpiRX": {
+        "message": "SPI 总线接收机协议"
     },
     "configurationSpiRxHelp": {
         "message": "<strong>注意:<\/strong> SPI 接收机只有通过 SPI 总线连接到飞控或板载了相应硬件时才能工作。"
@@ -1883,6 +1895,15 @@
     "pidTuningMiscSettings": {
         "message": "其他设置"
     },
+    "receiverHelp": {
+        "message": "&#8226; <b><strong><a href=\"https://betaflight.com/docs/wiki/guides/current/Failsafe#testing-failsafe\" target=\"_blank\" rel=\"noopener noreferrer\">请务必确认失控保护工作正常！<\/a><\/strong><\/b> 相关设置在「失控保护」选项卡，需开启专家模式。<br> &#8226; <b>请使用最新的遥控器固件！<\/b><br> &#8226; 若使用 OpenTx 或 EdgeTx，请在遥控器中<strong><a href=\"https://betaflight.com/docs/development/Rx#disabling-the-opentxedgetx-adc-filter\" target=\"_blank\" rel=\"noopener noreferrer\">关闭硬件 ADC 滤波器<\/a><\/strong>。<br>基本设置：正确配置「接收机」选项。为遥控器选择正确的「通道映射」。确认横滚、俯仰等条形图运动方向正确。在遥控器中将通道行程\/范围调至约 1000～2000，中位约 1500。更多信息请参阅<strong><a href=\"https://betaflight.com/docs/development/Rx\" target=\"_blank\" rel=\"noopener noreferrer\">官方文档<\/a><\/strong>。"
+    },
+    "receiverHelpModelId": {
+        "message": "若将下方的机型匹配设为 255 以外的数值，可在 OpenTX\/EdgeTX 的模型设置中指定接收机编号，并在对应模型的 ELRS LUA 脚本中开启机型匹配。机型匹配范围为 0～63（含）。详见 ELRS 文档。"
+    },
+    "receiverModelId": {
+        "message": "机型匹配 ID"
+    },
     "receiverRcSmoothing": {
         "message": "RC 平滑"
     },
@@ -1892,11 +1913,29 @@
     "receiverRcSmoothingManual": {
         "message": "手动"
     },
+    "receiverRcSmoothingAutoFactor": {
+        "message": "设定点自动系数"
+    },
+    "receiverRcSmoothingAutoFactorHelp": {
+        "message": "调整设定点自动系数计算，默认因子与延迟比为 10。增大数值会进一步平滑 RC 输入，但也会增加延迟。在 RC 链路不稳定或电影式飞行时可能有用。<br>接近 50 时请谨慎，输入延迟会变得明显。<br>在遥控与接收机均上电时，可使用 CLI 命令 rc_smoothing_info 查看自动计算的 RC 平滑截止频率。"
+    },
+    "receiverRcSmoothingAutoFactorHelp2": {
+        "message": "调整设定点 RC 平滑。默认 30。数值越高 RC 输入越平滑，例如 HD 花式约 60，电影式约 90～120。注意：超过 50 会产生明显摇杆延迟。较低值（如 20～25）会将部分 RC 台阶传入电机信号，略增电机发热，但可减少 RC 延迟，竞速时可能有用。"
+    },
+    "receiverRcSmoothingAutoFactorThrottle": {
+        "message": "油门自动系数"
+    },
+    "receiverRcSmoothingAutoFactorThrottleHelp": {
+        "message": "调整油门因子计算，默认因子与延迟比为 10。增大数值会进一步平滑油门输入并增加延迟。在 RC 链路不稳定或电影式飞行时可能有用。<br>接近 50 时请谨慎，输入延迟会变得明显。<br>在遥控与接收机均上电时，可使用 CLI 命令 rc_smoothing_info 查看自动计算的 RC 平滑截止频率。"
+    },
     "receiverRcFeedforwardTypeSelect": {
         "message": "前馈截止类型"
     },
     "receiverRcSetpointTypeSelect": {
         "message": "设定点截止类型"
+    },
+    "receiverThrottleTypeSelect": {
+        "message": "油门截止类型"
     },
     "receiverRcSmoothingInterpolation": {
         "message": "插值"
@@ -1910,6 +1949,9 @@
     "rcSmoothingFeedforwardCutoffHelp": {
         "message": "前馈滤波器截止频率，单位为 Hz。较低的值将得到更平滑的输入，适用于较慢的接收器协议。大多数情况应该将其保持为 0，对应\"自动\"。"
     },
+    "rcSmoothingThrottleCutoffHelp": {
+        "message": "油门平滑滤波器的截止频率，单位为 Hz。较低的值将得到更平滑的输入，适用于较慢的接收机协议。大多数情况应保持为 0，对应「自动」。"
+    },
     "rcSmoothingChannelsSmoothedHelp": {
         "message": "适用平滑的通道"
     },
@@ -1919,8 +1961,14 @@
     "receiverRcSmoothingFeedforwardManual": {
         "message": "设置前馈滤波器的截止频率是由系统自动计算的 (推荐) 还是由用户手动设置。如果使用的接收机协议在飞行中可能发生变化，比如Crossfire，则不建议使用 \"手动\"。"
     },
+    "receiverRcSmoothingThrottleManual": {
+        "message": "选择 RC 平滑截止频率由系统自动计算（推荐）还是手动设置。若接收机协议可能在飞行中变化（如 Crossfire），不建议使用「手动」。"
+    },
     "receiverRcSmoothingSetpointHz": {
         "message": "设定点截止频率"
+    },
+    "receiverRcSmoothingThrottleCutoffHz": {
+        "message": "油门截止频率"
     },
     "receiverRcSmoothingFeedforwardCutoff": {
         "message": "前馈截止频率"
@@ -2163,6 +2211,9 @@
     "receiverThrottleExpo": {
         "message": "油门 Expo"
     },
+    "receiverThrottleHover": {
+        "message": "悬停点"
+    },
     "receiverStickMin": {
         "message": "'摇杆低位' 阈值"
     },
@@ -2206,7 +2257,7 @@
         "message": "默认"
     },
     "receiverChannelMapTitle": {
-        "message": "你可以通过选择这个选项来自定义通道映射"
+        "message": "在框内点击即可自定义通道映射"
     },
     "receiverRssiChannel": {
         "message": "RSSI 通道"
@@ -2222,6 +2273,10 @@
     },
     "receiverResetRefreshRateTitle": {
         "message": "重置刷新率"
+    },
+    "receiverRowContainerRoll": {
+        "message": "横滚 [A]：",
+        "description": "Roll label in signal graph"
     },
     "receiverRowContainerPitch": {
         "message": "俯仰 [E]：",
@@ -2241,6 +2296,9 @@
     "receiverButtonRefresh": {
         "message": "刷新"
     },
+    "receiverButtonBindingPhrase": {
+        "message": "对频短语"
+    },
     "receiverButtonBind": {
         "message": "接收机对频"
     },
@@ -2253,6 +2311,10 @@
     },
     "receiverDataRefreshed": {
         "message": "RC 调整数据 <strong>已刷新<\/strong>"
+    },
+    "receiverEepromSaved": {
+        "message": "$t(eeprom_saved_ok.message)",
+        "description": "Don't translate!!!"
     },
     "receiverModelPreview": {
         "message": "预览"
@@ -4042,6 +4104,9 @@
     "failsafePaneTitleOld": {
         "message": "接收机失控保护"
     },
+    "failsafeFeaturesHelpNew": {
+        "message": "失控保护分为两个阶段。<strong>阶段 1<\/strong> 在飞行通道脉冲长度无效、接收机报告失控保护模式或完全没有接收机信号时触发，通道回退设置将应用于<span class=\"message-negative\">所有通道<\/span>，并提供短暂的恢复时间。<strong>阶段 2<\/strong> 在飞控处于<span class=\"message-negative\">解锁<\/span>状态时，错误状态持续超过配置的保护时间后触发，所有通道将保持在应用的通道回退设置值，除非被所选程序覆盖。<br /><strong>注意：<\/strong>在进入阶段 1 之前，通道回退设置也会应用于脉冲无效的单个 AUX 通道。"
+    },
     "failsafePulsrangeTitle": {
         "message": "有效脉冲范围设置"
     },
@@ -4054,6 +4119,9 @@
     "failsafeRxMaxUsecItem": {
         "message": "最大长度"
     },
+    "failsafeChannelFallbackSettingsTitle": {
+        "message": "阶段 1 - 通道回退设置"
+    },
     "failsafeChannelFallbackSettingsHelp": {
         "message": "当进入一阶失控保护时，这些设置将会应用于单独无效的AUX 通道，或者是所有通道。<strong>注意：<\/strong>数值应是25us的整数倍，小于25us的设置会被上下取整。"
     },
@@ -4063,11 +4131,29 @@
     "failsafeChannelFallbackSettingsHold": {
         "message": "<strong>保持<\/strong>指的是 所有通道保持最后接收到的有效的数值。<strong>设置<\/strong> 指的是 通道使用在这里设定的值。"
     },
+    "failsafeChannelFallbackSettingsValueAuto": {
+        "message": "自动"
+    },
+    "failsafeChannelFallbackSettingsValueHold": {
+        "message": "保持"
+    },
+    "failsafeChannelFallbackSettingsValueSet": {
+        "message": "设置"
+    },
     "failsafeStageTwoSettingsTitle": {
-        "message": "二阶失控保护 - 设置"
+        "message": "阶段 2 - 设置"
+    },
+    "failsafeDelayItem": {
+        "message": "信号丢失后阶段 1 持续时间 [秒]"
+    },
+    "failsafeDelayHelp": {
+        "message": "设置信号丢失后阶段 1 失控保护的持续时间。如果延迟时间到期且信号未恢复，将进入阶段 2 失控保护。"
     },
     "failsafeThrottleLowItem": {
         "message": "低油门失控保护延迟 [秒]"
+    },
+    "failsafeThrottleLowHelp": {
+        "message": "当油门处于低位超过此时间后，直接锁定飞行器而不执行所选的失控保护程序。"
     },
     "failsafeThrottleItem": {
         "message": "降落时油门大小"
@@ -4075,8 +4161,11 @@
     "failsafeOffDelayItem": {
         "message": "失控保护过程中关闭电机延时 [秒]"
     },
+    "failsafeOffDelayHelp": {
+        "message": "在降落模式中保持的时间，超时后电机将关闭并锁定飞行器。"
+    },
     "failsafeSubTitle1": {
-        "message": "二阶失控保护措施"
+        "message": "阶段 2 - 失控保护措施"
     },
     "failsafeProcedureItemSelect1": {
         "message": "降落"
@@ -4099,8 +4188,26 @@
     "failsafeGpsRescueItemAltitudeModeCurrentAlt": {
         "message": "当前高度"
     },
+    "failsafeGpsRescueInitialClimb": {
+        "message": "初始爬升高度（米）"
+    },
+    "failsafeGpsRescueInitialClimbHelp": {
+        "message": "救援启动时飞行器在当前高度基础上爬升的距离。当高度模式设为「当前高度」时使用此值；「最大高度」模式下也会叠加此值。"
+    },
+    "failsafeGpsRescueItemReturnAltitude": {
+        "message": "返航高度（米）"
+    },
     "failsafeGpsRescueItemAscendRate": {
         "message": "上升速率（米\/秒）"
+    },
+    "failsafeGpsRescueItemGroundSpeed": {
+        "message": "返航地速（米\/秒）"
+    },
+    "failsafeGpsRescueItemAngle": {
+        "message": "最大俯仰角度"
+    },
+    "failsafeGpsRescueAngleHelp": {
+        "message": "更大的最大角度会使返航更激进，前进速度更快。对于较重、高阻力或低操控性的飞行器，或在强风条件下可能有用。警告：如果增大最大角度，通常需要同时增大救援油门！否则飞行器可能会掉高并坠毁！"
     },
     "failsafeGpsRescueItemDescentDistance": {
         "message": "下降距离 (米)"
@@ -4108,11 +4215,26 @@
     "failsafeGpsRescueItemDescendRate": {
         "message": "下降速率（米\/秒）"
     },
+    "failsafeGpsRescueDescendRateHelp": {
+        "message": "初始下降速率设定为此值的 3 倍，在接近降落高度时逐渐减小到设定值。"
+    },
+    "failsafeGpsRescueItemMinStartDistHelp": {
+        "message": "如果救援启动时距离起飞点太近（在此最小距离内），飞行器将沿当前航向飞离，直到至少达到此距离后，再开始正常的救援行为。"
+    },
     "failsafeGpsRescueItemThrottleMin": {
         "message": "最低油门"
     },
     "failsafeGpsRescueItemThrottleMax": {
         "message": "最高油门"
+    },
+    "failsafeGpsRescueThrottleMaxHelp": {
+        "message": "对于较重、高阻力或低操控性的飞行器，或在强风条件下返航，以及增大了最大俯仰角度时，应适当增大此值。"
+    },
+    "failsafeGpsRescueItemThrottleHover": {
+        "message": "悬停油门 - <span class=\"message-negative\">重要：请准确设置此值<\/span>"
+    },
+    "failsafeGpsRescueThrottleHoverHelp": {
+        "message": "要找到正确的值：将失控保护开关动作设为阶段 2，将阶段 2 失控保护措施设为降落，调整降落时油门值直到飞行器悬停或缓慢下降。然后将此值设为 GPS 救援悬停油门，同时将阶段 1 油门通道回退值也设为此值。"
     },
     "failsafeGpsRescueItemMinDth": {
         "message": "距起飞点的最近距离 (米)"
@@ -4122,6 +4244,12 @@
     },
     "failsafeGpsRescueItemMinSats": {
         "message": "最小卫星数"
+    },
+    "failsafeGpsRescueItemAllowArmingWithoutFix": {
+        "message": "允许无定位解锁 - <span class=\"message-negative\">警告：无定位 = 失控时锁定坠毁！<\/span>"
+    },
+    "failsafeGpsRescueArmWithoutFixHelp": {
+        "message": "不推荐。允许在未设定起飞点的情况下解锁，但在真正的接收机信号丢失失控保护时，飞行器将锁定并坠毁。如果通过开关测试，在锁定前会有短暂的静默期。"
     },
     "failsafeGpsRescueItemSanityChecks": {
         "message": "可用性检测"
@@ -4146,6 +4274,9 @@
     },
     "failsafeSwitchModeItem": {
         "message": "失控保护开关行为"
+    },
+    "failsafeSwitchModeHelp": {
+        "message": "此选项决定通过 AUX 开关激活失控保护时的行为：<br\/><strong>阶段 1<\/strong> 激活阶段 1 失控保护。适用于模拟真实信号丢失的失控保护行为。<br\/><strong>阶段 2<\/strong> 跳过阶段 1，直接执行阶段 2 程序。<br\/><strong>终止<\/strong> 立即锁定（飞行器将坠毁）。"
     },
     "failsafeSwitchOptionStage1": {
         "message": "阶段 1"
