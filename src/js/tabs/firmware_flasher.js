@@ -19,7 +19,7 @@ import { groupFirmwareTargetDescriptors, normalizeFirmwareTargetDescriptors } fr
 import { EventBus } from "../../components/eventBus";
 import { ispConnected } from "../utils/connection.js";
 import FC from "../fc";
-import { buildDocsUrl, buildLogUrl } from "../AppConfig";
+import { appConfig, buildDocsUrl, buildLogUrl } from "../AppConfig";
 
 const firmware_flasher = {
     targets: null,
@@ -631,8 +631,10 @@ firmware_flasher.initialize = async function (callback) {
         }
 
         /**
-         * Keep the version dropdown aligned with mirror metadata (`/api/firmware/versions`).
-         * Intersect with per-target releases so we only list versions present in both.
+         * Optional mirror index (`/api/firmware/versions`):
+         * - Default: enrich release type/label from index when a version is listed there; never drop releases
+         *   (matches official Configurator + build.betaflight.com target payloads).
+         * - `VITE_FIRMWARE_USE_VERSION_INDEX_FILTER=true`: legacy subset mode — only versions present in the index.
          */
         async function mergeReleasesWithFirmwareIndex(targetDetail) {
             if (!targetDetail || !Array.isArray(targetDetail.releases)) {
@@ -654,23 +656,35 @@ firmware_flasher.initialize = async function (callback) {
             const indexVersionSet = new Set(indexVersions.map((v) => v.version));
             const channelByVersion = new Map(indexVersions.map((v) => [v.version, v.channel]));
 
-            const mergedReleases = targetDetail.releases
-                .filter((r) => indexVersionSet.has(r.release))
-                .map((r) => {
-                    const ch = channelByVersion.get(r.release);
-                    const typeFromIndex = ch != null ? mapFirmwareChannelToReleaseType(ch) : r.type;
-                    return {
-                        ...r,
-                        type: typeFromIndex,
-                        label: r.label || String(ch || typeFromIndex),
-                    };
-                });
+            const applyIndexFields = (r) => {
+                const ch = channelByVersion.get(r.release);
+                if (ch == null) {
+                    return r;
+                }
+                const typeFromIndex = mapFirmwareChannelToReleaseType(ch);
+                return {
+                    ...r,
+                    type: typeFromIndex,
+                    label: r.label || String(ch || typeFromIndex),
+                };
+            };
 
-            if (mergedReleases.length === 0) {
-                return targetDetail;
+            if (appConfig.firmwareUseVersionIndexFilter) {
+                const mergedReleases = targetDetail.releases
+                    .filter((r) => indexVersionSet.has(r.release))
+                    .map(applyIndexFields);
+
+                if (mergedReleases.length === 0) {
+                    return targetDetail;
+                }
+
+                return { ...targetDetail, releases: mergedReleases };
             }
 
-            return { ...targetDetail, releases: mergedReleases };
+            return {
+                ...targetDetail,
+                releases: targetDetail.releases.map(applyIndexFields),
+            };
         }
 
         function populateReleases(versions_element, target) {

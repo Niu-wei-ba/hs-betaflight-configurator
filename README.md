@@ -26,6 +26,7 @@ The deployment is configured through Vite environment variables:
 - `VITE_SOURCE_CODE_URL`
 - `VITE_DOCS_BASE_URL`
 - `VITE_BUILD_API_BASE_URL`
+- `VITE_FIRMWARE_USE_VERSION_INDEX_FILTER` (optional; default off — full version list like official Betaflight; set `true` to restrict the dropdown to entries present in `/api/firmware/versions`)
 - `VITE_PRESETS_OFFICIAL_URL`
 - `VITE_PRESETS_BACKUP_URL`
 - `VITE_DOCUMENTATION_LABEL`
@@ -41,6 +42,8 @@ Firmware metadata, Cloud Build fallback, COS upload, and build-task state live i
 - `git@github.com:Niu-wei-ba/betaflight-api.git`
 
 This frontend only talks to a Betaflight Build API-compatible service through `VITE_BUILD_API_BASE_URL`. It does not contain COS credentials or backend cache logic.
+
+For **board and firmware version lists** to match [official Cloud Build API](https://betaflight.com/docs/development/API/Cloud-Build-API) behavior (`https://build.betaflight.com`), the mirror service should return the same payloads for `GET /api/targets` and `GET /api/targets/{target}` (e.g. periodic sync or reverse proxy + cache). The optional `GET /api/firmware/versions` route can supply channel metadata for labels; the UI no longer hides releases that are missing from that index unless `VITE_FIRMWARE_USE_VERSION_INDEX_FILTER=true`.
 
 ## Local Development
 

@@ -20,6 +20,11 @@ export const appConfig = {
     presetsOfficialUrl: import.meta.env.VITE_PRESETS_OFFICIAL_URL || `${currentOrigin()}/presets/firmware-presets/`,
     presetsBackupUrl: import.meta.env.VITE_PRESETS_BACKUP_URL || `${currentOrigin()}/presets/firmware-presets/`,
     documentationLabel: import.meta.env.VITE_DOCUMENTATION_LABEL || "文档",
+    /**
+     * When true, version dropdown is intersected with `/api/firmware/versions` (mirror index subset).
+     * Default false: list all releases from `/api/targets/{target}` like official Betaflight Configurator.
+     */
+    firmwareUseVersionIndexFilter: import.meta.env.VITE_FIRMWARE_USE_VERSION_INDEX_FILTER === "true",
 };
 
 export function buildApiUrl(path = "") {
