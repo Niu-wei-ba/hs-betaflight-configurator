@@ -277,7 +277,6 @@
         "message": "\u7e41\u9ad4\u4e2d\u6587",
         "description": "Don't translate!!!"
     },
-
     "sensorDataFlashNotFound": {
         "message": "No dataflash <br>chip found",
         "description": "Text of the dataflash image in the header of the page."
@@ -376,7 +375,6 @@
     "tabOptions": {
         "message": "Options"
     },
-
     "tabSetup": {
         "message": "Setup"
     },
@@ -443,7 +441,6 @@
     "tabAuxiliary": {
         "message": "Modes"
     },
-
     "logActionHide": {
         "message": "Hide Log"
     },
@@ -463,7 +460,6 @@
     "serialErrorParityError": {
         "message": "Serial connection error: bad parity"
     },
-
     "serialPortOpened": {
         "message": "Serial port <span class=\"message-positive\">successfully</span> opened with ID: $1"
     },
@@ -476,10 +472,10 @@
     "serialPortClosedFail": {
         "message": "<span class=\"message-negative\">Failed</span> to close serial port"
     },
-    "serialUnrecoverable" : {
+    "serialUnrecoverable": {
         "message": "Unrecoverable <span class=\"message-negative\">failure</span> of serial connection, disconnecting..."
     },
-    "serialPortLoading" : {
+    "serialPortLoading": {
         "message": "Loading ..."
     },
     "usbDeviceOpened": {
@@ -612,21 +608,21 @@
         "message": "<strong>the accelerometer is enabled but it is not calibrated</strong>.<br>If you plan to use the accelerometer, please follow the instructions for '$t(initialSetupButtonCalibrateAccel.message)' on the '$t(tabSetup.message)' tab. If any function that requires the accelerometer (auto level modes, GPS rescue, ...) is enabled, arming of the aircraft will be disabled until the accelerometer has been calibrated.<br>If you are not planning on using the accelerometer it is recommended that you disable it in '$t(configurationSystem.message)' on the '$t(tabConfiguration.message)' tab."
     },
     "infoVersionOs": {
-        "message" : "OS: <strong>{{operatingSystem}}</strong>",
+        "message": "OS: <strong>{{operatingSystem}}</strong>",
         "description": "Message that appears in the GUI log panel indicating operating system"
     },
     "infoVersionConfigurator": {
-        "message" : "App Version: <strong>{{configuratorVersion}}</strong>",
+        "message": "App Version: <strong>{{configuratorVersion}}</strong>",
         "description": "Message that appears in the GUI log panel indicating application version"
     },
     "buildServerSuccess": {
-        "message" : "Success: $1"
+        "message": "Success: $1"
     },
     "buildServerFailure": {
-        "message" : "<b>Build server failure: $1 <code>$2</code></b>"
+        "message": "<b>Build server failure: $1 <code>$2</code></b>"
     },
     "buildServerUsingCached": {
-        "message" : "Using cached builds information for $1."
+        "message": "Using cached builds information for $1."
     },
     "buildServerSupportRequestSubmission": {
         "message": "<br>*** Support data submitted *** <br>Id: $1<br><br><br># copy ID and provide to the betaflight team."
@@ -644,16 +640,16 @@
         "message": "Describe the problem"
     },
     "releaseCheckLoaded": {
-        "message" : "Loaded release information for $1 from GitHub."
+        "message": "Loaded release information for $1 from GitHub."
     },
     "releaseCheckFailed": {
-        "message" : "<b>GitHub query for $1 releases failed, using cached information. Reason: <code>$2</code></b>"
+        "message": "<b>GitHub query for $1 releases failed, using cached information. Reason: <code>$2</code></b>"
     },
     "releaseCheckCached": {
-        "message" : "Using cached release information for $1 releases."
+        "message": "Using cached release information for $1 releases."
     },
     "releaseCheckNoInfo": {
-        "message" : "No release information available for $1."
+        "message": "No release information available for $1."
     },
     "tabSwitchConnectionRequired": {
         "message": "You need to <strong>connect</strong> before you can view any of the tabs."
@@ -1610,12 +1606,11 @@
         "message": "ACCEL Alignment"
     },
     "configurationSensorAlignmentDefaultOption": {
-       "message": "Default"
+        "message": "Default"
     },
     "configurationSensorAlignmentCustom": {
         "message": "Custom"
     },
-
     "configurationAccelTrims": {
         "message": "Accelerometer Trim"
     },
@@ -1634,7 +1629,7 @@
     "configurationReverseMotorSwitch": {
         "message": "Motor direction is reversed"
     },
-       "configurationReverseMotorSwitchHelp": {
+    "configurationReverseMotorSwitchHelp": {
         "message": "This option configures the mixer to expect the motor direction to be reversed and the propellers to be on accordingly. <strong>Warning:</strong> This does not reverse the motor direction. Use the configuration tool for your ESCs or switch the ESC - motor wiring order to achieve this. Also, make sure to check with propellers off that your motors are rotating in the directions shown in the diagram above before attempting to arm."
     },
     "configurationAutoDisarmDelay": {
@@ -1667,7 +1662,7 @@
         "message": "The pole count is the number of magnets on the bell of the motor. Do NOT count the stators where the windings are located. 5\" motors usually have 14 magnets, 3\" or smaller often have 12 magnets.",
         "description": "Help text for the Motor poles field of the ESC/Motor configuration"
     },
-    "configurationMotorIdleRpmHelp" : {
+    "configurationMotorIdleRpmHelp": {
         "message": "This is the dynamic idle value from the active PID profile. When Dynamic Idle is set to zero, only static motor idle will apply. Change the Dynamic Idle settings on the PID tuning tab.",
         "description": "Help text for dynamic idle setting"
     },
@@ -2025,7 +2020,6 @@
     "pidTuningNonProfilePidSettings": {
         "message": "Profile independent PID Controller Settings"
     },
-
     "pidTuningAntiGravity": {
         "message": "Anti Gravity"
     },
@@ -2592,13 +2586,13 @@
         "message": "Save"
     },
     "auxiliaryAutoChannelSelect": {
-      "message": "AUTO"
+        "message": "AUTO"
     },
     "auxiliaryModeLogicOR": {
-      "message": "OR"
+        "message": "OR"
     },
     "auxiliaryModeLogicAND": {
-      "message": "AND"
+        "message": "AND"
     },
     "auxiliaryHelpMode_3DDISABLE": {
         "message": "Enables reversible motor direction to provide negative thrust and allow inverted flight. Throttle becomes -100 to +100 instead of 0 to 100",
@@ -2936,7 +2930,7 @@
     "adjustmentsFunction30": {
         "message": "LED Profile Selection"
     },
-	"adjustmentsFunction31": {
+    "adjustmentsFunction31": {
         "message": "LED Brightness Adjust"
     },
     "adjustmentsSave": {
@@ -3193,71 +3187,71 @@
     "motorsmAhDrawnValue": {
         "message": "$1 mAh"
     },
-    "motorsText":{
+    "motorsText": {
         "message": "Motors"
     },
-    "motorNumber1":{
+    "motorNumber1": {
         "message": "Motor - 1"
     },
-    "motorNumber2":{
+    "motorNumber2": {
         "message": "Motor - 2"
     },
-    "motorNumber3":{
+    "motorNumber3": {
         "message": "Motor - 3"
     },
-    "motorNumber4":{
+    "motorNumber4": {
         "message": "Motor - 4"
     },
-    "motorNumber5":{
+    "motorNumber5": {
         "message": "Motor - 5"
     },
-    "motorNumber6":{
+    "motorNumber6": {
         "message": "Motor - 6"
     },
-    "motorNumber7":{
+    "motorNumber7": {
         "message": "Motor - 7"
     },
-    "motorNumber8":{
+    "motorNumber8": {
         "message": "Motor - 8"
     },
-    "servosText":{
+    "servosText": {
         "message": "Servos"
     },
-    "servoNumber1":{
+    "servoNumber1": {
         "message": "Servo - 1"
     },
-    "servoNumber2":{
+    "servoNumber2": {
         "message": "Servo - 2"
     },
-    "servoNumber3":{
+    "servoNumber3": {
         "message": "Servo - 3"
     },
-    "servoNumber4":{
+    "servoNumber4": {
         "message": "Servo - 4"
     },
-    "servoNumber5":{
+    "servoNumber5": {
         "message": "Servo - 5"
     },
-    "servoNumber6":{
+    "servoNumber6": {
         "message": "Servo - 6"
     },
-    "servoNumber7":{
+    "servoNumber7": {
         "message": "Servo - 7"
     },
-    "servoNumber8":{
+    "servoNumber8": {
         "message": "Servo - 8"
     },
-    "motorsResetMaximumButton":{
+    "motorsResetMaximumButton": {
         "message": "Reset"
     },
-    "motorsResetMaximum":{
+    "motorsResetMaximum": {
         "message": "Reset overtime maximum"
     },
-    "motorsSensorGyroSelect":{
+    "motorsSensorGyroSelect": {
         "message": "$t(sensorStatusGyroShort.message)",
         "description": "Don't translate!!!"
     },
-    "motorsSensorAccelSelect":{
+    "motorsSensorAccelSelect": {
         "message": "accel"
     },
     "motorsTelemetryHelp": {
@@ -3710,6 +3704,15 @@
     "firmwareFlasherCloudBuildProcessing": {
         "message": "processing"
     },
+    "firmwareFlasherCloudBuildPhaseBuilding": {
+        "message": "waiting for cloud build…"
+    },
+    "firmwareFlasherCloudBuildPhaseUploadingCos": {
+        "message": "uploading to mirror storage…"
+    },
+    "firmwareFlasherCloudBuildFailedLog": {
+        "message": "Cloud build failed: $1"
+    },
     "firmwareFlasherCloudBuildSuccessCached": {
         "message": "success (cached)"
     },
@@ -3724,6 +3727,9 @@
     },
     "firmwareFlasherCloudBuildFailRequest": {
         "message": "build request error (please check build configuration, e.g. custom defines)"
+    },
+    "firmwareFlasherCloudBuildFailUpstream": {
+        "message": "cannot reach official cloud build from mirror (configure server HTTPS_PROXY or wait for COS pre-sync)"
     },
     "firmwareFlasherCloudBuildFail": {
         "message": "failed (please check log)"
@@ -3800,10 +3806,10 @@
     "firmwareFlasherBaudRate": {
         "message": "Baud Rate"
     },
-    "firmwareFlasherShowDevelopmentReleases":{
+    "firmwareFlasherShowDevelopmentReleases": {
         "message": "Show release candidates"
     },
-    "firmwareFlasherShowDevelopmentReleasesDescription":{
+    "firmwareFlasherShowDevelopmentReleasesDescription": {
         "message": "Show release candidates in addition to stable releases"
     },
     "firmwareFlasherOptionLoading": {
@@ -5042,7 +5048,7 @@
     "failsafeGpsRescueDescendRateHelp": {
         "message": "The initial descent rate is set to 3 times this value, decreasing to the set value at the landing altitude."
     },
-    "failsafeGpsRescueItemMinStartDistHelp" : {
+    "failsafeGpsRescueItemMinStartDistHelp": {
         "message": "If the rescue starts too close to home (within this minimum distance), the aircraft will fly away, on its current heading, until at least this distance from home, and then start normal rescue behaviour",
         "description": "Updated help text for the minimum start distance needed for GPS rescue to activate"
     },
@@ -5590,7 +5596,6 @@
     "osdSetupUploadingFontEnd": {
         "message": "Uploaded all {{length}} characters to the OSD"
     },
-
     "osdSetupSave": {
         "message": "Save"
     },
@@ -6128,7 +6133,7 @@
         "message": "Timer: remaining time estimate",
         "description": "One of the elements of the OSD"
     },
-    "osdDescElementRemainingTimeEstimate" : {
+    "osdDescElementRemainingTimeEstimate": {
         "message": "Estimate of flight time remaining"
     },
     "osdTextElementRtcDateTime": {
@@ -6157,14 +6162,14 @@
         "message": "Timer 1",
         "description": "One of the elements of the OSD"
     },
-    "osdDescElementTimer1" : {
+    "osdDescElementTimer1": {
         "message": "Shows the value of timer 1"
     },
     "osdTextElementTimer2": {
         "message": "Timer 2",
         "description": "One of the elements of the OSD"
     },
-    "osdDescElementTimer2" : {
+    "osdDescElementTimer2": {
         "message": "Shows the value of timer 2"
     },
     "osdTextElementCoreTemperature": {
@@ -6346,7 +6351,7 @@
         "message": "Unknown $1",
         "description": "One of the elements of the OSD"
     },
-    "osdDescElementUnknown" : {
+    "osdDescElementUnknown": {
         "message": "Unknown element (details to be added in a future release)"
     },
     "osdTextStatMaxSpeed": {
@@ -6597,72 +6602,71 @@
         "message": "Font version: user provided"
     },
     "osdTimerSource": {
-      "message": "Source:"
+        "message": "Source:"
     },
     "osdTimerSourceTooltip": {
         "message": "Select the timer source, this controls the duration/event that the timer measures"
     },
     "osdTimerSourceOptionOnTime": {
-      "message": "On time",
-      "description": "One of the options for the source timer. This options shows the amount of time has passed since the battery was plugged"
+        "message": "On time",
+        "description": "One of the options for the source timer. This options shows the amount of time has passed since the battery was plugged"
     },
     "osdTimerSourceOptionTotalArmedTime": {
-      "message": "Total armed time",
-      "description": "One of the options for the source timer. This options shows the amount of time the aircraft was armed since the battery was plugged"
+        "message": "Total armed time",
+        "description": "One of the options for the source timer. This options shows the amount of time the aircraft was armed since the battery was plugged"
     },
     "osdTimerSourceOptionLastArmedTime": {
-      "message": "Last armed time",
-      "description": "One of the options for the source timer. This options shows the amount of time the aircraft was armed the latest time"
+        "message": "Last armed time",
+        "description": "One of the options for the source timer. This options shows the amount of time the aircraft was armed the latest time"
     },
     "osdTimerSourceOptionOnArmTime": {
-      "message": "On/Armed time",
-      "description": "One of the options for the source timer. This option shows On time when aircraft is disarmed, and Armed time when armed"
+        "message": "On/Armed time",
+        "description": "One of the options for the source timer. This option shows On time when aircraft is disarmed, and Armed time when armed"
     },
     "osdTimerPrecision": {
-      "message": "Precision:"
+        "message": "Precision:"
     },
     "osdTimerPrecisionTooltip": {
         "message": "Select the timer precision, this controls to what precision the time is reported in"
     },
     "osdTimerPrecisionOptionSecond": {
-      "message": "Second",
-      "description": "Selectable option for the precision of the timer in the OSD"
+        "message": "Second",
+        "description": "Selectable option for the precision of the timer in the OSD"
     },
     "osdTimerPrecisionOptionHundredth": {
-      "message": "Hundredth",
-      "description": "Selectable option for the precision of the timer in the OSD"
+        "message": "Hundredth",
+        "description": "Selectable option for the precision of the timer in the OSD"
     },
     "osdTimerPrecisionOptionTenth": {
-      "message": "Tenth",
-      "description": "Selectable option for the precision of the timer in the OSD"
+        "message": "Tenth",
+        "description": "Selectable option for the precision of the timer in the OSD"
     },
     "osdTimerAlarm": {
-      "message": "Alarm:"
+        "message": "Alarm:"
     },
     "osdTimerAlarmTooltip": {
         "message": "Select the timer alarm threshold in minutes, when the time exceeds this value the OSD element will blink, setting this to 0 disables the alarm"
     },
     "osdTimerAlarmOptionRssi": {
-      "message": "RSSI",
-      "description": "Text of the RSSI alarm"
+        "message": "RSSI",
+        "description": "Text of the RSSI alarm"
     },
     "osdTimerAlarmOptionCapacity": {
-      "message": "Capacity",
-      "description": "Text of the capacity alarm"
+        "message": "Capacity",
+        "description": "Text of the capacity alarm"
     },
     "osdTimerAlarmOptionAltitude": {
-      "message": "Altitude",
-      "description": "Text of the altitude alarm"
+        "message": "Altitude",
+        "description": "Text of the altitude alarm"
     },
     "osdTimerAlarmOptionLinkQuality": {
         "message": "Link Quality",
         "description": "Text of the link quality alarm"
-      },
-      "osdTimerAlarmOptionRssiDbm": {
+    },
+    "osdTimerAlarmOptionRssiDbm": {
         "message": "RSSI dBm",
         "description": "Text of the RSSI dBm alarm"
-      },
-
+    },
     "osdWarningTextArmingDisabled": {
         "message": "Arming disabled",
         "description": "One of the warnings that can be selected to be shown in the OSD"
@@ -6797,14 +6801,12 @@
         "message": "Warns if the CPU LOAD of the flight controller is too high",
         "description": "Description of one of the warnings that can be selected to be shown in the OSD"
     },
-
     "osdWarningTextUnknown": {
         "message": "Unknown $1"
     },
     "osdWarningUnknown": {
         "message": "Unknown warning (details to be added in a future release)"
     },
-
     "osdSectionHelpElements": {
         "message": "Enable or disable OSD elements."
     },
@@ -7099,7 +7101,7 @@
         "message": "Save Lua Script",
         "description": "Save Lua script button in the VTX tab"
     },
-    "vtxLuaFileHelp" :{
+    "vtxLuaFileHelp": {
         "message": "The '$t(vtxButtonSaveLua.message)' button will allow you to save a <i>mcuid</i>.lua file containing the VTX table configuration that can be used with the <a href=\"https://github.com/betaflight/betaflight-tx-lua-scripts/\" target=\"_blank\" rel=\"noopener noreferrer\">Betaflight TX Lua Scripts</a>.<br><br>Version 1.6.0 and above can use the file as is, but for older versions of the scripts it should be renamed to match the modelname on the TX.",
         "description": "Tooltip message for the Save Lua script button in the VTX tab"
     },
@@ -7156,7 +7158,6 @@
         "message": "Sends ESC data to the FC via DShot telemetry.  Required by RPM Filtering and dynamic idle. <br> <br>Note: Requires a compatible ESC with appropriate firmware, eg JESC, Jazzmac, BLHeli-32.",
         "description": "Description of the Bidirectional DShot feature of the ESC/Motor"
     },
-
     "configurationGyroFrequency": {
         "message": "Gyro update frequency"
     },

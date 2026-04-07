@@ -619,6 +619,60 @@ firmware_flasher.initialize = async function (callback) {
             }
         }
 
+        function mapFirmwareChannelToReleaseType(channel) {
+            const c = String(channel || "").toLowerCase();
+            if (c === "stable") {
+                return "Stable";
+            }
+            if (c === "rc" || c.includes("rc") || c === "releasecandidate") {
+                return "ReleaseCandidate";
+            }
+            return "Unstable";
+        }
+
+        /**
+         * Keep the version dropdown aligned with mirror metadata (`/api/firmware/versions`).
+         * Intersect with per-target releases so we only list versions present in both.
+         */
+        async function mergeReleasesWithFirmwareIndex(targetDetail) {
+            if (!targetDetail || !Array.isArray(targetDetail.releases)) {
+                return targetDetail;
+            }
+
+            let indexVersions;
+            try {
+                indexVersions = await self.buildApi.loadFirmwareVersions();
+            } catch (error) {
+                console.warn(`${self.logHead} loadFirmwareVersions failed, using target releases only`, error);
+                return targetDetail;
+            }
+
+            if (!Array.isArray(indexVersions) || indexVersions.length === 0) {
+                return targetDetail;
+            }
+
+            const indexVersionSet = new Set(indexVersions.map((v) => v.version));
+            const channelByVersion = new Map(indexVersions.map((v) => [v.version, v.channel]));
+
+            const mergedReleases = targetDetail.releases
+                .filter((r) => indexVersionSet.has(r.release))
+                .map((r) => {
+                    const ch = channelByVersion.get(r.release);
+                    const typeFromIndex = ch != null ? mapFirmwareChannelToReleaseType(ch) : r.type;
+                    return {
+                        ...r,
+                        type: typeFromIndex,
+                        label: r.label || String(ch || typeFromIndex),
+                    };
+                });
+
+            if (mergedReleases.length === 0) {
+                return targetDetail;
+            }
+
+            return { ...targetDetail, releases: mergedReleases };
+        }
+
         function populateReleases(versions_element, target) {
             const sortReleases = function (a, b) {
                 return -semver.compareBuild(a.release, b.release);
@@ -744,7 +798,8 @@ firmware_flasher.initialize = async function (callback) {
                         $(`<option value='0'>${i18n.getMessage("firmwareFlasherOptionLoading")}</option>`),
                     );
 
-                    populateReleases(versions_e, await self.buildApi.loadTargetReleases(target));
+                    const targetDetail = await self.buildApi.loadTargetReleases(target);
+                    populateReleases(versions_e, await mergeReleasesWithFirmwareIndex(targetDetail));
                 }
             }
         });
@@ -1104,6 +1159,17 @@ firmware_flasher.initialize = async function (callback) {
                 $(".buildProgress").val(val);
             }
 
+            function cloudBuildPhaseStatusKey(phase) {
+                switch (phase) {
+                    case "uploading":
+                        return "PhaseUploadingCos";
+                    case "building":
+                        return "PhaseBuilding";
+                    default:
+                        return "Pending";
+                }
+            }
+
             async function processBuildSuccess(response, statusResponse, suffix) {
                 if (statusResponse.status !== "success") {
                     return;
@@ -1112,7 +1178,8 @@ firmware_flasher.initialize = async function (callback) {
                 if (statusResponse.configuration !== undefined && !self.isConfigLocal) {
                     setBoardConfig(statusResponse.configuration);
                 }
-                processFile(await self.buildApi.loadTargetFirmware(response.url), response.file);
+                const firmwareUrl = statusResponse.url || response.url;
+                processFile(await self.buildApi.loadTargetFirmware(firmwareUrl), response.file);
             }
 
             async function requestCloudBuild(targetDetail) {
@@ -1182,7 +1249,6 @@ firmware_flasher.initialize = async function (callback) {
                     return;
                 }
 
-                updateStatus("Pending", response.key, 0, false);
                 self.cancelBuild = false;
 
                 let statusResponse = await self.buildApi.requestBuildStatus(response.key);
@@ -1192,6 +1258,8 @@ firmware_flasher.initialize = async function (callback) {
                     await processBuildSuccess(response, statusResponse, "Cached");
                     return;
                 }
+
+                updateStatus(cloudBuildPhaseStatusKey(statusResponse?.phase), response.key, 0, false);
 
                 self.enableCancelBuildButton(true);
                 const retrySeconds = 5;
@@ -1225,20 +1293,28 @@ firmware_flasher.initialize = async function (callback) {
                         }
 
                         let suffix = "";
-                        if (retries > retryTotal) {
-                            suffix = "TimeOut";
-                        }
-
                         if (self.cancelBuild) {
                             suffix = "Cancel";
+                        } else if (retries > retryTotal) {
+                            suffix = "TimeOut";
+                        } else if (statusResponse.errorCode === "UPSTREAM_UNREACHABLE") {
+                            suffix = "Upstream";
                         }
                         updateStatus(`Fail${suffix}`, response.key, 0, true);
+                        if (statusResponse.error) {
+                            const detail = [statusResponse.error, statusResponse.errorCode, statusResponse.errorCause]
+                                .filter(Boolean)
+                                .join(" · ");
+                            gui_log(i18n.getMessage("firmwareFlasherCloudBuildFailedLog", [detail]));
+                        }
                         loadFailed();
                         return;
                     }
 
                     if (processing) {
                         updateStatus("Processing", response.key, retries * (100 / retryTotal), false);
+                    } else {
+                        updateStatus(cloudBuildPhaseStatusKey(statusResponse.phase), response.key, 0, false);
                     }
                 }, retrySeconds * 1000);
             }

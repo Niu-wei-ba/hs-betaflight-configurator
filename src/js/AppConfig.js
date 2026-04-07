@@ -13,17 +13,13 @@ function trimTrailingSlash(value) {
 export const appConfig = {
     appName: import.meta.env.VITE_APP_NAME || "HS-FPV | Betaflight镜像站",
     appTagline:
-        import.meta.env.VITE_APP_TAGLINE ||
-        "一个专注镜像部署的 Betaflight 兼容调参工具，支持固件刷写与预设托管。",
-    sourceCodeUrl:
-        import.meta.env.VITE_SOURCE_CODE_URL || "https://github.com/Niu-wei-ba/betaflight-configurator",
+        import.meta.env.VITE_APP_TAGLINE || "一个专注镜像部署的 Betaflight 兼容调参工具，支持固件刷写与预设托管。",
+    sourceCodeUrl: import.meta.env.VITE_SOURCE_CODE_URL || "https://github.com/Niu-wei-ba/betaflight-configurator",
     docsBaseUrl: trimTrailingSlash(import.meta.env.VITE_DOCS_BASE_URL || `${currentOrigin()}/docs/wiki`),
     buildApiBaseUrl: trimTrailingSlash(import.meta.env.VITE_BUILD_API_BASE_URL || currentOrigin()),
-    presetsOfficialUrl:
-        import.meta.env.VITE_PRESETS_OFFICIAL_URL || `${currentOrigin()}/presets/firmware-presets/`,
-    presetsBackupUrl:
-        import.meta.env.VITE_PRESETS_BACKUP_URL || `${currentOrigin()}/presets/firmware-presets/`,
-    documentationLabel: import.meta.env.VITE_DOCUMENTATION_LABEL || "Documentation",
+    presetsOfficialUrl: import.meta.env.VITE_PRESETS_OFFICIAL_URL || `${currentOrigin()}/presets/firmware-presets/`,
+    presetsBackupUrl: import.meta.env.VITE_PRESETS_BACKUP_URL || `${currentOrigin()}/presets/firmware-presets/`,
+    documentationLabel: import.meta.env.VITE_DOCUMENTATION_LABEL || "文档",
 };
 
 export function buildApiUrl(path = "") {

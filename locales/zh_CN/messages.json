@@ -3084,6 +3084,24 @@
     "firmwareFlasherCloudBuildStatus": {
         "message": "状态："
     },
+    "firmwareFlasherCloudBuildPending": {
+        "message": "排队中"
+    },
+    "firmwareFlasherCloudBuildProcessing": {
+        "message": "处理中"
+    },
+    "firmwareFlasherCloudBuildPhaseBuilding": {
+        "message": "等待云构建…"
+    },
+    "firmwareFlasherCloudBuildPhaseUploadingCos": {
+        "message": "正在上传到镜像存储…"
+    },
+    "firmwareFlasherCloudBuildFailedLog": {
+        "message": "云构建失败：$1"
+    },
+    "firmwareFlasherCloudBuildFailUpstream": {
+        "message": "镜像站无法连接官方云构建（请配置服务端 HTTPS 代理或等待热门固件预同步到 COS）"
+    },
     "firmwareFlasherReleaseFileUrl": {
         "message": "手动下载"
     },

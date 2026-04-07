@@ -1,6 +1,9 @@
 <template>
     <div class="logo">
-        <div class="brand">{{ appName }}</div>
+        <div class="brand_line">
+            <img class="brand_mark" :src="logoUrl" alt="HS-FPV" />
+            <div class="brand">{{ appName }}</div>
+        </div>
         <div class="logo_text">
             <span>{{ $t("versionLabelConfigurator") }}: {{ configuratorVersion }}</span>
             <span v-if="firmwareVersion && firmwareId">
@@ -13,6 +16,7 @@
 
 <script>
 import { appConfig } from "../../js/AppConfig";
+import logoUrl from "../../images/hs-logo.png";
 
 export default {
     props: {
@@ -36,6 +40,7 @@ export default {
     data() {
         return {
             appName: appConfig.appName,
+            logoUrl,
         };
     },
 };
@@ -53,11 +58,26 @@ export default {
     border-left: 3px solid var(--accent, #eea600);
 }
 
+.brand_line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.brand_mark {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    object-fit: contain;
+}
+
 .brand {
     font-size: 20px;
     font-weight: 700;
     line-height: 1.1;
     color: var(--text);
+    min-width: 0;
 }
 
 .logo_text {
@@ -82,6 +102,12 @@ export default {
 
     .brand {
         font-size: 14px;
+    }
+
+    .brand_mark {
+        width: 28px;
+        height: 28px;
+        flex-basis: 28px;
     }
 
     .logo_text {
