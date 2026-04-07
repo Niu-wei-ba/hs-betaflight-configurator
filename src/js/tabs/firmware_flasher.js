@@ -1110,6 +1110,11 @@ firmware_flasher.initialize = async function (callback) {
         });
 
         async function enforceOSDSelection() {
+            // Match official BFC: core build mode does not require an explicit OSD protocol choice.
+            if ($('input[name="coreBuildModeCheckbox"]').is(":checked")) {
+                return true;
+            }
+
             const firmwareVersion = $('select[name="firmware_version"] option:selected').text();
 
             // Skip OSD selection enforcement for firmware versions 4.3.x
