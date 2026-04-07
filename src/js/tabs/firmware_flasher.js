@@ -383,10 +383,6 @@ firmware_flasher.initialize = async function (callback) {
         }
 
         function buildOptions(data) {
-            if (!ispConnected()) {
-                return;
-            }
-
             // extract osd protocols from general options and add to osdProtocols
             console.log(`${self.logHead} buildOptions`, FC.CONFIG.buildOptions);
             self.cloudBuildOptions = FC.CONFIG.buildOptions || [];
