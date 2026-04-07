@@ -22,13 +22,7 @@
         "android:release": "vite build && node capacitor.config.generator.mjs && npx cap build android --release",
         "format": "prettier --write {src,test}/**/*.{js,vue,css,less}",
         "storybook": "start-storybook -p 6006",
-        "prepare": "husky install",
-        "firmware:manifest:validate": "node scripts/validate-firmware-manifest.mjs",
-        "firmware:metadata": "node scripts/generate-firmware-metadata.mjs",
-        "firmware:metadata:sync": "node scripts/sync-firmware-metadata.mjs",
-        "firmware:artifacts": "node scripts/mirror-firmware-artifacts.mjs",
-        "firmware:api": "node scripts/serve-firmware-api.mjs",
-        "test:firmware-metadata": "node scripts/validate-firmware-manifest.mjs && vitest run test/js/firmwareMetadata.test.js test/js/firmwareArtifacts.test.js"
+        "prepare": "husky install"
     },
     "window": {
         "icon": "images/bf_icon_128.png",
