@@ -10,6 +10,23 @@ function trimTrailingSlash(value) {
     return String(value || "").replace(/\/+$/, "");
 }
 
+function ensureLeadingSlash(value) {
+    return String(value || "").startsWith("/") ? String(value || "") : `/${String(value || "")}`;
+}
+
+function buildMirrorUrl(path = "") {
+    return `${appConfig.buildApiBaseUrl}${ensureLeadingSlash(path)}`;
+}
+
+function encodePathSegments(pathname) {
+    const segments = String(pathname || "")
+        .split("/")
+        .filter(Boolean)
+        .map((segment) => encodeURIComponent(segment));
+
+    return segments.length ? `/${segments.join("/")}` : "";
+}
+
 export const appConfig = {
     appName: import.meta.env.VITE_APP_NAME || "HS-FPV | Betaflight镜像站",
     appTagline:
@@ -25,11 +42,11 @@ export const appConfig = {
      * Default false: list all releases from `/api/targets/{target}` like official Betaflight Configurator.
      */
     firmwareUseVersionIndexFilter: import.meta.env.VITE_FIRMWARE_USE_VERSION_INDEX_FILTER === "true",
+    proxyThirdPartyPresets: import.meta.env.VITE_PROXY_THIRD_PARTY_PRESETS !== "false",
 };
 
 export function buildApiUrl(path = "") {
-    const normalizedPath = String(path).startsWith("/") ? path : `/${path}`;
-    return `${appConfig.buildApiBaseUrl}/api${normalizedPath}`;
+    return buildMirrorUrl(`/api${ensureLeadingSlash(path)}`);
 }
 
 export function buildDocsUrl(path = "") {
@@ -47,6 +64,41 @@ export function buildLogUrl(buildKey) {
 
 export function buildJsonUrl(buildKey) {
     return buildApiUrl(`/builds/${buildKey}/json`);
+}
+
+export function buildRawProxyBaseUrl(baseUrl) {
+    const upstream = new URL(baseUrl);
+    const protocol = upstream.protocol.replace(/:$/, "");
+    let proxyUrl = `${buildApiUrl(`/external/raw/${encodeURIComponent(protocol)}/${encodeURIComponent(upstream.host)}`)}${encodePathSegments(upstream.pathname)}`;
+
+    if (upstream.pathname.endsWith("/") && !proxyUrl.endsWith("/")) {
+        proxyUrl += "/";
+    }
+
+    if (upstream.search) {
+        proxyUrl += upstream.search;
+    }
+
+    if (upstream.hash) {
+        proxyUrl += upstream.hash;
+    }
+
+    return proxyUrl;
+}
+
+export function buildGitHubApiProxyUrl(path = "") {
+    const normalizedPath = String(path).replace(/^\/+/, "");
+    return buildApiUrl(`/external/github/${normalizedPath}`);
+}
+
+export function buildOsmTileProxyUrl() {
+    return buildApiUrl("/external/maps/osm/{z}/{x}/{y}.png");
+}
+
+export function buildGoogleTileProxyUrl(layer) {
+    const params = new URLSearchParams();
+    params.set("lyrs", layer);
+    return `${buildApiUrl("/external/maps/google")}?${params.toString()}&x={x}&y={y}&z={z}`;
 }
 
 export function resolveMirrorAssetUrl(path) {

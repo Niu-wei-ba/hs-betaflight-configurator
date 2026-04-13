@@ -3140,6 +3140,9 @@
     "firmwareFlasherReleaseMCU": {
         "message": "MCU"
     },
+    "firmwareFlasherCloudBuildDetails": {
+        "message": "云构建详情："
+    },
     "firmwareFlasherCloudBuildLogUrl": {
         "message": "显示日志"
     },
@@ -3161,8 +3164,59 @@
     "firmwareFlasherCloudBuildFailedLog": {
         "message": "云构建失败：$1"
     },
+    "firmwareFlasherCloudBuildSuccessCached": {
+        "message": "成功（命中缓存）"
+    },
+    "firmwareFlasherCloudBuildSuccess": {
+        "message": "成功"
+    },
+    "firmwareFlasherCloudBuildFailCancel": {
+        "message": "已取消"
+    },
+    "firmwareFlasherCloudBuildFailTimeOut": {
+        "message": "超时（请重试）"
+    },
+    "firmwareFlasherCloudBuildFailRequest": {
+        "message": "构建请求失败（请检查构建配置，例如自定义宏）"
+    },
     "firmwareFlasherCloudBuildFailUpstream": {
         "message": "镜像站无法连接官方云构建（请配置服务端 HTTPS 代理或等待热门固件预同步到 COS）"
+    },
+    "firmwareFlasherCloudBuildFail": {
+        "message": "失败（请查看日志）"
+    },
+    "firmwareFlasherLoadTimingDetails": {
+        "message": "加载耗时："
+    },
+    "firmwareFlasherLoadTimingTotal": {
+        "message": "总耗时："
+    },
+    "firmwareFlasherLoadTimingEmpty": {
+        "message": "暂无计时数据"
+    },
+    "firmwareFlasherLoadTimingStepRequestBuild": {
+        "message": "请求构建"
+    },
+    "firmwareFlasherLoadTimingStepCloudWait": {
+        "message": "等待云构建"
+    },
+    "firmwareFlasherLoadTimingStepDownloadFirmware": {
+        "message": "下载固件"
+    },
+    "firmwareFlasherLoadTimingStepParseFirmware": {
+        "message": "解析固件"
+    },
+    "firmwareFlasherLoadTimingStatusRunning": {
+        "message": "进行中"
+    },
+    "firmwareFlasherLoadTimingStatusSuccess": {
+        "message": "成功"
+    },
+    "firmwareFlasherLoadTimingStatusFailed": {
+        "message": "失败"
+    },
+    "firmwareFlasherLoadTimingStatusCancelled": {
+        "message": "已取消"
     },
     "firmwareFlasherReleaseFileUrl": {
         "message": "手动下载"

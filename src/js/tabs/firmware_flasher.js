@@ -16,6 +16,17 @@ import DFU from "../protocols/webusbdfu";
 import AutoBackup from "../utils/AutoBackup.js";
 import AutoDetect from "../utils/AutoDetect.js";
 import { groupFirmwareTargetDescriptors, normalizeFirmwareTargetDescriptors } from "../utils/firmwareTargets.js";
+import {
+    REMOTE_LOAD_TIMING_STEPS,
+    cancelLoadTimingStep as cancelRemoteLoadTimingStep,
+    completeLoadTimingStep as completeRemoteLoadTimingStep,
+    createLoadTiming,
+    failLoadTimingStep as failRemoteLoadTimingStep,
+    finishLoadTiming,
+    formatLoadTimingDuration,
+    setLoadTimingPhase,
+    startLoadTimingStep as startRemoteLoadTimingStep,
+} from "../utils/firmwareLoadTiming.js";
 import { EventBus } from "../../components/eventBus";
 import { ispConnected } from "../utils/connection.js";
 import FC from "../fc";
@@ -36,6 +47,7 @@ const firmware_flasher = {
     config: {},
     developmentFirmwareLoaded: false, // Is the firmware to be flashed from the development branch?
     cancelBuild: false,
+    loadTiming: null,
     // Properties to preserve firmware state during flashing
     preFlashingMessage: null,
     preFlashingMessageType: null,
@@ -89,6 +101,7 @@ firmware_flasher.initialize = async function (callback) {
 
     self.cloudBuildKey = null;
     self.cloudBuildOptions = null;
+    self.loadTiming = null;
 
     self.localFirmwareLoaded = false;
     self.isConfigLocal = false;
@@ -104,12 +117,10 @@ firmware_flasher.initialize = async function (callback) {
     }
 
     async function onDocumentLoad() {
-        function parseHex(str, callback) {
+        async function parseHexString(str) {
             self.intel_hex = str;
             self.firmware_type = "HEX";
-            read_hex_file(str).then((data) => {
-                callback(data);
-            });
+            return await read_hex_file(str);
         }
 
         function showLoadedFirmware(filename, bytes) {
@@ -195,31 +206,28 @@ firmware_flasher.initialize = async function (callback) {
             i18n.localizePage();
         }
 
-        function processHex(data, key) {
+        async function processHex(data, key) {
             self.firmware_type = "HEX";
             const bytes = data instanceof Uint8Array ? data : data instanceof ArrayBuffer ? new Uint8Array(data) : null;
 
             if (!bytes || bytes.byteLength === 0) {
                 loadFailed();
-                return;
+                return false;
             }
 
             const decoder = new TextDecoder("utf-8");
             self.intel_hex = decoder.decode(bytes);
 
-            parseHex(self.intel_hex, function (data) {
-                self.parsed_hex = data;
+            self.parsed_hex = await parseHexString(self.intel_hex);
 
-                if (self.parsed_hex) {
-                    showLoadedFirmware(key, self.parsed_hex.bytes_total);
-                } else {
-                    self.flashingMessage(
-                        i18n.getMessage("firmwareFlasherHexCorrupted"),
-                        self.FLASH_MESSAGE_TYPES.INVALID,
-                    );
-                    self.enableFlashButton(false);
-                }
-            });
+            if (self.parsed_hex) {
+                showLoadedFirmware(key, self.parsed_hex.bytes_total);
+                return true;
+            }
+
+            self.flashingMessage(i18n.getMessage("firmwareFlasherHexCorrupted"), self.FLASH_MESSAGE_TYPES.INVALID);
+            self.enableFlashButton(false);
+            return false;
         }
 
         async function processUf2(data, key) {
@@ -243,35 +251,64 @@ firmware_flasher.initialize = async function (callback) {
 
             if (!bytes || bytes.byteLength === 0) {
                 loadFailed();
-                return;
+                return false;
             }
             self.uf2_binary = bytes;
             showLoadedFirmware(key, bytes.byteLength);
+            return true;
         }
 
-        async function processFile(data, key) {
+        async function processFile(data, key, { remoteTiming = false } = {}) {
             if (!data || !key) {
                 loadFailed();
-                return;
+                if (remoteTiming) {
+                    self.failLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.PARSE_FIRMWARE);
+                    self.finishLoadTimingSession("failed");
+                }
+                return false;
             }
 
-            switch (getExtension(key)) {
-                case "hex":
-                    processHex(data, key);
-                    break;
-                case "uf2":
-                    await processUf2(data, key);
-                    break;
-                default:
-                    self.flashingMessage(
-                        i18n.getMessage("firmwareFlasherInvalidFileFormat") || "Invalid file format",
-                        self.FLASH_MESSAGE_TYPES.INVALID,
-                    );
-                    loadFailed();
+            if (remoteTiming) {
+                self.startLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.PARSE_FIRMWARE);
+            }
+
+            let success = false;
+
+            try {
+                switch (getExtension(key)) {
+                    case "hex":
+                        success = await processHex(data, key);
+                        break;
+                    case "uf2":
+                        success = await processUf2(data, key);
+                        break;
+                    default:
+                        self.flashingMessage(
+                            i18n.getMessage("firmwareFlasherInvalidFileFormat") || "Invalid file format",
+                            self.FLASH_MESSAGE_TYPES.INVALID,
+                        );
+                        loadFailed();
+                        success = false;
+                }
+            } catch (error) {
+                console.error("Failed to process firmware file:", error);
+                loadFailed();
+                success = false;
+            }
+
+            if (remoteTiming) {
+                if (success) {
+                    self.completeLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.PARSE_FIRMWARE);
+                    self.finishLoadTimingSession("success");
+                } else {
+                    self.failLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.PARSE_FIRMWARE);
+                    self.finishLoadTimingSession("failed");
+                }
             }
 
             self.enableLoadRemoteFileButton(true);
             $("a.load_remote_file").text(i18n.getMessage("firmwareFlasherButtonLoadOnline"));
+            return success;
         }
 
         async function populateTargetList(targets) {
@@ -532,6 +569,7 @@ firmware_flasher.initialize = async function (callback) {
         async function selectFirmware(release) {
             $("div.build_configuration").slideUp();
             $("div.release_info").slideUp();
+            self.clearLoadTiming();
 
             if (!self.localFirmwareLoaded) {
                 self.enableFlashButton(false);
@@ -733,6 +771,7 @@ firmware_flasher.initialize = async function (callback) {
             self.firmware_type = undefined;
             self.localFirmwareLoaded = false;
             self.filename = null;
+            self.clearLoadTiming();
         }
 
         $('select[name="board"]').select2();
@@ -783,6 +822,7 @@ firmware_flasher.initialize = async function (callback) {
 
                 $("div.release_info").slideUp();
                 $("div.build_configuration").slideUp();
+                self.clearLoadTiming();
 
                 if (!self.localFirmwareLoaded) {
                     self.enableFlashButton(false);
@@ -1043,24 +1083,22 @@ firmware_flasher.initialize = async function (callback) {
                 if (extension === "uf2") {
                     const data = await FileSystem.readFileAsBlob(file);
                     self.localFirmwareLoaded = true;
-                    processUf2(data, file.name);
+                    await processUf2(data, file.name);
                 } else {
                     const data = await FileSystem.readFile(file);
                     if (extension === "hex") {
-                        parseHex(data, function (data) {
-                            self.parsed_hex = data;
+                        self.parsed_hex = await parseHexString(data);
 
-                            if (self.parsed_hex) {
-                                self.localFirmwareLoaded = true;
+                        if (self.parsed_hex) {
+                            self.localFirmwareLoaded = true;
 
-                                showLoadedFirmware(file.name, self.parsed_hex.bytes_total);
-                            } else {
-                                self.flashingMessage(
-                                    i18n.getMessage("firmwareFlasherHexCorrupted"),
-                                    self.FLASH_MESSAGE_TYPES.INVALID,
-                                );
-                            }
-                        });
+                            showLoadedFirmware(file.name, self.parsed_hex.bytes_total);
+                        } else {
+                            self.flashingMessage(
+                                i18n.getMessage("firmwareFlasherHexCorrupted"),
+                                self.FLASH_MESSAGE_TYPES.INVALID,
+                            );
+                        }
                     } else {
                         clearBufferedFirmware();
 
@@ -1161,6 +1199,7 @@ firmware_flasher.initialize = async function (callback) {
 
             if ($('select[name="firmware_version"]').val() === "0") {
                 gui_log(i18n.getMessage("firmwareFlasherNoFirmwareSelected"));
+                self.enableLoadRemoteFileButton(true);
                 return;
             }
 
@@ -1185,16 +1224,34 @@ firmware_flasher.initialize = async function (callback) {
                 }
             }
 
-            async function processBuildSuccess(response, statusResponse, suffix) {
-                if (statusResponse.status !== "success") {
-                    return;
+            async function loadRemoteFirmware(firmwareUrl, fileName) {
+                self.startLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.DOWNLOAD_FIRMWARE);
+
+                let firmwareData;
+                try {
+                    firmwareData = await self.buildApi.loadTargetFirmware(firmwareUrl);
+                } catch (error) {
+                    console.error("Failed to download firmware:", error);
                 }
+
+                if (!firmwareData) {
+                    self.failLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.DOWNLOAD_FIRMWARE);
+                    self.finishLoadTimingSession("failed");
+                    loadFailed();
+                    return false;
+                }
+
+                self.completeLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.DOWNLOAD_FIRMWARE);
+                return await processFile(firmwareData, fileName, { remoteTiming: true });
+            }
+
+            async function processBuildSuccess(response, statusResponse, suffix) {
                 updateStatus(`Success${suffix}`, response.key, 100, true);
                 if (statusResponse.configuration !== undefined && !self.isConfigLocal) {
                     setBoardConfig(statusResponse.configuration);
                 }
                 const firmwareUrl = statusResponse.url || response.url;
-                processFile(await self.buildApi.loadTargetFirmware(firmwareUrl), response.file);
+                return await loadRemoteFirmware(firmwareUrl, response.file);
             }
 
             async function requestCloudBuild(targetDetail) {
@@ -1246,13 +1303,24 @@ firmware_flasher.initialize = async function (callback) {
                 }
 
                 console.info("Build request:", request);
-                let response = await self.buildApi.requestBuild(request);
-                if (!response) {
-                    updateStatus("FailRequest", "", 0, false);
-                    loadFailed();
-                    return;
+                self.startLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.REQUEST_BUILD);
+
+                let response;
+                try {
+                    response = await self.buildApi.requestBuild(request);
+                } catch (error) {
+                    console.error("Build request failed:", error);
                 }
 
+                if (!response) {
+                    self.failLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.REQUEST_BUILD);
+                    self.finishLoadTimingSession("failed");
+                    updateStatus("FailRequest", "", 0, false);
+                    loadFailed();
+                    return false;
+                }
+
+                self.completeLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.REQUEST_BUILD);
                 console.info("Build response:", response);
 
                 // Complete the summary object to be used later
@@ -1260,18 +1328,35 @@ firmware_flasher.initialize = async function (callback) {
 
                 if (!targetDetail.cloudBuild) {
                     // it is a previous release, so simply load the file
-                    processFile(await self.buildApi.loadTargetFirmware(response.url), response.file);
-                    return;
+                    return await loadRemoteFirmware(response.url, response.file);
                 }
 
                 self.cancelBuild = false;
+                self.startLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT);
 
-                let statusResponse = await self.buildApi.requestBuildStatus(response.key);
+                let statusResponse;
+                try {
+                    statusResponse = await self.buildApi.requestBuildStatus(response.key);
+                } catch (error) {
+                    console.error("Failed to request build status:", error);
+                }
+
+                if (!statusResponse) {
+                    self.failLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT);
+                    self.finishLoadTimingSession("failed");
+                    updateStatus("Fail", response.key, 0, true);
+                    loadFailed();
+                    return false;
+                }
+
+                if (statusResponse.phase) {
+                    self.setLoadTimingPhase(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT, statusResponse.phase);
+                }
 
                 if (statusResponse.status === "success") {
                     // will be cached already, no need to wait.
-                    await processBuildSuccess(response, statusResponse, "Cached");
-                    return;
+                    self.completeLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT);
+                    return await processBuildSuccess(response, statusResponse, "Cached");
                 }
 
                 updateStatus(cloudBuildPhaseStatusKey(statusResponse?.phase), response.key, 0, false);
@@ -1283,10 +1368,19 @@ firmware_flasher.initialize = async function (callback) {
                 let timeout = 120;
                 const timer = setInterval(async () => {
                     retries++;
-                    let statusResponse = await self.buildApi.requestBuildStatus(response.key);
+                    let statusResponse;
+                    try {
+                        statusResponse = await self.buildApi.requestBuildStatus(response.key);
+                    } catch (error) {
+                        console.error("Failed to request build status:", error);
+                    }
 
                     if (!statusResponse) {
                         return;
+                    }
+
+                    if (statusResponse.phase) {
+                        self.setLoadTimingPhase(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT, statusResponse.phase);
                     }
 
                     if (statusResponse.timeOut !== undefined) {
@@ -1299,21 +1393,32 @@ firmware_flasher.initialize = async function (callback) {
                     const retryTotal = timeout / retrySeconds;
 
                     if (statusResponse.status !== "queued" || retries > retryTotal || self.cancelBuild) {
+                        const wasCancelled = self.cancelBuild;
                         self.enableCancelBuildButton(false);
                         clearInterval(timer);
 
                         if (statusResponse.status === "success") {
-                            processBuildSuccess(response, statusResponse, "");
+                            self.completeLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT);
+                            await processBuildSuccess(response, statusResponse, "");
                             return;
                         }
 
                         let suffix = "";
-                        if (self.cancelBuild) {
+                        if (wasCancelled) {
                             suffix = "Cancel";
+                            self.cancelLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT);
+                            self.finishLoadTimingSession("cancelled");
                         } else if (retries > retryTotal) {
                             suffix = "TimeOut";
+                            self.failLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT);
+                            self.finishLoadTimingSession("failed");
                         } else if (statusResponse.errorCode === "UPSTREAM_UNREACHABLE") {
                             suffix = "Upstream";
+                            self.failLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT);
+                            self.finishLoadTimingSession("failed");
+                        } else {
+                            self.failLoadTimingStep(REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT);
+                            self.finishLoadTimingSession("failed");
                         }
                         updateStatus(`Fail${suffix}`, response.key, 0, true);
                         if (statusResponse.error) {
@@ -1322,6 +1427,7 @@ firmware_flasher.initialize = async function (callback) {
                                 .join(" · ");
                             gui_log(i18n.getMessage("firmwareFlasherCloudBuildFailedLog", [detail]));
                         }
+                        self.cancelBuild = false;
                         loadFailed();
                         return;
                     }
@@ -1340,6 +1446,7 @@ firmware_flasher.initialize = async function (callback) {
                 self.enableLoadRemoteFileButton(false);
 
                 showReleaseNotes(self.targetDetail);
+                self.beginLoadTimingSession();
 
                 await requestCloudBuild(self.targetDetail);
             } else {
@@ -1347,6 +1454,7 @@ firmware_flasher.initialize = async function (callback) {
                     .attr("i18n", "firmwareFlasherFailedToLoadOnlineFirmware")
                     .removeClass("i18n-replaced");
                 i18n.localizePage();
+                self.enableLoadRemoteFileButton(true);
             }
         });
 
@@ -1628,6 +1736,159 @@ firmware_flasher.validateBuildKey = function () {
     return this.cloudBuildKey?.length === 32 && ispConnected();
 };
 
+firmware_flasher.LOAD_TIMING_STEP_ORDER = [
+    REMOTE_LOAD_TIMING_STEPS.REQUEST_BUILD,
+    REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT,
+    REMOTE_LOAD_TIMING_STEPS.DOWNLOAD_FIRMWARE,
+    REMOTE_LOAD_TIMING_STEPS.PARSE_FIRMWARE,
+];
+
+firmware_flasher.getLoadTimingStepLabel = function (key) {
+    const messageKeys = {
+        [REMOTE_LOAD_TIMING_STEPS.REQUEST_BUILD]: "firmwareFlasherLoadTimingStepRequestBuild",
+        [REMOTE_LOAD_TIMING_STEPS.CLOUD_WAIT]: "firmwareFlasherLoadTimingStepCloudWait",
+        [REMOTE_LOAD_TIMING_STEPS.DOWNLOAD_FIRMWARE]: "firmwareFlasherLoadTimingStepDownloadFirmware",
+        [REMOTE_LOAD_TIMING_STEPS.PARSE_FIRMWARE]: "firmwareFlasherLoadTimingStepParseFirmware",
+    };
+
+    return i18n.getMessage(messageKeys[key]) || key;
+};
+
+firmware_flasher.getLoadTimingStatusLabel = function (status) {
+    const messageKeys = {
+        running: "firmwareFlasherLoadTimingStatusRunning",
+        success: "firmwareFlasherLoadTimingStatusSuccess",
+        failed: "firmwareFlasherLoadTimingStatusFailed",
+        cancelled: "firmwareFlasherLoadTimingStatusCancelled",
+    };
+
+    return i18n.getMessage(messageKeys[status]) || status;
+};
+
+firmware_flasher.beginLoadTimingSession = function () {
+    this.loadTiming = createLoadTiming();
+    this.renderLoadTiming();
+    return this.loadTiming;
+};
+
+firmware_flasher.clearLoadTiming = function () {
+    this.loadTiming = null;
+    this.renderLoadTiming();
+};
+
+firmware_flasher.startLoadTimingStep = function (key) {
+    if (!this.loadTiming) {
+        this.beginLoadTimingSession();
+    }
+
+    startRemoteLoadTimingStep(this.loadTiming, key, this.getLoadTimingStepLabel(key));
+    this.renderLoadTiming();
+};
+
+firmware_flasher.completeLoadTimingStep = function (key) {
+    if (!this.loadTiming) {
+        return;
+    }
+
+    completeRemoteLoadTimingStep(this.loadTiming, key);
+    this.renderLoadTiming();
+};
+
+firmware_flasher.failLoadTimingStep = function (key) {
+    if (!this.loadTiming) {
+        return;
+    }
+
+    failRemoteLoadTimingStep(this.loadTiming, key);
+    this.renderLoadTiming();
+};
+
+firmware_flasher.cancelLoadTimingStep = function (key) {
+    if (!this.loadTiming) {
+        return;
+    }
+
+    cancelRemoteLoadTimingStep(this.loadTiming, key);
+    this.renderLoadTiming();
+};
+
+firmware_flasher.setLoadTimingPhase = function (key, phase) {
+    if (!this.loadTiming) {
+        return;
+    }
+
+    setLoadTimingPhase(this.loadTiming, key, phase);
+    this.renderLoadTiming();
+};
+
+firmware_flasher.finishLoadTimingSession = function (status) {
+    if (!this.loadTiming) {
+        return null;
+    }
+
+    finishLoadTiming(this.loadTiming, status);
+    this.renderLoadTiming();
+    return this.loadTiming;
+};
+
+firmware_flasher.renderLoadTiming = function () {
+    const container = $("#loadTimingInfo");
+    if (!container.length) {
+        return this;
+    }
+
+    if (!this.loadTiming) {
+        container.hide();
+        container.find(".load_timing_steps").empty();
+        container.find(".load_timing_total_value").text("");
+        container.find(".load_timing_empty").hide();
+        return this;
+    }
+
+    const loadTiming = this.loadTiming;
+    const totalMs =
+        loadTiming.totalMs ??
+        (loadTiming.startedAt != null && loadTiming.finishedAt == null ? Date.now() - loadTiming.startedAt : null);
+    const totalValue = container.find(".load_timing_total_value");
+    const stepsList = container.find(".load_timing_steps");
+    const emptyState = container.find(".load_timing_empty");
+
+    totalValue.text(formatLoadTimingDuration(totalMs));
+    stepsList.empty();
+
+    const stepsToRender = this.LOAD_TIMING_STEP_ORDER.map((key) =>
+        loadTiming.steps.find((step) => step.key === key),
+    ).filter(Boolean);
+
+    if (stepsToRender.length === 0) {
+        emptyState.text(i18n.getMessage("firmwareFlasherLoadTimingEmpty")).show();
+    } else {
+        emptyState.hide();
+    }
+
+    stepsToRender.forEach((step) => {
+        const durationMs =
+            step.durationMs ?? (step.startedAt != null && step.finishedAt == null ? Date.now() - step.startedAt : null);
+        const item = $("<li>")
+            .addClass("load_timing_step")
+            .addClass(`status-${step.status || "pending"}`);
+        const meta = $("<div>").addClass("load_timing_step_meta");
+        const label = $("<span>").addClass("load_timing_step_label").text(step.label);
+        const badge = $("<span>")
+            .addClass("load_timing_step_status")
+            .addClass(`status-${step.status || "pending"}`)
+            .text(this.getLoadTimingStatusLabel(step.status || "pending"));
+        const duration = $("<span>").addClass("load_timing_step_duration").text(formatLoadTimingDuration(durationMs));
+
+        meta.append(label, badge);
+        item.append(meta, duration);
+        stepsList.append(item);
+    });
+
+    container.show();
+    return this;
+};
+
 firmware_flasher.cleanup = function (callback) {
     // unbind "global" events
     $(document).unbind("keypress");
@@ -1648,7 +1909,9 @@ firmware_flasher.cleanup = function (callback) {
 
 firmware_flasher.enableCancelBuildButton = function (enabled) {
     $("a.cloud_build_cancel").toggleClass("disabled", !enabled);
-    firmware_flasher.cancelBuild = false; // remove the semaphore
+    if (enabled) {
+        firmware_flasher.cancelBuild = false;
+    }
 };
 
 firmware_flasher.enableFlashButton = function (enabled) {

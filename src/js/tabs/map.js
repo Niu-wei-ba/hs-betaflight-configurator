@@ -4,6 +4,7 @@ import { Tile, Vector as LayerVector } from "ol/layer";
 import { OSM, XYZ, Vector as SourceVector } from "ol/source";
 import { Icon, Style } from "ol/style";
 import { Point } from "ol/geom";
+import { buildGoogleTileProxyUrl, buildOsmTileProxyUrl } from "../AppConfig";
 
 const DEFAULT_ZOOM = 17,
     DEFAULT_LON = 0,
@@ -21,18 +22,20 @@ export function initMap() {
     });
 
     const osmLayer = new Tile({
-        source: new OSM(),
+        source: new OSM({
+            url: buildOsmTileProxyUrl(),
+        }),
     });
 
     const googleSatLayer = new Tile({
         source: new XYZ({
-            url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+            url: buildGoogleTileProxyUrl("s"),
         }),
     });
 
     const googleHybridLayer = new Tile({
         source: new XYZ({
-            url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+            url: buildGoogleTileProxyUrl("y"),
         }),
     });
 

@@ -1,8 +1,10 @@
+import { buildGitHubApiProxyUrl } from "./AppConfig";
+
 // NOTE: this files seems to be unused anywhere
 const GitHubApi = function () {
     const self = this;
 
-    self.GITHUB_API_URL = "https://api.github.com/";
+    self.GITHUB_API_URL = buildGitHubApiProxyUrl("/");
 };
 
 GitHubApi.prototype.getFileLastCommitInfo = function (project, branch, filename, callback) {

@@ -1,102 +1,13 @@
 <template>
     <BaseTab tab-name="landing">
-        <div class="content_wrapper mirror-landing">
-            <!-- Hero Section -->
-            <section class="hero-section">
-                <div class="brand-badge">
-                    <img class="hero-logo" :src="logoUrl" alt="HS-FPV" />
-                    <span class="badge-text"
-                        ><svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="icon-inline"
-                        >
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                        </svg>
-                        国内加速镜像</span
-                    >
-                </div>
-                <h1 class="main-title">{{ appConfig.appName }}</h1>
-                <p class="subtitle">保留原版所有功能，彻底解决国内网络环境下固件、预设下载慢或失败的问题。</p>
-                <div class="features-row">
-                    <div class="feature-item">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="icon-inline"
-                        >
-                            <path
-                                d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"
-                            ></path>
-                            <path
-                                d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"
-                            ></path>
-                            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
-                            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
-                        </svg>
-                        极速固件下载
-                    </div>
-                    <div class="feature-item">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="icon-inline"
-                        >
-                            <path d="m7.5 4.27 9 5.15"></path>
-                            <path
-                                d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
-                            ></path>
-                            <path d="m3.3 7 8.7 5 8.7-5"></path>
-                            <path d="M12 22V12"></path>
-                        </svg>
-                        预设环境秒连
-                    </div>
-                    <div class="feature-item">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="icon-inline"
-                        >
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                            <path d="M3 3v5h5"></path>
-                        </svg>
-                        官方数据同步
-                    </div>
-                </div>
-            </section>
-
-            <!-- Community Redirect Section -->
-            <section class="community-section">
-                <div class="community-card">
-                    <div class="card-header">
-                        <h2>探索花生 FPV 社区</h2>
-                        <p>一个更纯粹的穿越机社区，少一点套路营销，多一点真实的飞行经验。</p>
-                    </div>
-
-                    <div class="community-grid">
-                        <div class="grid-item">
-                            <span class="grid-icon">
-                                <svg
+        <div class="content_wrapper landing-page">
+            <section class="landing-hero">
+                <div class="hero-copy">
+                    <div class="hero-kicker">HS-FPV / Betaflight Mirror</div>
+                    <div class="hero-brand-row">
+                        <div class="brand-badge">
+                            <span class="badge-text"
+                                ><svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     viewBox="0 0 24 24"
                                     fill="none"
@@ -104,87 +15,27 @@
                                     stroke-width="2"
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
+                                    class="icon-inline"
                                 >
-                                    <path
-                                        d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-                                    ></path>
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                                 </svg>
-                            </span>
-                            <div class="grid-content">
-                                <h3>配置广场 & VS对比</h3>
-                                <p>看真实配置，拼性能参数</p>
-                            </div>
+                                国内加速镜像</span
+                            >
                         </div>
-                        <div class="grid-item">
-                            <span class="grid-icon">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path
-                                        d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"
-                                    ></path>
-                                    <path d="M9 18h6"></path>
-                                    <path d="M10 22h4"></path>
-                                </svg>
-                            </span>
-                            <div class="grid-content">
-                                <h3>炸机天堂</h3>
-                                <p>真实的复盘与进阶经验</p>
-                            </div>
-                        </div>
-                        <div class="grid-item">
-                            <span class="grid-icon">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <rect x="3" y="11" width="18" height="10" rx="2"></rect>
-                                    <circle cx="12" cy="5" r="2"></circle>
-                                    <path d="M12 7v4"></path>
-                                    <line x1="8" y1="16" x2="8" y2="16"></line>
-                                    <line x1="16" y1="16" x2="16" y2="16"></line>
-                                </svg>
-                            </span>
-                            <div class="grid-content">
-                                <h3>FPV专属AI教官</h3>
-                                <p>24小时排雷，新手答疑</p>
-                            </div>
-                        </div>
-                        <div class="grid-item">
-                            <span class="grid-icon">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                                </svg>
-                            </span>
-                            <div class="grid-content">
-                                <h3>教程与硬核社群</h3>
-                                <p>不被嘲讽的新手成长环境</p>
-                            </div>
-                        </div>
+                        <span class="hero-hint">固件、预设、社区入口合并成一个更顺手的起点</span>
                     </div>
-
-                    <div class="cta-container">
-                        <a href="https://hs-fpv.com/" target="_blank" rel="noopener noreferrer" class="primary-cta">
+                    <h1 class="hero-title">{{ appConfig.appName }}</h1>
+                    <p class="hero-subtitle">
+                        保留原版全部配置体验，把下载、同步与社区浏览整理成一条更快、更轻的落地路径。
+                    </p>
+                    <div class="hero-actions">
+                        <a
+                            href="https://hs-fpv.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="primary-cta community-cta main-community-btn"
+                        >
+                            <span class="btn-pulse"></span>
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 24 24"
@@ -199,13 +50,118 @@
                                 <path d="M10 14 21 3"></path>
                                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                             </svg>
-                            立即访问 HS-FPV.COM
+                            <span class="btn-text">
+                                <span class="btn-label">进入 HS-FPV 社区</span>
+                                <span class="btn-sublabel">配置广场 · 社区讨论 · 经验分享</span>
+                            </span>
+                            <span class="btn-badge">热门</span>
                         </a>
+                    </div>
+                </div>
+
+                <div class="hero-visual">
+                    <div class="hero-visual-frame">
+                        <ParticleLogoHero :image-src="logoUrl" :particle-budget="10400" />
                     </div>
                 </div>
             </section>
 
-            <!-- Language Switcher -->
+            <section class="support-rail" aria-label="核心能力">
+                <div class="support-item">
+                    <span class="support-label">01</span>
+                    <h2>极速固件下载</h2>
+                    <p>把高频固件获取从等待变成即达，减少配置开始前的空转时间。</p>
+                </div>
+                <div class="support-item">
+                    <span class="support-label">02</span>
+                    <h2>预设环境秒连</h2>
+                    <p>镜像同步官方数据源，预设与配置切换都保持原始使用习惯。</p>
+                </div>
+                <div class="support-item">
+                    <span class="support-label">03</span>
+                    <h2>社区入口合一</h2>
+                    <p>配置广场、炸机复盘、AI 教官与教程社群，在同一页就能完成跳转。</p>
+                </div>
+            </section>
+
+            <section class="community-story">
+                <div class="story-heading">
+                    <p class="story-kicker">Community</p>
+                    <h2>探索花生 FPV 社区</h2>
+                    <p class="story-summary">一个更纯粹的穿越机社区，少一点套路营销，多一点真实的飞行经验。</p>
+                </div>
+
+                <div class="story-layout">
+                    <div class="story-list">
+                        <a href="https://hs-fpv.com/" target="_blank" rel="noopener noreferrer" class="story-item">
+                            <span class="story-index">01</span>
+                            <div class="story-copy">
+                                <h3>配置广场 & VS 对比</h3>
+                                <p>看真实配置，拼性能参数，快速找到更适合自己的方案。</p>
+                            </div>
+                        </a>
+                        <a href="https://hs-fpv.com/" target="_blank" rel="noopener noreferrer" class="story-item">
+                            <span class="story-index">02</span>
+                            <div class="story-copy">
+                                <h3>炸机天堂</h3>
+                                <p>真实复盘、失误拆解和进阶经验，少走弯路比堆参数更重要。</p>
+                            </div>
+                        </a>
+                        <a href="https://hs-fpv.com/" target="_blank" rel="noopener noreferrer" class="story-item">
+                            <span class="story-index">03</span>
+                            <div class="story-copy">
+                                <h3>社区问答与排障</h3>
+                                <p>把常见问题、排障经验和配置讨论集中起来，减少来回查找的成本。</p>
+                            </div>
+                        </a>
+                        <a href="https://hs-fpv.com/" target="_blank" rel="noopener noreferrer" class="story-item">
+                            <span class="story-index">04</span>
+                            <div class="story-copy">
+                                <h3>教程与硬核社群</h3>
+                                <p>更友好的成长环境，让资料、交流和实操能自然串起来。</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="story-aside">
+                        <a
+                            href="https://hs-fpv.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="community-spotlight"
+                        >
+                            <span class="spotlight-badge">推荐</span>
+                            <span class="spotlight-kicker">Fast Entry</span>
+                            <strong>社区入口</strong>
+                            <p>
+                                直接进入配置广场、炸机复盘、AI
+                                教官与教程社群，不再把"刷机之后再去哪里看"留给用户自己找。
+                            </p>
+                            <span class="spotlight-link">
+                                现在打开
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <path d="M5 12h14"></path>
+                                    <path d="M12 5l7 7-7 7"></path>
+                                </svg>
+                            </span>
+                        </a>
+                        <p class="aside-copy">
+                            下载、配置、交流不再被拆成几段孤立流程。你可以先刷机，再看别人的真实配置，最后把问题直接带进社区继续解决。
+                        </p>
+                        <div class="aside-divider"></div>
+                        <p class="aside-meta">同步官方数据，保留原版操作感，只把路径变短。</p>
+                    </div>
+                </div>
+            </section>
+
             <div class="language-switcher">
                 <span class="lang-label">{{ $t("language_choice_message") }}</span>
                 <div class="lang-options">
@@ -228,15 +184,17 @@
 <script>
 import { defineComponent, onMounted, ref } from "vue";
 import BaseTab from "./BaseTab.vue";
+import ParticleLogoHero from "../landing/ParticleLogoHero.vue";
 import GUI from "../../js/gui";
 import { i18n } from "../../js/localization";
 import { appConfig } from "../../js/AppConfig";
-import logoUrl from "../../images/hs-logo.png";
+import logoUrl from "../../images/hs-white.png";
 
 export default defineComponent({
     name: "LandingTab",
     components: {
         BaseTab,
+        ParticleLogoHero,
     },
     setup() {
         const availableLanguages = ref(["DEFAULT", ...i18n.getLanguagesAvailables()]);
@@ -265,14 +223,18 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.mirror-landing {
+.landing-page {
+    --landing-ink: #111c38;
+    --landing-muted: #66748d;
+    --landing-line: rgba(17, 28, 56, 0.1);
+    --landing-accent: #f08c1e;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    max-width: 1000px;
+    gap: 36px;
+    width: 100%;
+    max-width: 1120px;
     margin: 0 auto;
-    padding: 30px 20px 40px;
-    gap: 40px;
+    padding: 20px 24px 44px;
     font-family:
         "SF Pro Display",
         -apple-system,
@@ -282,351 +244,615 @@ export default defineComponent({
         Helvetica,
         Arial,
         sans-serif;
-    color: #1e293b; /* Dark text for light mode */
-    /* Add a subtle grid background for the whole landing area */
-    background-image:
-        linear-gradient(rgba(243, 156, 18, 0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(243, 156, 18, 0.08) 1px, transparent 1px);
-    background-size: 30px 30px;
-    background-position: center top;
-    border-radius: 16px;
+    color: var(--landing-ink);
+    position: relative;
 }
 
-/* --- Hero Section --- */
-.hero-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 20px;
-    animation: fadeIn 0.8s ease-out;
+.landing-page::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 12% 10%, rgba(240, 140, 30, 0.1), transparent 24%),
+        radial-gradient(circle at 88% 14%, rgba(255, 214, 163, 0.24), transparent 18%),
+        linear-gradient(rgba(240, 140, 30, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240, 140, 30, 0.04) 1px, transparent 1px);
+    background-size:
+        auto,
+        auto,
+        36px 36px,
+        36px 36px;
+    background-position:
+        left top,
+        right top,
+        center top,
+        center top;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.landing-page > * {
     position: relative;
-    z-index: 2;
+    z-index: 1;
+}
+
+.landing-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    align-items: center;
+    gap: 36px;
+    min-height: 55vh;
+    padding: 8px 0;
 }
 
 .icon-inline {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     display: inline-block;
     vertical-align: middle;
-    margin-right: 2px;
+    margin-right: 4px;
 }
 
 .icon-inline-cta {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     display: inline-block;
     vertical-align: middle;
-    margin-right: 8px;
+    margin-right: 10px;
+}
+
+.hero-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    max-width: 640px;
+}
+
+.hero-kicker {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(17, 28, 56, 0.52);
+}
+
+.hero-brand-row {
+    display: flex;
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 18px;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .brand-badge {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 6px 16px;
-    background: rgba(243, 156, 18, 0.05);
-    border: 1px solid rgba(243, 156, 18, 0.4);
-    border-radius: 4px; /* Techy sharp corners */
-    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.05);
-    position: relative;
-    overflow: hidden;
-}
-
-.brand-badge::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: #f39c12;
-    box-shadow: 0 0 8px rgba(243, 156, 18, 0.6);
-}
-
-.hero-logo {
-    width: 24px;
-    height: 24px;
-    object-fit: contain;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(240, 140, 30, 0.18);
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(14px);
+    flex-shrink: 0;
 }
 
 .badge-text {
-    color: #d68910;
+    color: #c56d0c;
     font-weight: 700;
-    font-size: 14px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.02em;
 }
 
-.main-title {
-    font-size: clamp(32px, 5vw, 48px);
-    font-weight: 900;
+.hero-hint {
+    flex: 1;
+    min-width: 0;
+    font-size: clamp(16px, 1.8vw, 24px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    color: rgba(17, 28, 56, 0.64);
+    white-space: nowrap;
+    text-align: left;
+}
+
+.hero-title {
     margin: 0;
-    color: #0f172a;
-    text-shadow: 0 4px 15px rgba(243, 156, 18, 0.15);
-    line-height: 1.2;
-    letter-spacing: 2px;
+    font-size: clamp(28px, 4.2vw, 56px);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
-.subtitle {
+.hero-subtitle {
+    margin: 0;
+    max-width: 28rem;
     font-size: 16px;
-    color: #475569;
-    max-width: 600px;
-    line-height: 1.6;
-    margin: 0;
+    line-height: 1.65;
+    color: var(--landing-muted);
 }
 
-.features-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 10px;
-}
-
-.feature-item {
-    background: #f8fafc;
-    border: 1px solid rgba(243, 156, 18, 0.3);
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 14px;
-    color: #1e293b;
+.hero-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-    transition: all 0.3s ease;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.hero-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.hero-visual-frame {
+    width: min(100%, 480px);
+    min-height: 420px;
+    display: grid;
+    place-items: center;
     position: relative;
 }
 
-.feature-item::after {
+.hero-visual-frame::before,
+.hero-visual-frame::after {
     content: "";
     position: absolute;
-    bottom: -1px;
-    right: -1px;
-    width: 8px;
-    height: 8px;
-    border-bottom: 2px solid #f39c12;
-    border-right: 2px solid #f39c12;
-    transition: all 0.3s ease;
-}
-.feature-item::before {
-    content: "";
-    position: absolute;
-    top: -1px;
-    left: -1px;
-    width: 8px;
-    height: 8px;
-    border-top: 2px solid #f39c12;
-    border-left: 2px solid #f39c12;
-    transition: all 0.3s ease;
+    pointer-events: none;
 }
 
-.feature-item:hover {
-    border-color: #f39c12;
-    background: #ffffff;
-    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.15);
-    transform: translateY(-2px);
-    color: #0f172a;
+.hero-visual-frame::before {
+    inset: 11% 8% 14%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(240, 140, 30, 0.12), rgba(240, 140, 30, 0));
+    filter: blur(22px);
 }
 
-.feature-item:hover::after,
-.feature-item:hover::before {
-    width: 100%;
-    height: 100%;
-    border-color: rgba(243, 156, 18, 0.4);
+.hero-visual-frame::after {
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(17, 28, 56, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17, 28, 56, 0.08) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(circle at center, black 42%, transparent 82%);
+    opacity: 0.34;
 }
 
-/* --- Community Section --- */
-.community-section {
-    width: 100%;
-    max-width: 800px;
-    animation: slideUp 0.8s ease-out 0.2s both;
+.hero-visual-frame :deep(.particulate-shell) {
+    width: min(100%, 440px);
+}
+
+.hero-visual-frame :deep(.particulate-cursor) {
+    display: none;
+}
+
+.support-rail {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    padding: 18px 0 0;
+    border-top: 1px solid var(--landing-line);
+}
+
+.support-item {
+    padding-right: 16px;
     position: relative;
-    z-index: 2;
 }
 
-.community-card {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(243, 156, 18, 0.2);
-    border-radius: 8px;
-    padding: 40px;
-    box-shadow:
-        0 10px 30px rgba(0, 0, 0, 0.05),
-        0 0 20px rgba(243, 156, 18, 0.05);
+.support-item:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(17, 28, 56, 0.12), transparent);
+}
+
+.support-label {
+    display: inline-block;
+    margin-bottom: 18px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    color: rgba(240, 140, 30, 0.84);
+}
+
+.support-item h2 {
+    margin: 0 0 10px;
+    font-size: 22px;
+    line-height: 1.2;
+    font-weight: 720;
+}
+
+.support-item p {
+    margin: 0;
+    max-width: 23ch;
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--landing-muted);
+}
+
+.community-story {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 42px;
+    align-items: start;
+    padding-top: 18px;
+    border-top: 1px solid var(--landing-line);
+}
+
+.story-heading {
+    max-width: 380px;
+}
+
+.story-kicker {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: rgba(240, 140, 30, 0.84);
+}
+
+.story-heading h2 {
+    margin: 0 0 14px;
+    font-size: clamp(34px, 4vw, 52px);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-weight: 800;
+}
+
+.story-summary {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.75;
+    color: var(--landing-muted);
+}
+
+.story-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 28px;
+}
+
+.story-list {
     display: flex;
     flex-direction: column;
-    gap: 32px;
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: blur(12px);
 }
 
-.card-header {
-    text-align: center;
-    position: relative;
-    z-index: 1;
+.story-item {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+    padding: 18px 0;
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(17, 28, 56, 0.09);
+    transition:
+        transform 0.22s ease,
+        color 0.22s ease,
+        opacity 0.22s ease;
 }
 
-.card-header h2 {
-    font-size: 28px;
-    color: #0f172a;
-    margin: 0 0 12px 0;
-    font-weight: 800;
-    letter-spacing: 1px;
+.story-item:first-child {
+    padding-top: 0;
 }
 
-.card-header p {
-    color: #475569;
+.story-item:hover {
+    transform: translateX(6px);
+    color: #0c1630;
+}
+
+.story-index {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: rgba(240, 140, 30, 0.84);
+}
+
+.story-copy h3 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    line-height: 1.2;
+    font-weight: 720;
+}
+
+.story-copy p {
     margin: 0;
     font-size: 15px;
+    line-height: 1.75;
+    color: var(--landing-muted);
 }
 
-.community-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    position: relative;
-    z-index: 1;
-}
-
-.grid-item {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    padding: 20px;
-    border-radius: 6px;
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.grid-item::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 3px;
-    height: 100%;
-    background: #f39c12;
-    opacity: 0;
-    transition:
-        opacity 0.3s ease,
-        box-shadow 0.3s ease;
-}
-
-.grid-item:hover {
-    transform: translateY(-2px);
-    background: #ffffff;
-    border-color: rgba(243, 156, 18, 0.3);
-    box-shadow:
-        0 8px 20px rgba(0, 0, 0, 0.05),
-        inset 0 0 15px rgba(243, 156, 18, 0.05);
-}
-
-.grid-item:hover::before {
-    opacity: 1;
-    box-shadow: 0 0 10px rgba(243, 156, 18, 0.4);
-}
-
-.grid-icon {
-    font-size: 24px;
-    background: #fff8f0;
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    flex-shrink: 0;
-    border: 1px solid rgba(243, 156, 18, 0.3);
-    color: #e67e22;
-    box-shadow: inset 0 0 8px rgba(243, 156, 18, 0.1);
-}
-
-.grid-icon svg {
-    width: 24px;
-    height: 24px;
-}
-
-.grid-content {
+.story-aside {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    gap: 18px;
+    padding-top: 4px;
 }
 
-.grid-content h3 {
-    margin: 0 0 6px 0;
-    font-size: 16px;
-    color: #1e293b;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-}
-
-.grid-content p {
+.aside-copy,
+.aside-meta {
     margin: 0;
-    font-size: 13px;
-    color: #64748b;
-    line-height: 1.5;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--landing-muted);
 }
 
-.cta-container {
-    text-align: center;
-    margin-top: 10px;
-    position: relative;
-    z-index: 1;
+.aside-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(240, 140, 30, 0.28), rgba(17, 28, 56, 0.1));
 }
 
 .primary-cta {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(243, 156, 18, 0.1);
-    color: #d35400;
+    background: transparent;
+    color: #ca6b0d;
     font-size: 16px;
     font-weight: 800;
-    letter-spacing: 1px;
-    padding: 14px 40px;
-    border-radius: 4px;
+    letter-spacing: 0.06em;
+    padding: 14px 0;
+    border-radius: 0;
     text-decoration: none;
-    border: 1px solid #f39c12;
-    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.15);
-    transition: all 0.3s ease;
-    text-transform: uppercase;
+    border: 0;
+    border-bottom: 1px solid rgba(240, 140, 30, 0.36);
+    box-shadow: none;
+    transition:
+        transform 0.28s ease,
+        border-color 0.28s ease,
+        color 0.28s ease;
     position: relative;
 }
 
+.community-cta {
+    padding: 18px 26px;
+    border: 1.5px solid transparent;
+    border-radius: 999px;
+    background:
+        linear-gradient(135deg, rgba(240, 140, 30, 0.08) 0%, rgba(255, 230, 194, 0.08) 100%),
+        linear-gradient(135deg, #ff9a44 0%, #f08c1e 50%, #e67a0e 100%);
+    background-origin: border-box;
+    background-clip: content-box, border-box;
+    box-shadow:
+        0 8px 28px rgba(240, 140, 30, 0.32),
+        0 4px 12px rgba(240, 140, 30, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    color: #fff;
+    gap: 14px;
+    position: relative;
+    overflow: visible;
+    min-width: 320px;
+    justify-content: space-between;
+}
+
+.main-community-btn {
+    min-width: 360px;
+    padding: 20px 28px;
+    animation: btn-glow 3s ease-in-out infinite;
+}
+
+.btn-pulse {
+    position: absolute;
+    inset: -4px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ff9a44, #f08c1e, #e67a0e);
+    opacity: 0;
+    animation: pulse-ring 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    z-index: -1;
+}
+
+.btn-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.btn-label {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.btn-sublabel {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    opacity: 0.92;
+}
+
+.btn-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #e67a0e;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.main-community-btn .icon-inline-cta {
+    width: 24px;
+    height: 24px;
+    margin-right: 0;
+}
+
 .primary-cta:hover {
-    background: rgba(243, 156, 18, 0.15);
-    border-color: #e67e22;
-    box-shadow: 0 8px 25px rgba(243, 156, 18, 0.25);
-    transform: translateY(-2px);
-    color: #ba4a00;
+    border-color: rgba(240, 140, 30, 0.72);
+    transform: translateY(-1px);
+    color: #b85f08;
+}
+
+.community-cta:hover {
+    background:
+        linear-gradient(135deg, rgba(240, 140, 30, 0.12) 0%, rgba(255, 230, 194, 0.12) 100%),
+        linear-gradient(135deg, #ffa955 0%, #ff9930 50%, #f08a10 100%);
+    background-origin: border-box;
+    background-clip: content-box, border-box;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+        0 12px 36px rgba(240, 140, 30, 0.4),
+        0 6px 16px rgba(240, 140, 30, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.main-community-btn:hover {
+    box-shadow:
+        0 16px 44px rgba(240, 140, 30, 0.48),
+        0 8px 20px rgba(240, 140, 30, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.36);
+}
+
+.main-community-btn:hover .btn-badge {
+    background: #fff;
+    transform: scale(1.05);
 }
 
 .primary-cta:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 10px rgba(243, 156, 18, 0.1);
+    transform: translateY(0);
 }
 
-/* --- Language Switcher --- */
+.secondary-cta {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 0;
+    color: rgba(17, 28, 56, 0.72);
+    font-size: 14px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(17, 28, 56, 0.14);
+    transition:
+        color 0.22s ease,
+        border-color 0.22s ease;
+}
+
+.secondary-cta:hover {
+    color: var(--landing-ink);
+    border-color: rgba(17, 28, 56, 0.34);
+}
+
+.community-spotlight {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px 20px 24px;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 24px;
+    border: 1.5px solid rgba(240, 140, 30, 0.28);
+    background:
+        radial-gradient(circle at top right, rgba(240, 140, 30, 0.2), transparent 42%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 248, 238, 0.96));
+    box-shadow:
+        0 16px 36px rgba(17, 28, 56, 0.1),
+        0 4px 12px rgba(240, 140, 30, 0.08);
+    transition:
+        transform 0.24s ease,
+        box-shadow 0.24s ease,
+        border-color 0.24s ease;
+    position: relative;
+    animation: spotlight-fade 4s ease-in-out infinite;
+}
+
+.community-spotlight:hover {
+    transform: translateY(-4px);
+    border-color: rgba(240, 140, 30, 0.52);
+    box-shadow:
+        0 24px 52px rgba(17, 28, 56, 0.14),
+        0 8px 20px rgba(240, 140, 30, 0.16);
+}
+
+.spotlight-badge {
+    position: absolute;
+    top: -8px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    background: linear-gradient(135deg, #ff9a44, #f08c1e);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(240, 140, 30, 0.32);
+}
+
+.spotlight-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(240, 140, 30, 0.84);
+}
+
+.community-spotlight strong {
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+}
+
+.community-spotlight p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--landing-muted);
+}
+
+.spotlight-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(240, 140, 30, 0.44);
+    color: #ca6b0d;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    transition: gap 0.2s ease;
+}
+
+.spotlight-link svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s ease;
+}
+
+.community-spotlight:hover .spotlight-link {
+    gap: 10px;
+    border-bottom-color: #f08c1e;
+}
+
+.community-spotlight:hover .spotlight-link svg {
+    transform: translateX(3px);
+}
+
 .language-switcher {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    margin-top: 20px;
+    margin-top: 6px;
     animation: fadeIn 0.8s ease-out 0.4s both;
-    position: relative;
-    z-index: 2;
 }
 
 .lang-label {
-    color: #64748b;
+    color: var(--landing-muted);
     font-size: 13px;
-    letter-spacing: 1px;
+    letter-spacing: 0.4px;
 }
 
 .lang-options {
@@ -634,34 +860,34 @@ export default defineComponent({
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
-    background: #f8fafc;
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: 1px solid #e2e8f0;
+    background: transparent;
+    padding: 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(17, 28, 56, 0.08);
 }
 
 .lang-options a {
-    color: #64748b;
+    color: var(--landing-muted);
     text-decoration: none;
     font-size: 13px;
-    padding: 6px 12px;
-    border-radius: 2px;
+    padding: 7px 14px;
+    border-radius: 999px;
     transition: all 0.2s;
     border: 1px solid transparent;
 }
 
 .lang-options a:hover {
-    color: #1e293b;
-    background: rgba(243, 156, 18, 0.05);
-    border-color: rgba(243, 156, 18, 0.2);
+    color: var(--landing-ink);
+    background: rgba(240, 140, 30, 0.08);
+    border-color: rgba(240, 140, 30, 0.1);
 }
 
 .lang-options a.selected-lang {
     color: #ffffff;
-    background: #f39c12;
-    border-color: #e67e22;
+    background: #ea8617;
+    border-color: #dc7b0f;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+    box-shadow: 0 10px 18px rgba(240, 140, 30, 0.18);
 }
 
 /* Animations */
@@ -685,23 +911,156 @@ export default defineComponent({
     }
 }
 
+@keyframes pulse-ring {
+    0% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.3;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.18);
+    }
+}
+
+@keyframes btn-glow {
+    0%,
+    100% {
+        box-shadow:
+            0 8px 28px rgba(240, 140, 30, 0.32),
+            0 4px 12px rgba(240, 140, 30, 0.16),
+            0 0 0 rgba(240, 140, 30, 0);
+    }
+    50% {
+        box-shadow:
+            0 8px 28px rgba(240, 140, 30, 0.4),
+            0 4px 12px rgba(240, 140, 30, 0.24),
+            0 0 20px rgba(240, 140, 30, 0.12);
+    }
+}
+
+@keyframes spotlight-fade {
+    0%,
+    100% {
+        background:
+            radial-gradient(circle at top right, rgba(240, 140, 30, 0.2), transparent 42%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 248, 238, 0.96));
+    }
+    50% {
+        background:
+            radial-gradient(circle at top right, rgba(240, 140, 30, 0.3), transparent 42%),
+            linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(255, 250, 242, 0.98));
+    }
+}
+
 /* Responsive */
 @media (max-width: 640px) {
-    .mirror-landing {
-        padding: 20px 16px;
+    .landing-page {
+        gap: 28px;
+        padding: 16px 16px 32px;
     }
 
-    .community-card {
-        padding: 24px;
+    .landing-hero {
+        grid-template-columns: 1fr;
+        gap: 18px;
+        min-height: auto;
+        padding-top: 8px;
     }
 
-    .main-title {
-        font-size: clamp(28px, 8vw, 36px);
+    .hero-copy {
+        max-width: none;
     }
 
-    .features-row {
+    .hero-brand-row {
         flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .hero-title {
+        font-size: clamp(28px, 8vw, 44px);
+        white-space: normal;
+    }
+
+    .hero-hint {
+        white-space: normal;
+        font-size: 15px;
+        line-height: 1.4;
+        letter-spacing: 0;
+    }
+
+    .hero-subtitle {
+        font-size: 15px;
+    }
+
+    .hero-visual-frame {
+        min-height: 280px;
+    }
+
+    .hero-visual-frame :deep(.particulate-shell) {
+        width: min(100%, 300px);
+    }
+
+    .support-rail {
+        grid-template-columns: 1fr;
+        gap: 22px;
+    }
+
+    .support-item {
+        padding-right: 0;
+        padding-bottom: 20px;
+    }
+
+    .support-item:not(:last-child)::after {
+        right: auto;
+        left: 0;
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        height: 1px;
+    }
+
+    .support-item p {
+        max-width: none;
+    }
+
+    .community-story {
+        grid-template-columns: 1fr;
+        gap: 26px;
+    }
+
+    .story-layout {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .story-item {
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    .community-cta {
+        width: 100%;
+        justify-content: center;
+        min-width: auto;
+    }
+
+    .main-community-btn {
+        min-width: auto;
+        padding: 16px 20px;
+        width: 100%;
+    }
+
+    .btn-text {
         align-items: center;
+        text-align: center;
+        flex: 1;
+    }
+
+    .btn-label {
+        font-size: 16px;
     }
 }
 </style>

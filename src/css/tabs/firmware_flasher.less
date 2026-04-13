@@ -121,6 +121,86 @@
     .build_configuration {
         display: none;
     }
+    .load_timing_info {
+        display: none;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--surface-500);
+    }
+    .load_timing_total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 0.4rem;
+        font-weight: 600;
+    }
+    .load_timing_empty {
+        display: none;
+        margin-top: 0.5rem;
+        color: var(--text-medium);
+        font-size: 0.875rem;
+    }
+    .load_timing_steps {
+        margin: 0.5rem 0 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        li {
+            list-style: none;
+            margin-left: 0;
+        }
+    }
+    .load_timing_step {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        font-size: 0.875rem;
+    }
+    .load_timing_step_meta {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+    .load_timing_step_label {
+        color: var(--text);
+    }
+    .load_timing_step_status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        white-space: nowrap;
+        &.status-running {
+            background-color: color-mix(in srgb, var(--warning-500) 18%, transparent);
+            color: var(--warning-500);
+        }
+        &.status-success {
+            background-color: color-mix(in srgb, var(--success-600) 18%, transparent);
+            color: var(--success-600);
+        }
+        &.status-failed {
+            background-color: color-mix(in srgb, var(--error-500) 18%, transparent);
+            color: var(--error-500);
+        }
+        &.status-cancelled {
+            background-color: color-mix(in srgb, var(--surface-600) 18%, transparent);
+            color: var(--text-medium);
+        }
+    }
+    .load_timing_step_duration,
+    .load_timing_total_value {
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
     .default_btn {
         width: fit-content;
         padding-top: 0.25rem;

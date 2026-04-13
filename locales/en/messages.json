@@ -3734,6 +3734,39 @@
     "firmwareFlasherCloudBuildFail": {
         "message": "failed (please check log)"
     },
+    "firmwareFlasherLoadTimingDetails": {
+        "message": "Load Timing:"
+    },
+    "firmwareFlasherLoadTimingTotal": {
+        "message": "Total:"
+    },
+    "firmwareFlasherLoadTimingEmpty": {
+        "message": "No timing data yet."
+    },
+    "firmwareFlasherLoadTimingStepRequestBuild": {
+        "message": "Request build"
+    },
+    "firmwareFlasherLoadTimingStepCloudWait": {
+        "message": "Wait for cloud build"
+    },
+    "firmwareFlasherLoadTimingStepDownloadFirmware": {
+        "message": "Download firmware"
+    },
+    "firmwareFlasherLoadTimingStepParseFirmware": {
+        "message": "Parse firmware"
+    },
+    "firmwareFlasherLoadTimingStatusRunning": {
+        "message": "running"
+    },
+    "firmwareFlasherLoadTimingStatusSuccess": {
+        "message": "success"
+    },
+    "firmwareFlasherLoadTimingStatusFailed": {
+        "message": "failed"
+    },
+    "firmwareFlasherLoadTimingStatusCancelled": {
+        "message": "cancelled"
+    },
     "firmwareFlasherReleaseFileUrl": {
         "message": "Download manually."
     },
