@@ -89,6 +89,14 @@ export default defineConfig({
                 globPatterns: ["**/*.{js,css,html,ico,png,svg,json,mcm,gltf}"],
                 // 5MB
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+                // Never serve the app shell for backend/static endpoints that should be fetched directly.
+                navigateFallbackDenylist: [
+                    /^\/api(?:\/|$)/,
+                    /^\/firmware-files(?:\/|$)/,
+                    /^\/presets(?:\/|$)/,
+                    /^\/locales(?:\/|$)/,
+                    /^\/resources(?:\/|$)/,
+                ],
             },
             includeAssets: ["favicon.ico", "apple-touch-icon.png"],
             manifest: {
