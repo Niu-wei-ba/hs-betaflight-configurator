@@ -84,7 +84,7 @@ export function checkCompatibility() {
 
     let errorMessage = "";
     if (!isChromium) {
-        errorMessage = "Betaflight app requires a Chromium based browser (Chrome, Chromium, Edge).<br/>";
+        errorMessage = "当前浏览器不支持连接飞控，请使用 Chrome 或 Microsoft Edge 浏览器打开本页面。<br/>";
     }
 
     if (!hasBluetoothSupport) {
