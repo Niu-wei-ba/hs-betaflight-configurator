@@ -3707,8 +3707,8 @@
     "firmwareFlasherCloudBuildPhaseBuilding": {
         "message": "waiting for cloud build…"
     },
-    "firmwareFlasherCloudBuildPhaseUploadingCos": {
-        "message": "uploading to mirror storage…"
+    "firmwareFlasherCloudBuildPhaseProxying": {
+        "message": "preparing firmware proxy…"
     },
     "firmwareFlasherCloudBuildFailedLog": {
         "message": "Cloud build failed: $1"
@@ -3729,7 +3729,7 @@
         "message": "build request error (please check build configuration, e.g. custom defines)"
     },
     "firmwareFlasherCloudBuildFailUpstream": {
-        "message": "cannot reach official cloud build from mirror (configure server HTTPS_PROXY or wait for COS pre-sync)"
+        "message": "cannot reach official cloud build from mirror (configure server HTTPS_PROXY or retry later)"
     },
     "firmwareFlasherCloudBuildFail": {
         "message": "failed (please check log)"

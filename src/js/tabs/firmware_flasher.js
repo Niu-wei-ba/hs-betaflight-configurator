@@ -1215,8 +1215,8 @@ firmware_flasher.initialize = async function (callback) {
 
             function cloudBuildPhaseStatusKey(phase) {
                 switch (phase) {
-                    case "uploading":
-                        return "PhaseUploadingCos";
+                    case "proxying":
+                        return "PhaseProxying";
                     case "building":
                         return "PhaseBuilding";
                     default:

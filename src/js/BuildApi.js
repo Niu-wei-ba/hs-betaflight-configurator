@@ -109,8 +109,7 @@ export default class BuildApi {
     }
 
     /**
-     * Mirror metadata index: same source as COS bundle `index/versions.json`.
-     * Returns null if the build API does not implement this route (e.g. upstream).
+     * Optional mirror metadata index. Returns null if the build API does not implement this route.
      */
     async loadFirmwareVersions() {
         const url = buildApiUrl("/firmware/versions");

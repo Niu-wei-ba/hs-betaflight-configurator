@@ -37,11 +37,11 @@ An example frontend environment file is available at [`.env.example`](/Users/lih
 
 ## Firmware API
 
-Firmware metadata, Cloud Build fallback, COS upload, and build-task state live in the private backend repository:
+Firmware metadata, Cloud Build fallback, upstream firmware proxying, and build-task state live in the private backend repository:
 
-- `git@github.com:Niu-wei-ba/betaflight-api.git`
+- `/Users/lihao/Documents/hs-betaflight-firmware-api`
 
-This frontend only talks to a Betaflight Build API-compatible service through `VITE_BUILD_API_BASE_URL`. It does not contain COS credentials or backend cache logic.
+This frontend only talks to a Betaflight Build API-compatible service through `VITE_BUILD_API_BASE_URL`. Firmware files are downloaded from the URL returned by that service; for HS-FPV deployments that URL is a same-origin backend proxy rather than an object-storage URL.
 
 For **board and firmware version lists** to match [official Cloud Build API](https://betaflight.com/docs/development/API/Cloud-Build-API) behavior (`https://build.betaflight.com`), the mirror service should return the same payloads for `GET /api/targets` and `GET /api/targets/{target}` (e.g. periodic sync or reverse proxy + cache). The optional `GET /api/firmware/versions` route can supply channel metadata for labels; the UI no longer hides releases that are missing from that index unless `VITE_FIRMWARE_USE_VERSION_INDEX_FILTER=true`.
 

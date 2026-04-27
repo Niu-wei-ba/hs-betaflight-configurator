@@ -3158,8 +3158,8 @@
     "firmwareFlasherCloudBuildPhaseBuilding": {
         "message": "等待云构建…"
     },
-    "firmwareFlasherCloudBuildPhaseUploadingCos": {
-        "message": "正在上传到镜像存储…"
+    "firmwareFlasherCloudBuildPhaseProxying": {
+        "message": "正在准备固件代理…"
     },
     "firmwareFlasherCloudBuildFailedLog": {
         "message": "云构建失败：$1"
@@ -3180,7 +3180,7 @@
         "message": "构建请求失败（请检查构建配置，例如自定义宏）"
     },
     "firmwareFlasherCloudBuildFailUpstream": {
-        "message": "镜像站无法连接官方云构建（请配置服务端 HTTPS 代理或等待热门固件预同步到 COS）"
+        "message": "镜像站无法连接官方云构建（请配置服务端 HTTPS 代理或稍后重试）"
     },
     "firmwareFlasherCloudBuildFail": {
         "message": "失败（请查看日志）"
