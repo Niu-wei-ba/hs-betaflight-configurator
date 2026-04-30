@@ -49,6 +49,127 @@ auxiliary.initialize = function (callback) {
 
     MSP.send_message(MSPCodes.MSP_BOXNAMES, false, false, get_mode_ranges);
 
+    function getModeTranslatedName(modeNameCamel) {
+        const translatedNameKey = `auxiliaryModeName_${modeNameCamel}`;
+        const translatedName = i18n.getMessage(translatedNameKey);
+
+        return translatedName && translatedName !== translatedNameKey ? translatedName : "";
+    }
+
+    function appendHighlightedText(element, text, query) {
+        const container = $(element);
+        const sourceText = text || "";
+        const searchText = query.trim();
+
+        if (!searchText) {
+            container.text(sourceText);
+            return;
+        }
+
+        const normalizedSource = sourceText.toLocaleLowerCase();
+        const normalizedSearch = searchText.toLocaleLowerCase();
+        let cursor = 0;
+        let matchIndex = normalizedSource.indexOf(normalizedSearch, cursor);
+
+        if (matchIndex === -1) {
+            const fuzzyIndexes = getFuzzyMatchIndexes(sourceText, searchText);
+            if (fuzzyIndexes.length) {
+                for (let index = 0; index < sourceText.length; index++) {
+                    if (fuzzyIndexes.includes(index)) {
+                        container.append($("<span>").addClass("mode-search-hit").text(sourceText[index]));
+                    } else {
+                        container.append(document.createTextNode(sourceText[index]));
+                    }
+                }
+                return;
+            }
+
+            container.text(sourceText);
+            return;
+        }
+
+        while (matchIndex !== -1) {
+            if (matchIndex > cursor) {
+                container.append(document.createTextNode(sourceText.slice(cursor, matchIndex)));
+            }
+
+            const matchEnd = matchIndex + searchText.length;
+            container.append($("<span>").addClass("mode-search-hit").text(sourceText.slice(matchIndex, matchEnd)));
+            cursor = matchEnd;
+            matchIndex = normalizedSource.indexOf(normalizedSearch, cursor);
+        }
+
+        if (cursor < sourceText.length) {
+            container.append(document.createTextNode(sourceText.slice(cursor)));
+        }
+    }
+
+    function getFuzzyMatchIndexes(text, query) {
+        const sourceText = text || "";
+        const searchText = query.trim();
+        const normalizedSource = sourceText.toLocaleLowerCase();
+        const normalizedSearch = searchText.toLocaleLowerCase();
+        const indexes = [];
+        let sourceIndex = 0;
+        const hasChineseSearch = /[\u4e00-\u9fff]/.test(normalizedSearch);
+        let matchedCharacters = 0;
+
+        if (!normalizedSearch) {
+            return indexes;
+        }
+
+        for (const character of normalizedSearch) {
+            const matchIndex = normalizedSource.indexOf(character, sourceIndex);
+            if (matchIndex === -1) {
+                if (!hasChineseSearch) {
+                    return [];
+                }
+                continue;
+            }
+
+            indexes.push(matchIndex);
+            matchedCharacters++;
+            sourceIndex = matchIndex + 1;
+        }
+
+        if (hasChineseSearch && matchedCharacters < Math.min(2, normalizedSearch.length)) {
+            return [];
+        }
+
+        return indexes;
+    }
+
+    function fuzzyMatchScore(text, query) {
+        const indexes = getFuzzyMatchIndexes(text, query);
+        if (!indexes.length) {
+            return 0;
+        }
+
+        const spread = indexes[indexes.length - 1] - indexes[0] + 1;
+        const completeMatchBonus = indexes.length === query.trim().length ? 1000 : 0;
+        return Math.max(1, completeMatchBonus + indexes.length * 100 - indexes[0] * 10 - spread);
+    }
+
+    function renderModeName(modeElement, modeName, modeNameCamel, disabledLabel, query = "") {
+        const nameElement = $(modeElement).find(".name");
+        const translatedName = getModeTranslatedName(modeNameCamel);
+
+        nameElement.empty();
+        const englishName = $("<span>").addClass("name-en");
+        appendHighlightedText(englishName, modeName, query);
+        nameElement.append(englishName);
+
+        if (translatedName) {
+            const chineseName = $("<span>").addClass("name-cn");
+            appendHighlightedText(chineseName, translatedName, query);
+            nameElement.append(chineseName);
+        }
+
+        if (disabledLabel) {
+            nameElement.append($("<span>").addClass("name-status").text(disabledLabel));
+        }
+    }
+
     function createMode(modeIndex, modeId) {
         const modeTemplate = $("#tab-auxiliary-templates .mode");
         const newMode = modeTemplate.clone();
@@ -58,15 +179,27 @@ auxiliary.initialize = function (callback) {
         const modeNameAjusted = adjustBoxNameIfPeripheralWithModeID(modeId, modeName);
         // Camlize modeName
         const modeNameCamel = inflection.camelize(modeName.replace(/\s+/g, ""));
+        const translatedName = getModeTranslatedName(modeNameCamel);
 
         $(newMode).attr("id", `mode-${modeIndex}`);
-        $(newMode).find(".name").text(modeNameAjusted);
+        renderModeName(newMode, modeNameAjusted, modeNameCamel);
 
         // add help to mode
         $(newMode).find(".helpicon").attr("i18n_title", `auxiliaryHelpMode_${modeNameCamel}`);
+        const modeHelpKey = `auxiliaryHelpMode_${modeNameCamel}`;
+        const modeHint = i18n.existsMessage(modeHelpKey) ? i18n.getMessage(modeHelpKey) : "";
+        $(newMode).find(".mode-hint").html(modeHint);
+        if (!modeHint) {
+            $(newMode).find(".mode-hint").hide();
+        }
 
         $(newMode).data("index", modeIndex);
         $(newMode).data("id", modeId);
+        $(newMode).data("modeName", modeNameAjusted);
+        $(newMode).data("modeNameCamel", modeNameCamel);
+        $(newMode).data("modeTranslatedName", translatedName);
+        $(newMode).data("modeHint", modeHint);
+        $(newMode).data("searchScore", 0);
 
         $(newMode).find(".name").data("modeElement", newMode);
         $(newMode).find("a.addRange").data("modeElement", newMode);
@@ -78,6 +211,10 @@ auxiliary.initialize = function (callback) {
         }
 
         return newMode;
+    }
+
+    function getModeControls(modeElement) {
+        return $(modeElement).find(".ranges").children(".range, .link");
     }
 
     function configureLogicList(template) {
@@ -166,7 +303,7 @@ auxiliary.initialize = function (callback) {
             rangeValues = [range.start, range.end];
         }
 
-        const rangeIndex = modeRanges.children().length;
+        const rangeIndex = getModeControls(modeElement).length;
 
         let rangeElement = $("#tab-auxiliary-templates .range").clone();
         rangeElement.attr("id", `mode-${modeIndex}-range-${rangeIndex}`);
@@ -175,7 +312,7 @@ auxiliary.initialize = function (callback) {
         if (rangeIndex == 0) {
             $(rangeElement).find(".logic").hide();
         } else if (rangeIndex == 1) {
-            modeRanges.children().eq(0).find(".logic").show();
+            getModeControls(modeElement).eq(0).find(".logic").show();
         }
 
         $(rangeElement)
@@ -222,7 +359,7 @@ auxiliary.initialize = function (callback) {
 
                 rangeElement.remove();
 
-                const siblings = $(modeElement).find(".ranges").children();
+                const siblings = getModeControls(modeElement);
 
                 if (siblings.length == 1) {
                     siblings.eq(0).find(".logic").hide();
@@ -238,7 +375,7 @@ auxiliary.initialize = function (callback) {
         const modeIndex = $(modeElement).data("index");
         const modeRanges = $(modeElement).find(".ranges");
 
-        const linkIndex = modeRanges.children().length;
+        const linkIndex = getModeControls(modeElement).length;
 
         let linkElement = $("#tab-auxiliary-templates .link").clone();
         linkElement.attr("id", `mode-${modeIndex}-link-${linkIndex}`);
@@ -247,7 +384,7 @@ auxiliary.initialize = function (callback) {
         if (linkIndex == 0) {
             $(linkElement).find(".logic").hide();
         } else if (linkIndex == 1) {
-            modeRanges.children().eq(0).find(".logic").show();
+            getModeControls(modeElement).eq(0).find(".logic").show();
         }
 
         // disable the option associated with this mode
@@ -265,7 +402,7 @@ auxiliary.initialize = function (callback) {
 
                 linkElement.remove();
 
-                const siblings = $(modeElement).find(".ranges").children();
+                const siblings = getModeControls(modeElement);
 
                 if (siblings.length == 1) {
                     siblings.eq(0).find(".logic").hide();
@@ -314,22 +451,155 @@ auxiliary.initialize = function (callback) {
         const length = Math.max(...FC.AUX_CONFIG.map((el) => el.length));
         $(".tab-auxiliary .mode .info").css("min-width", `${Math.round(length * getTextWidth("A"))}px`);
 
+        let hideUnusedModes = false;
+        let modeSearchQuery = "";
+
+        function isUnusedMode(modeElement) {
+            return $(modeElement).find(" .range").length == 0 && $(modeElement).find(" .link").length == 0;
+        }
+
+        function renderModeHint(modeElement, query = "") {
+            const hintElement = $(modeElement).find(".mode-hint");
+            const modeHint = $(modeElement).data("modeHint") || "";
+
+            hintElement.empty();
+            appendHighlightedText(hintElement, modeHint, query);
+            hintElement.toggle(!!modeHint);
+        }
+
+        function getModeSearchText(modeElement) {
+            return {
+                englishName: $(modeElement).data("modeName") || "",
+                chineseName: $(modeElement).data("modeTranslatedName") || "",
+                hint: $(modeElement).data("modeHint") || "",
+            };
+        }
+
+        function scoreMode(modeElement, query) {
+            const normalizedQuery = query.trim().toLocaleLowerCase();
+            if (!normalizedQuery) {
+                return 0;
+            }
+
+            const searchText = getModeSearchText(modeElement);
+            const names = [searchText.englishName, searchText.chineseName].map((text) => text.toLocaleLowerCase());
+            const hint = searchText.hint.toLocaleLowerCase();
+
+            if (names.some((name) => name === normalizedQuery)) return 10000;
+            if (names.some((name) => name.startsWith(normalizedQuery))) return 9000;
+            if (names.some((name) => name.includes(normalizedQuery))) return 8000;
+            if (hint.startsWith(normalizedQuery)) return 7000;
+            if (hint.includes(normalizedQuery)) return 6000;
+
+            const nameFuzzyScore = Math.max(
+                fuzzyMatchScore(searchText.englishName, query),
+                fuzzyMatchScore(searchText.chineseName, query),
+            );
+            if (nameFuzzyScore) return 5000 + nameFuzzyScore;
+
+            const hintFuzzyScore = fuzzyMatchScore(searchText.hint, query);
+            if (hintFuzzyScore) return 4000 + hintFuzzyScore;
+
+            return 0;
+        }
+
+        function restoreModeOrder() {
+            $(
+                $(".tab-auxiliary .modes .mode")
+                    .toArray()
+                    .sort((a, b) => $(a).data("index") - $(b).data("index")),
+            ).appendTo(modeTableBodyElement);
+        }
+
+        function rerenderModeSearchHighlights(modeElement) {
+            const mode = $(modeElement);
+            renderModeName(
+                modeElement,
+                mode.data("modeName"),
+                mode.data("modeNameCamel"),
+                mode.find(".name-status").text(),
+                modeSearchQuery,
+            );
+            renderModeHint(modeElement, modeSearchQuery);
+        }
+
+        function applyModeSearch() {
+            const query = modeSearchQuery.trim();
+            const modes = $(".tab-auxiliary .modes .mode").toArray();
+
+            modes.forEach((modeElement) => {
+                const score = scoreMode(modeElement, query);
+                $(modeElement).data("searchScore", score);
+                rerenderModeSearchHighlights(modeElement);
+            });
+
+            if (query) {
+                $(
+                    modes.sort((a, b) => {
+                        const scoreDiff = $(b).data("searchScore") - $(a).data("searchScore");
+                        return scoreDiff || $(a).data("index") - $(b).data("index");
+                    }),
+                ).appendTo(modeTableBodyElement);
+            } else {
+                restoreModeOrder();
+            }
+
+            const hasUsedMode = modes.some((modeElement) => !isUnusedMode(modeElement));
+            modes.forEach((modeElement) => {
+                const hiddenByUnusedToggle = hideUnusedModes && hasUsedMode && isUnusedMode(modeElement);
+                $(modeElement).css("display", !hiddenByUnusedToggle ? "" : "none");
+            });
+        }
+
         $("a.addRange").click(function () {
             const modeElement = $(this).data("modeElement");
             // auto select AUTO option; default to 'OR' logic
             addRangeToMode(modeElement, -1, 0);
+            hasDirtyUnusedModes = true;
+            applyModeSearch();
         });
 
         $("a.addLink").click(function () {
             const modeElement = $(this).data("modeElement");
             // default to 'OR' logic and no link selected
             addLinkedToMode(modeElement, 0, 0);
+            hasDirtyUnusedModes = true;
+            applyModeSearch();
         });
 
         // translate to user-selected language
         i18n.localizePage();
 
         // UI Hooks
+        function runModeSearch() {
+            modeSearchQuery = $("input#mode-search").val();
+            applyModeSearch();
+        }
+
+        $(document).off(".auxiliarySearch");
+        $(document).on("submit.auxiliarySearch", ".tab-auxiliary .toolbox form", function (event) {
+            event.preventDefault();
+            runModeSearch();
+        });
+
+        $(document).on(
+            "input.auxiliarySearch keyup.auxiliarySearch",
+            ".tab-auxiliary input#mode-search",
+            runModeSearch,
+        );
+        $(document).on("keydown.auxiliarySearch", ".tab-auxiliary input#mode-search", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                runModeSearch();
+            }
+        });
+        $(".tab-auxiliary .modes").on("click", ".deleteRange, .deleteLink", function () {
+            setTimeout(function () {
+                hasDirtyUnusedModes = true;
+                applyModeSearch();
+            }, 0);
+        });
+
         $("a.save").click(function () {
             // update internal data structures based on current UI elements
 
@@ -339,46 +609,23 @@ auxiliary.initialize = function (callback) {
             FC.MODE_RANGES = [];
             FC.MODE_RANGES_EXTRA = [];
 
-            $(".tab-auxiliary .modes .mode").each(function () {
-                const modeElement = $(this);
-                const modeId = modeElement.data("id");
+            $(".tab-auxiliary .modes .mode")
+                .toArray()
+                .sort((a, b) => $(a).data("index") - $(b).data("index"))
+                .forEach(function (modeDomElement) {
+                    const modeElement = $(modeDomElement);
+                    const modeId = modeElement.data("id");
 
-                $(modeElement)
-                    .find(".range")
-                    .each(function () {
-                        const rangeValues = $(this).find(".channel-slider").val();
-                        const modeRange = {
-                            id: modeId,
-                            auxChannelIndex: parseInt($(this).find(".channel").val()),
-                            range: {
-                                start: rangeValues[0],
-                                end: rangeValues[1],
-                            },
-                        };
-                        FC.MODE_RANGES.push(modeRange);
-
-                        const modeRangeExtra = {
-                            id: modeId,
-                            modeLogic: parseInt($(this).find(".logic").val()),
-                            linkedTo: 0,
-                        };
-                        FC.MODE_RANGES_EXTRA.push(modeRangeExtra);
-                    });
-
-                $(modeElement)
-                    .find(".link")
-                    .each(function () {
-                        const linkedToSelection = parseInt($(this).find(".linkedTo").val());
-
-                        if (linkedToSelection == 0) {
-                            $(this).remove();
-                        } else {
+                    $(modeElement)
+                        .find(".range")
+                        .each(function () {
+                            const rangeValues = $(this).find(".channel-slider").val();
                             const modeRange = {
                                 id: modeId,
-                                auxChannelIndex: 0,
+                                auxChannelIndex: parseInt($(this).find(".channel").val()),
                                 range: {
-                                    start: 900,
-                                    end: 900,
+                                    start: rangeValues[0],
+                                    end: rangeValues[1],
                                 },
                             };
                             FC.MODE_RANGES.push(modeRange);
@@ -386,12 +633,38 @@ auxiliary.initialize = function (callback) {
                             const modeRangeExtra = {
                                 id: modeId,
                                 modeLogic: parseInt($(this).find(".logic").val()),
-                                linkedTo: linkedToSelection,
+                                linkedTo: 0,
                             };
                             FC.MODE_RANGES_EXTRA.push(modeRangeExtra);
-                        }
-                    });
-            });
+                        });
+
+                    $(modeElement)
+                        .find(".link")
+                        .each(function () {
+                            const linkedToSelection = parseInt($(this).find(".linkedTo").val());
+
+                            if (linkedToSelection == 0) {
+                                $(this).remove();
+                            } else {
+                                const modeRange = {
+                                    id: modeId,
+                                    auxChannelIndex: 0,
+                                    range: {
+                                        start: 900,
+                                        end: 900,
+                                    },
+                                };
+                                FC.MODE_RANGES.push(modeRange);
+
+                                const modeRangeExtra = {
+                                    id: modeId,
+                                    modeLogic: parseInt($(this).find(".logic").val()),
+                                    linkedTo: linkedToSelection,
+                                };
+                                FC.MODE_RANGES_EXTRA.push(modeRangeExtra);
+                            }
+                        });
+                });
 
             for (
                 let modeRangeIndex = FC.MODE_RANGES.length;
@@ -454,7 +727,6 @@ auxiliary.initialize = function (callback) {
         }
 
         function update_ui() {
-            let hasUsedMode = false;
             for (let i = 0; i < FC.AUX_CONFIG.length; i++) {
                 let modeElement = $(`#mode-${i}`);
                 if (modeElement.find(" .range").length == 0 && modeElement.find(" .link").length == 0) {
@@ -464,16 +736,17 @@ auxiliary.initialize = function (callback) {
                 }
 
                 if (bit_check(FC.CONFIG.mode, i)) {
-                    $(".mode .name")
-                        .eq(i)
-                        .data("modeElement")
-                        .addClass("on")
-                        .removeClass("off")
-                        .removeClass("disabled");
+                    modeElement.addClass("on").removeClass("off").removeClass("disabled");
 
                     // ARM mode is a special case
                     if (i == 0) {
-                        $(".mode .name").eq(i).html(FC.AUX_CONFIG[i]);
+                        renderModeName(
+                            modeElement,
+                            modeElement.data("modeName"),
+                            modeElement.data("modeNameCamel"),
+                            undefined,
+                            modeSearchQuery,
+                        );
                     }
                 } else {
                     //ARM mode is a special case
@@ -492,45 +765,33 @@ auxiliary.initialize = function (callback) {
                         // and the arm switch is in a valid arming range. Highlight the mode in red to indicate
                         // that arming is disabled.
                         if (armSwitchActive) {
-                            $(".mode .name")
-                                .eq(i)
-                                .data("modeElement")
-                                .removeClass("on")
-                                .removeClass("off")
-                                .addClass("disabled");
-                            $(".mode .name")
-                                .eq(i)
-                                .html(`${FC.AUX_CONFIG[i]}<br>${i18n.getMessage("auxiliaryDisabled")}`);
+                            modeElement.removeClass("on").removeClass("off").addClass("disabled");
+                            renderModeName(
+                                modeElement,
+                                modeElement.data("modeName"),
+                                modeElement.data("modeNameCamel"),
+                                i18n.getMessage("auxiliaryDisabled"),
+                                modeSearchQuery,
+                            );
                         } else {
-                            $(".mode .name")
-                                .eq(i)
-                                .data("modeElement")
-                                .removeClass("on")
-                                .removeClass("disabled")
-                                .addClass("off");
-                            $(".mode .name").eq(i).html(FC.AUX_CONFIG[i]);
+                            modeElement.removeClass("on").removeClass("disabled").addClass("off");
+                            renderModeName(
+                                modeElement,
+                                modeElement.data("modeName"),
+                                modeElement.data("modeNameCamel"),
+                                undefined,
+                                modeSearchQuery,
+                            );
                         }
                     } else {
-                        $(".mode .name")
-                            .eq(i)
-                            .data("modeElement")
-                            .removeClass("on")
-                            .removeClass("disabled")
-                            .addClass("off");
+                        modeElement.removeClass("on").removeClass("disabled").addClass("off");
                     }
                 }
-                hasUsedMode = true;
             }
 
             if (hasDirtyUnusedModes) {
                 hasDirtyUnusedModes = false;
-                let hideUnused = hideUnusedModes && hasUsedMode;
-                for (let i = 0; i < FC.AUX_CONFIG.length; i++) {
-                    let modeElement = $(`#mode-${i}`);
-                    if (!modeElement.find(" .range").length && !modeElement.find(" .link").length) {
-                        modeElement.toggle(!hideUnused);
-                    }
-                }
+                applyModeSearch();
             }
 
             auto_select_channel(FC.RC.channels, FC.RC.active_channels, FC.RSSI_CONFIG.channel);
@@ -583,7 +844,6 @@ auxiliary.initialize = function (callback) {
             return fillPrevChannelsValues();
         }
 
-        let hideUnusedModes = false;
         const result = getConfig("hideUnusedModes");
         $("input#switch-toggle-unused")
             .change(function () {
@@ -616,6 +876,7 @@ auxiliary.initialize = function (callback) {
 };
 
 auxiliary.cleanup = function (callback) {
+    $(document).off(".auxiliarySearch");
     if (callback) callback();
 };
 

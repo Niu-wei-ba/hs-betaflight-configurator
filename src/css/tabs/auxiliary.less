@@ -10,8 +10,35 @@
         padding: 1rem 0;
         form {
             display: flex;
-            gap: 0.5rem;
+            align-items: center;
+            gap: 1.25rem;
+            flex-wrap: wrap;
         }
+        .hide-unused-modes {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        .mode-search {
+            min-width: 18rem;
+            max-width: 36rem;
+            flex: 1 1 18rem;
+            height: 2.4rem;
+            padding: 0 0.75rem;
+            border: 1px solid var(--surface-500);
+            border-radius: 0.35rem;
+            background: var(--surface-50);
+            color: var(--text);
+            font-weight: normal;
+        }
+        .mode-search:focus {
+            border-color: var(--primary-500);
+            outline: none;
+        }
+    }
+    .mode-search-hit {
+        color: var(--error-500);
     }
     .range {
         .marker {
@@ -129,6 +156,10 @@
         min-height: 6.5rem;
         .name {
             padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.15rem;
         }
         .info {
             text-align: center;
@@ -140,6 +171,26 @@
             .name {
                 font-weight: bold;
                 font-size: 1em;
+                .name-en,
+                .name-cn,
+                .name-status {
+                    display: block;
+                    width: 100%;
+                }
+                .name-cn,
+                .name-status {
+                    font-size: 0.82rem;
+                    line-height: 1.2;
+                    font-weight: 600;
+                    white-space: normal;
+                }
+                .name-cn {
+                    color: inherit;
+                    opacity: 0.72;
+                }
+                .name-status {
+                    color: var(--error-500);
+                }
             }
             .buttons {
                 a {
@@ -163,6 +214,16 @@
     }
     .ranges {
         width: 100%;
+        .mode-hint {
+            margin: 0.75rem 1rem 0.25rem 1rem;
+            padding: 0.25rem 0;
+            font-size: 0.85rem;
+            line-height: 1.45;
+            color: var(--surface-900);
+        }
+    }
+    .helpicon {
+        display: none;
     }
     .link {
         padding-top: 1rem;
@@ -246,6 +307,7 @@
                     text-align: left;
                     min-height: auto;
                     margin-right: auto;
+                    align-items: flex-start;
                 }
                 .buttons {
                     right: 0;
@@ -266,6 +328,9 @@
             .ranges {
                 width: 100%;
                 max-width: 100%;
+                .mode-hint {
+                    margin: 0.5rem 0.75rem 0.25rem 0.75rem;
+                }
             }
             .range {
                 .channelInfo {

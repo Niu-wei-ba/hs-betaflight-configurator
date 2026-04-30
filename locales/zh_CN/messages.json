@@ -1896,7 +1896,7 @@
         "message": "其他设置"
     },
     "receiverHelp": {
-        "message": "&#8226; <b><strong><a href=\"https://betaflight.com/docs/wiki/guides/current/Failsafe#testing-failsafe\" target=\"_blank\" rel=\"noopener noreferrer\">请务必确认失控保护工作正常！<\/a><\/strong><\/b> 相关设置在「失控保护」选项卡，需开启专家模式。<br> &#8226; <b>请使用最新的遥控器固件！<\/b><br> &#8226; 若使用 OpenTx 或 EdgeTx，请在遥控器中<strong><a href=\"https://betaflight.com/docs/development/Rx#disabling-the-opentxedgetx-adc-filter\" target=\"_blank\" rel=\"noopener noreferrer\">关闭硬件 ADC 滤波器<\/a><\/strong>。<br>基本设置：正确配置「接收机」选项。为遥控器选择正确的「通道映射」。确认横滚、俯仰等条形图运动方向正确。在遥控器中将通道行程\/范围调至约 1000～2000，中位约 1500。更多信息请参阅<strong><a href=\"https://betaflight.com/docs/development/Rx\" target=\"_blank\" rel=\"noopener noreferrer\">官方文档<\/a><\/strong>。"
+        "message": "&#8226; <b><strong><a href=\"https:\/\/betaflight.com\/docs\/wiki\/guides\/current\/Failsafe#testing-failsafe\" target=\"_blank\" rel=\"noopener noreferrer\">请务必确认失控保护工作正常！<\/a><\/strong><\/b> 相关设置在「失控保护」选项卡，需开启专家模式。<br> &#8226; <b>请使用最新的遥控器固件！<\/b><br> &#8226; 若使用 OpenTx 或 EdgeTx，请在遥控器中<strong><a href=\"https:\/\/betaflight.com\/docs\/development\/Rx#disabling-the-opentxedgetx-adc-filter\" target=\"_blank\" rel=\"noopener noreferrer\">关闭硬件 ADC 滤波器<\/a><\/strong>。<br>基本设置：正确配置「接收机」选项。为遥控器选择正确的「通道映射」。确认横滚、俯仰等条形图运动方向正确。在遥控器中将通道行程\/范围调至约 1000～2000，中位约 1500。更多信息请参阅<strong><a href=\"https:\/\/betaflight.com\/docs\/development\/Rx\" target=\"_blank\" rel=\"noopener noreferrer\">官方文档<\/a><\/strong>。"
     },
     "receiverHelpModelId": {
         "message": "若将下方的机型匹配设为 255 以外的数值，可在 OpenTX\/EdgeTX 的模型设置中指定接收机编号，并在对应模型的 ELRS LUA 脚本中开启机型匹配。机型匹配范围为 0～63（含）。详见 ELRS 文档。"
@@ -2360,15 +2360,15 @@
         "message": "和"
     },
     "auxiliaryHelpMode_AIRMODE": {
-        "message": "AirMode 允许在低油门时保持飞行器的稳定性。有关更多信息，请参阅 Betaflight.com 上的 <a href=\"https:\/\/betaflight.com\/docs\/development\/modes#airmode\" target=\"_blank\" rel=\"noopener noreferrer\">AirMode<\/a> 。",
+        "message": "空中模式。开启后穿越机会在低动力或 0 油门状态下进行额外的电机动力补偿，用来维持当前飞行姿态。该模式适合花飞、翻滚和低油门动作；地面带桨测试时要特别小心。",
         "description": "Help text to AIRMODE mode"
     },
     "auxiliaryHelpMode_ALTHOLD": {
-        "message": "<a href=\"https:\/\/betaflight.com\/docs\/wiki\/guides\/current\/position-hold-v4-6#altitude-hold\" target=\"_blank\" rel=\"noopener noreferrer\">高度保持（Altitude Hold）<\/a> 使用外部传感器结合 Angle 模式（稳定模式）主动调节飞行器的高度。",
-        "description": "Help text for ALTITUDE HOLD mode"
+        "message": "定高模式。启用后飞控会结合气压计、GPS 等传感器尝试维持当前高度，减少油门控制压力。该模式需要对应传感器和参数配置可靠，普通花飞穿越机通常不依赖它。",
+        "description": "Help text to ALTHOLD mode"
     },
     "auxiliaryHelpMode_CAMSTAB": {
-        "message": "启用摄像头稳定模式",
+        "message": "摄像机增稳模式。启用后可配合舵机云台等设备对摄像头进行稳定补偿。普通四轴 FPV 穿越机通常不会使用该模式。",
         "description": "Help text to CAMSTAB mode"
     },
     "adjustmentsHelp": {
@@ -4159,7 +4159,7 @@
         "message": "接收机失控保护"
     },
     "failsafeFeaturesHelpNew": {
-        "message": "失控保护分为两个阶段。<strong>阶段 1<\/strong> 在飞行通道脉冲长度无效、接收机报告失控保护模式或完全没有接收机信号时触发，通道回退设置将应用于<span class=\"message-negative\">所有通道<\/span>，并提供短暂的恢复时间。<strong>阶段 2<\/strong> 在飞控处于<span class=\"message-negative\">解锁<\/span>状态时，错误状态持续超过配置的保护时间后触发，所有通道将保持在应用的通道回退设置值，除非被所选程序覆盖。<br /><strong>注意：<\/strong>在进入阶段 1 之前，通道回退设置也会应用于脉冲无效的单个 AUX 通道。"
+        "message": "失控保护分为两个阶段。<strong>阶段 1<\/strong> 在飞行通道脉冲长度无效、接收机报告失控保护模式或完全没有接收机信号时触发，通道回退设置将应用于<span class=\"message-negative\">所有通道<\/span>，并提供短暂的恢复时间。<strong>阶段 2<\/strong> 在飞控处于<span class=\"message-negative\">解锁<\/span>状态时，错误状态持续超过配置的保护时间后触发，所有通道将保持在应用的通道回退设置值，除非被所选程序覆盖。<br \/><strong>注意：<\/strong>在进入阶段 1 之前，通道回退设置也会应用于脉冲无效的单个 AUX 通道。"
     },
     "failsafePulsrangeTitle": {
         "message": "有效脉冲范围设置"
@@ -6581,5 +6581,401 @@
     "notificationsDenied": {
         "message": "通知已被阻止。请在你的浏览器设置中启用通知。否则，你将无法收到有关耗时操作的通知。如果你使用的是 Chrome 浏览器，可以点击地址栏中的锁图标并选择“网站设置”来启用通知。",
         "description": "Message when Notifications has no or denied permissions"
+    },
+    "auxiliaryHelpMode_3DDISABLE": {
+        "message": "3D 反推模式。启用后电机可以反向旋转并产生反向推力，油门中点附近为零推力，上下分别控制正反推力。该模式主要用于 3D 飞行和倒飞，需要专用桨叶、电机方向和电调设置配合，普通穿越机不要开启。",
+        "description": "Help text to 3DDISABLE mode"
+    },
+    "auxiliaryHelpMode_ACROTRAINER": {
+        "message": "手动飞行训练模式。该模式可以理解为带角度限制的 Acro 手动模式，穿越机仍按手动模式响应摇杆，但姿态角不会超过设定限制，适合新手练习如何在手动模式下平稳飞行。",
+        "description": "Help text to ACROTRAINER mode"
+    },
+    "auxiliaryHelpMode_ARM": {
+        "message": "解锁。开启后穿越机打开保险开关，电机才可以旋转，此时允许飞行。建议将 ARM 放在独立且不容易误触的开关上，装桨前务必确认解锁逻辑正确。",
+        "description": "Help text to ARM mode"
+    },
+    "auxiliaryHelpMode_ANGLE": {
+        "message": "自稳模式，也称角度模式。此模式下穿越机无法翻滚，姿态角最大约 90 度；飞行姿态会跟随摇杆位置，打杆幅度越大倾角越大，摇杆回中后穿越机会自动回到水平。",
+        "description": "Help text to ANGLE mode"
+    },
+    "auxiliaryHelpMode_ANTIGRAVITY": {
+        "message": "抗重力模式。该模式会在油门快速变化时增强姿态保持能力，减少猛推油门或快速收油时的抬头、点头和漂移。常用于花飞和竞速调校，一般不需要单独频繁切换。",
+        "description": "Help text to ANTIGRAVITY mode"
+    },
+    "auxiliaryHelpMode_BEEPER": {
+        "message": "蜂鸣器鸣叫。启用后蜂鸣器或电机会发出短促蜂鸣报警音，常用于炸机后寻找穿越机。建议单独设置一个开关，尤其适合草地、树林和夜飞场景。",
+        "description": "Help text to BEEPER mode"
+    },
+    "auxiliaryHelpMode_BEEPERMUTE": {
+        "message": "关闭蜂鸣器。该模式可用于开启或关闭蜂鸣器提示；关闭后，遇到需要蜂鸣播报的情形时蜂鸣器不会再发出蜂鸣音，包括警告、状态和蜂鸣模式。",
+        "description": "Help text to BEEPERMUTE mode"
+    },
+    "auxiliaryHelpMode_BEEPERON": {
+        "message": "蜂鸣器常响。启用后蜂鸣器会持续或反复鸣叫，主要用于找机。它和 BEEPER 用途接近，通常按自己的遥控器开关习惯选择一种配置即可。",
+        "description": "Help text to BEEPERON mode"
+    },
+    "auxiliaryHelpMode_BEEPGPSSATELLITECOUNT": {
+        "message": "蜂鸣器播报 GPS 卫星数量。该模式需要开启并配置 GPS 功能后才可以在模式页面添加设置，用蜂鸣次数提示当前搜到的卫星数量。",
+        "description": "Help text to BEEPGPSSATELLITECOUNT mode"
+    },
+    "auxiliaryHelpMode_BLACKBOX": {
+        "message": "黑匣子记录开关。开启或关闭黑匣子的数据记录，以便后期对穿越机进行针对性的分析和调试，例如振动、滤波、PID 和飞行异常排查。",
+        "description": "Help text to BLACKBOX mode"
+    },
+    "auxiliaryHelpMode_BLACKBOXERASE": {
+        "message": "擦除黑匣子数据。顾名思义，该模式用于擦除黑匣子中已记录的所有数据；启用后等待约 30 秒，黑匣子数据会被清空，以便重新记录数据。不要放在容易误触的位置。",
+        "description": "Help text to BLACKBOXERASE mode"
+    },
+    "auxiliaryHelpMode_BOXPREARM": {
+        "message": "两段预解锁。该模式用于给 ARM 增加额外保险，只有预解锁条件满足后才允许真正解锁。适合新机、大桨机器、室内调试和重视安全的玩家。",
+        "description": "Help text to BOXPREARM mode"
+    },
+    "auxiliaryHelpMode_CALIB": {
+        "message": "飞行中校准。启用后触发飞控的飞行中校准相关功能。普通玩家较少使用，常规加速度计和水平校准建议在桌面水平环境下完成。",
+        "description": "Help text to CALIB mode"
+    },
+    "auxiliaryHelpMode_CAMERACONTROL1": {
+        "message": "摄像机控制 1。该模式用于配置兼容 RunCam 的摄像设备，或用于控制 RunCam\/Caddx HD 卡录等摄像功能。该功能需要占用飞控串口，普通模拟摄像头或多数数字图传玩家基本用不到。",
+        "description": "Help text to CAMERACONTROL1 mode"
+    },
+    "auxiliaryHelpMode_CAMERACONTROL2": {
+        "message": "摄像机控制 2。同摄像机控制 1，用于第二路兼容摄像设备或自定义摄像控制功能。只有确认设备支持并完成接线配置后再使用。",
+        "description": "Help text to CAMERACONTROL2 mode"
+    },
+    "auxiliaryHelpMode_CAMERACONTROL3": {
+        "message": "摄像机控制 3。同摄像机控制 1，用于第三路兼容摄像设备或自定义摄像控制功能。没有明确外设需求时可以不配置。",
+        "description": "Help text to CAMERACONTROL3 mode"
+    },
+    "auxiliaryHelpMode_FAILSAFE": {
+        "message": "失控保护。启用该模式后穿越机会进入失控保护阶段 2，相当于手动模拟遥控器信号丢失，用来检测穿越机失控保护功能是否可以正常运行。不要放在容易误触的开关上。",
+        "description": "Help text to FAILSAFE mode"
+    },
+    "auxiliaryHelpMode_FLIPOVERAFTERCRASH": {
+        "message": "反乌龟模式。当穿越机炸机后 180 度翻滚倒扣在地面时，该模式可让一侧的两个电机反转，使穿越机翻回到正常姿态。需要注意的是，该模式只能在电调协议选择 DShot 的情况下使用，并且只能在地面短时间使用。",
+        "description": "Help text to FLIPOVERAFTERCRASH mode"
+    },
+    "auxiliaryHelpMode_FPVANGLEMIX": {
+        "message": "FPV 摄像头角度混控。需要在配置页面输入当前 FPV 摄像头仰起的角度；开启后飞控会自动混控横滚轴和方向轴杆量，使方向轴转动更接近地平线方向，帮助保持转向时 FPV 画面与地平线平行。",
+        "description": "Help text to FPVANGLEMIX mode"
+    },
+    "auxiliaryHelpMode_GPSBEEPSATELLITECOUNT": {
+        "message": "蜂鸣器蜂鸣 GPS 卫星数量。该模式需要开启并配置 GPS 功能后才可以在模式页面进行添加设置，用蜂鸣次数提示当前 GPS 卫星数量。",
+        "description": "Help text to GPSBEEPSATELLITECOUNT mode"
+    },
+    "auxiliaryHelpMode_GPSRESCUE": {
+        "message": "GPS 救援模式。启用该模式需要安装 GPS 模块，并在端口页面设置 GPS 端口，否则无法在模式页面开启此功能；启用后穿越机会进入 GPS 返航模式，尝试返回最后一次解锁的位置。",
+        "description": "Help text to GPSRESCUE mode"
+    },
+    "auxiliaryHelpMode_HEADADJ": {
+        "message": "设置无头模式机头朝向。与 HEADFREE 无头模式搭配使用，用于在无头模式下设置新的机头朝向。只有使用无头模式时才需要配置。",
+        "description": "Help text to HEADADJ mode"
+    },
+    "auxiliaryHelpMode_HEADFREE": {
+        "message": "无头模式。启用后穿越机会忽略机头朝向变化，始终以穿越机起飞时机头指示的方向为前方，或搭配 HEADADJ 模式使用，以你设置的方向为机头方向。",
+        "description": "Help text to HEADFREE mode"
+    },
+    "auxiliaryHelpMode_HORIZON": {
+        "message": "半自稳模式。该模式介于自稳模式和手动模式之间，即在一定角度内是自稳模式，穿越机无法翻滚；超过设定角度后接近手动模式，继续打杆穿越机将翻滚，摇杆回中后姿态也会跟随回到水平。",
+        "description": "Help text to HORIZON mode"
+    },
+    "auxiliaryHelpMode_LAUNCHCONTROL": {
+        "message": "弹射起飞。该模式主要用于辅助弹射起飞，开启后穿越机会在油门摇杆达到设置的油门值时瞬间弹射起飞。常用于竞速起步，普通花飞一般不需要配置。",
+        "description": "Help text to LAUNCHCONTROL mode"
+    },
+    "auxiliaryHelpMode_LEDLOW": {
+        "message": "LED 灯开关。用于打开、关闭或降低 LED 灯输出。只有安装并配置 LED 灯带时才需要使用。",
+        "description": "Help text to LEDLOW mode"
+    },
+    "auxiliaryHelpMode_MAG": {
+        "message": "磁罗盘航向模式。启用后飞控会参考磁罗盘方向进行航向辅助。由于穿越机上的电流和金属部件容易干扰罗盘，普通穿越机很少依赖该模式。",
+        "description": "Help text to MAG mode"
+    },
+    "auxiliaryHelpMode_MSPOVERRIDE": {
+        "message": "MSP 接管模式。允许通过 MSP 协议让外部设备或地面站接管部分控制输入。属于高级联动功能，没有明确外部控制需求时不要开启。",
+        "description": "Help text to MSPOVERRIDE mode"
+    },
+    "auxiliaryHelpMode_OSDDISABLE": {
+        "message": "关闭 OSD 信息。该模式用于画面中 OSD 信息的临时关闭和开启。需要干净画面、录像或特殊调试时可以使用，日常飞行通常建议保留 OSD。",
+        "description": "Help text to OSDDISABLE mode"
+    },
+    "auxiliaryHelpMode_PASSTHRU": {
+        "message": "直通模式。开启后飞控会将遥控器的横滚、俯仰、方向等输入直接传给舵机混控，常用于固定翼等舵机机型。普通四轴穿越机不要随意开启。",
+        "description": "Help text to PASSTHRU mode"
+    },
+    "auxiliaryHelpMode_PARALYZE": {
+        "message": "瘫痪模式。开启后穿越机会切断接收机和图传信号，常见于多人比赛时，炸机后为避免干扰其他成员比赛而开启此功能。日常飞行一般不需要。",
+        "description": "Help text to PARALYZE mode"
+    },
+    "auxiliaryHelpMode_PIDAUDIO": {
+        "message": "PID 音频模式。用于 PID 音频相关调试输出，属于实验和调参功能。普通飞行、常规调机基本用不到。",
+        "description": "Help text to PIDAUDIO mode"
+    },
+    "auxiliaryHelpMode_POSHOLD": {
+        "message": "定点悬停模式。启用后飞控会尝试通过 GPS 等传感器维持当前位置。该模式依赖 GPS 搜星质量和参数设置，必须先在开阔环境低风险测试。",
+        "description": "Help text to POSHOLD mode"
+    },
+    "auxiliaryHelpMode_PREARM": {
+        "message": "预解锁。该模式主要是为了防止解锁键误触而多设置的一个开关键，只有当预解锁模式开启后，才可以进行穿越机的解锁；该模式可以有效防止由于误触解锁开关造成的安全事故。",
+        "description": "Help text to PREARM mode"
+    },
+    "auxiliaryHelpMode_READY": {
+        "message": "准备就绪。使 OSD 画面中显示 “READY”，该模式主要用于穿越机竞赛时，告知裁判组我方已准备就绪，可随时起飞。解锁后 READY 提示会消失。",
+        "description": "Help text to READY mode"
+    },
+    "auxiliaryHelpMode_STICKCOMMANDSDISABLE": {
+        "message": "禁用摇杆组合命令。Betaflight 允许通过一系列特定的摇杆移动来触发一些功能，而无需连接电脑；该模式下禁止这些摇杆命令，常用于外场进行 PID 调试、图传设置等场景，防止误触。",
+        "description": "Help text to STICKCOMMANDSDISABLE mode"
+    },
+    "auxiliaryHelpMode_SERVO1": {
+        "message": "舵机 1 开关。用于控制舵机 1 输出，主要给固定翼、云台或其它舵机外设使用。普通四轴穿越机通常不需要配置。",
+        "description": "Help text to SERVO1 mode"
+    },
+    "auxiliaryHelpMode_SERVO2": {
+        "message": "舵机 2 开关。用于控制舵机 2 输出，主要给固定翼、云台或其它舵机外设使用。没有舵机外设时可以不配置。",
+        "description": "Help text to SERVO2 mode"
+    },
+    "auxiliaryHelpMode_SERVO3": {
+        "message": "舵机 3 开关。用于控制舵机 3 输出，主要给固定翼、云台或其它舵机外设使用。请确认舵机用途和通道映射后再开启。",
+        "description": "Help text to SERVO3 mode"
+    },
+    "auxiliaryHelpMode_TELEMETRY": {
+        "message": "打开或关闭遥测数据。该模式可用于开启或关闭飞控向遥控器回传遥测数据，比如电池电压、飞行高度、信号强度等信息，前提是遥控器和接收机支持遥测功能。",
+        "description": "Help text to TELEMETRY mode"
+    },
+    "auxiliaryHelpMode_USER1": {
+        "message": "用户自定义 1。该模式常用于 PINIO 或外设控制，例如灯光、继电器、相机触发等自定义动作。没有外设需求时可以留空。",
+        "description": "Help text to USER1 mode"
+    },
+    "auxiliaryHelpMode_USER2": {
+        "message": "用户自定义 2。该模式常用于 PINIO 或外设控制，例如灯光、继电器、相机触发等自定义动作。配置前请确认外设动作不会影响飞行安全。",
+        "description": "Help text to USER2 mode"
+    },
+    "auxiliaryHelpMode_USER3": {
+        "message": "用户自定义 3。该模式常用于 PINIO 或外设控制，例如灯光、继电器、相机触发等自定义动作。属于扩展功能，新手可以先不配置。",
+        "description": "Help text to USER3 mode"
+    },
+    "auxiliaryHelpMode_USER4": {
+        "message": "用户自定义 4。该模式常用于 PINIO 或外设控制，例如灯光、继电器、相机触发等自定义动作。只有确实需要额外控制通道时再使用。",
+        "description": "Help text to USER4 mode"
+    },
+    "auxiliaryHelpMode_VTXCONTROLDISABLE": {
+        "message": "禁用图传调参功能。很多模拟图传都支持通过 OSD 协议进行图传调参，该模式可用于开启或关闭 OSD 图传调参控制功能，防止误改频道、功率或频段。",
+        "description": "Help text to VTXCONTROLDISABLE mode"
+    },
+    "auxiliaryHelpMode_VTXPOWER": {
+        "message": "图传功率切换。用于在图传支持的功率档位之间切换，例如地面低功率、起飞后高功率。使用前需要确认图传协议和功率表配置正确。",
+        "description": "Help text to VTXPOWER mode"
+    },
+    "auxiliaryHelpMode_VTXPITMODE": {
+        "message": "图传低功率模式。该模式仅对支持 PIT 低功率模式的模拟图传生效，开启后图传将以极低功率运行，甚至只有在极近距离内才能收到信号，常用于地面调试，以免图传长时间高温运行或干扰别人。",
+        "description": "Help text to VTXPITMODE mode"
+    },
+    "auxiliaryHelpMode_LAPTIMERRESET": {
+        "message": "重置计圈计时器。用于重置竞速计圈或应答器计时数据，主要服务于竞速比赛和计时系统。普通飞行可以不配置。",
+        "description": "Help text to LAPTIMERRESET mode"
+    },
+    "auxiliaryModeName_3DDISABLE": {
+        "message": "3D 反推",
+        "description": "Chinese display name for 3DDISABLE mode"
+    },
+    "auxiliaryModeName_ACROTRAINER": {
+        "message": "Acro 教练",
+        "description": "Chinese display name for ACROTRAINER mode"
+    },
+    "auxiliaryModeName_ARM": {
+        "message": "解锁",
+        "description": "Chinese display name for ARM mode"
+    },
+    "auxiliaryModeName_ANGLE": {
+        "message": "自稳模式",
+        "description": "Chinese display name for ANGLE mode"
+    },
+    "auxiliaryModeName_ANTIGRAVITY": {
+        "message": "抗重力",
+        "description": "Chinese display name for ANTIGRAVITY mode"
+    },
+    "auxiliaryModeName_AIRMODE": {
+        "message": "空中模式",
+        "description": "Chinese display name for AIRMODE mode"
+    },
+    "auxiliaryModeName_ALTHOLD": {
+        "message": "定高",
+        "description": "Chinese display name for ALTHOLD mode"
+    },
+    "auxiliaryModeName_BEEPER": {
+        "message": "寻机蜂鸣",
+        "description": "Chinese display name for BEEPER mode"
+    },
+    "auxiliaryModeName_BEEPERMUTE": {
+        "message": "蜂鸣静音",
+        "description": "Chinese display name for BEEPERMUTE mode"
+    },
+    "auxiliaryModeName_BEEPERON": {
+        "message": "蜂鸣常响",
+        "description": "Chinese display name for BEEPERON mode"
+    },
+    "auxiliaryModeName_BEEPGPSSATELLITECOUNT": {
+        "message": "卫星数蜂鸣",
+        "description": "Chinese display name for BEEPGPSSATELLITECOUNT mode"
+    },
+    "auxiliaryModeName_BLACKBOX": {
+        "message": "黑盒记录",
+        "description": "Chinese display name for BLACKBOX mode"
+    },
+    "auxiliaryModeName_BLACKBOXERASE": {
+        "message": "清空黑盒",
+        "description": "Chinese display name for BLACKBOXERASE mode"
+    },
+    "auxiliaryModeName_BOXPREARM": {
+        "message": "两段解锁",
+        "description": "Chinese display name for BOXPREARM mode"
+    },
+    "auxiliaryModeName_CALIB": {
+        "message": "飞行中校准",
+        "description": "Chinese display name for CALIB mode"
+    },
+    "auxiliaryModeName_CAMERACONTROL1": {
+        "message": "相机控制 1",
+        "description": "Chinese display name for CAMERACONTROL1 mode"
+    },
+    "auxiliaryModeName_CAMERACONTROL2": {
+        "message": "相机控制 2",
+        "description": "Chinese display name for CAMERACONTROL2 mode"
+    },
+    "auxiliaryModeName_CAMERACONTROL3": {
+        "message": "相机控制 3",
+        "description": "Chinese display name for CAMERACONTROL3 mode"
+    },
+    "auxiliaryModeName_CAMSTAB": {
+        "message": "相机增稳",
+        "description": "Chinese display name for CAMSTAB mode"
+    },
+    "auxiliaryModeName_FAILSAFE": {
+        "message": "手动失控保护",
+        "description": "Chinese display name for FAILSAFE mode"
+    },
+    "auxiliaryModeName_FLIPOVERAFTERCRASH": {
+        "message": "反乌龟模式",
+        "description": "Chinese display name for FLIPOVERAFTERCRASH mode"
+    },
+    "auxiliaryModeName_FPVANGLEMIX": {
+        "message": "FPV 角度混控",
+        "description": "Chinese display name for FPVANGLEMIX mode"
+    },
+    "auxiliaryModeName_GPSBEEPSATELLITECOUNT": {
+        "message": "GPS 卫星蜂鸣",
+        "description": "Chinese display name for GPSBEEPSATELLITECOUNT mode"
+    },
+    "auxiliaryModeName_GPSRESCUE": {
+        "message": "GPS 返航",
+        "description": "Chinese display name for GPSRESCUE mode"
+    },
+    "auxiliaryModeName_HEADADJ": {
+        "message": "无头校准",
+        "description": "Chinese display name for HEADADJ mode"
+    },
+    "auxiliaryModeName_HEADFREE": {
+        "message": "无头模式",
+        "description": "Chinese display name for HEADFREE mode"
+    },
+    "auxiliaryModeName_HORIZON": {
+        "message": "半自稳模式",
+        "description": "Chinese display name for HORIZON mode"
+    },
+    "auxiliaryModeName_LAUNCHCONTROL": {
+        "message": "弹射起步",
+        "description": "Chinese display name for LAUNCHCONTROL mode"
+    },
+    "auxiliaryModeName_LEDLOW": {
+        "message": "关闭灯带",
+        "description": "Chinese display name for LEDLOW mode"
+    },
+    "auxiliaryModeName_MAG": {
+        "message": "磁罗盘定向",
+        "description": "Chinese display name for MAG mode"
+    },
+    "auxiliaryModeName_MSPOVERRIDE": {
+        "message": "MSP 接管",
+        "description": "Chinese display name for MSPOVERRIDE mode"
+    },
+    "auxiliaryModeName_OSDDISABLE": {
+        "message": "关闭 OSD",
+        "description": "Chinese display name for OSDDISABLE mode"
+    },
+    "auxiliaryModeName_PASSTHRU": {
+        "message": "直通舵机",
+        "description": "Chinese display name for PASSTHRU mode"
+    },
+    "auxiliaryModeName_PARALYZE": {
+        "message": "锁死保护",
+        "description": "Chinese display name for PARALYZE mode"
+    },
+    "auxiliaryModeName_PIDAUDIO": {
+        "message": "PID 音频",
+        "description": "Chinese display name for PIDAUDIO mode"
+    },
+    "auxiliaryModeName_POSHOLD": {
+        "message": "定点悬停",
+        "description": "Chinese display name for POSHOLD mode"
+    },
+    "auxiliaryModeName_PREARM": {
+        "message": "预解锁",
+        "description": "Chinese display name for PREARM mode"
+    },
+    "auxiliaryModeName_READY": {
+        "message": "准备提示",
+        "description": "Chinese display name for READY mode"
+    },
+    "auxiliaryModeName_STICKCOMMANDSDISABLE": {
+        "message": "禁用摇杆命令",
+        "description": "Chinese display name for STICKCOMMANDSDISABLE mode"
+    },
+    "auxiliaryModeName_SERVO1": {
+        "message": "舵机 1",
+        "description": "Chinese display name for SERVO1 mode"
+    },
+    "auxiliaryModeName_SERVO2": {
+        "message": "舵机 2",
+        "description": "Chinese display name for SERVO2 mode"
+    },
+    "auxiliaryModeName_SERVO3": {
+        "message": "舵机 3",
+        "description": "Chinese display name for SERVO3 mode"
+    },
+    "auxiliaryModeName_TELEMETRY": {
+        "message": "遥测开关",
+        "description": "Chinese display name for TELEMETRY mode"
+    },
+    "auxiliaryModeName_USER1": {
+        "message": "自定义 1",
+        "description": "Chinese display name for USER1 mode"
+    },
+    "auxiliaryModeName_USER2": {
+        "message": "自定义 2",
+        "description": "Chinese display name for USER2 mode"
+    },
+    "auxiliaryModeName_USER3": {
+        "message": "自定义 3",
+        "description": "Chinese display name for USER3 mode"
+    },
+    "auxiliaryModeName_USER4": {
+        "message": "自定义 4",
+        "description": "Chinese display name for USER4 mode"
+    },
+    "auxiliaryModeName_VTXCONTROLDISABLE": {
+        "message": "禁用图传控制",
+        "description": "Chinese display name for VTXCONTROLDISABLE mode"
+    },
+    "auxiliaryModeName_VTXPOWER": {
+        "message": "图传功率",
+        "description": "Chinese display name for VTXPOWER mode"
+    },
+    "auxiliaryModeName_VTXPITMODE": {
+        "message": "图传 Pit 模式",
+        "description": "Chinese display name for VTXPITMODE mode"
+    },
+    "auxiliaryModeName_LAPTIMERRESET": {
+        "message": "重置计圈",
+        "description": "Chinese display name for LAPTIMERRESET mode"
     }
 }

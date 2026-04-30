@@ -10,8 +10,17 @@
 
         <div class="toolbox">
             <form>
-                <input type="checkbox" id="switch-toggle-unused" name="switch-toggle-unused" class="toggle" />
-                <span i18n="auxiliaryToggleUnused"></span>
+                <input
+                    type="search"
+                    id="mode-search"
+                    class="mode-search"
+                    placeholder="搜索模式名称或说明"
+                    autocomplete="off"
+                />
+                <label class="hide-unused-modes">
+                    <input type="checkbox" id="switch-toggle-unused" name="switch-toggle-unused" class="toggle" />
+                    <span i18n="auxiliaryToggleUnused"></span>
+                </label>
             </form>
         </div>
 
@@ -40,7 +49,9 @@
                     </a>
                 </div>
             </div>
-            <div class="ranges"></div>
+            <div class="ranges">
+                <p class="mode-hint"></p>
+            </div>
         </div>
     </div>
     <div class="range">

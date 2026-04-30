@@ -1,7 +1,7 @@
 {
     "name": "betaflight-mirror-configurator",
-    "productName": "HS-FPV | Betaflight镜像站",
-    "displayName": "HS-FPV | Betaflight镜像站",
+    "productName": "花生FPV | Betaflight镜像站",
+    "displayName": "花生FPV | Betaflight镜像站",
     "description": "Mirror-focused Betaflight-compatible configurator with presets, firmware flashing, and local device setup.",
     "version": "2025.12.2",
     "type": "module",
@@ -29,7 +29,7 @@
         "id": "main-window",
         "min_width": 1024,
         "min_height": 550,
-        "title": "HS-FPV | Betaflight镜像站"
+        "title": "花生FPV | Betaflight镜像站"
     },
     "repository": {
         "type": "git",

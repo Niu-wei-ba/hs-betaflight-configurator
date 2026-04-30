@@ -28,7 +28,7 @@ function encodePathSegments(pathname) {
 }
 
 export const appConfig = {
-    appName: import.meta.env.VITE_APP_NAME || "HS-FPV | Betaflight镜像站",
+    appName: import.meta.env.VITE_APP_NAME || "花生FPV | Betaflight镜像站",
     appTagline:
         import.meta.env.VITE_APP_TAGLINE || "一个专注镜像部署的 Betaflight 兼容调参工具，支持固件刷写与预设托管。",
     sourceCodeUrl: import.meta.env.VITE_SOURCE_CODE_URL || "https://github.com/Niu-wei-ba/betaflight-configurator",
