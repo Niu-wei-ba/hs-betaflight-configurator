@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { REMOTE_LOAD_TIMING_STEPS } from "../../src/js/utils/firmwareLoadTiming.js";
 
+const pickSaveFile = vi.fn();
+const writeFile = vi.fn();
+
 vi.mock("../../src/js/localization", () => ({
     i18n: {
         getMessage: (key) =>
@@ -44,7 +47,12 @@ vi.mock("../../src/js/Analytics", () => ({
 vi.mock("../../src/js/port_handler", () => ({ default: {} }));
 vi.mock("../../src/js/gui_log", () => ({ gui_log: vi.fn() }));
 vi.mock("../../src/js/workers/hex_parser.js", () => ({ default: vi.fn() }));
-vi.mock("../../src/js/FileSystem", () => ({ default: {} }));
+vi.mock("../../src/js/FileSystem", () => ({
+    default: {
+        pickSaveFile,
+        writeFile,
+    },
+}));
 vi.mock("../../src/js/protocols/webstm32", () => ({ default: {} }));
 vi.mock("../../src/js/protocols/webusbdfu", () => ({ default: {} }));
 vi.mock("../../src/js/utils/AutoBackup.js", () => ({ default: {} }));
@@ -68,6 +76,8 @@ const { firmware_flasher } = await import("../../src/js/tabs/firmware_flasher.js
 
 describe("firmware flasher load timing panel", () => {
     beforeEach(() => {
+        pickSaveFile.mockReset();
+        writeFile.mockReset();
         document.body.innerHTML = `
             <div class="release_info">
                 <div id="loadTimingInfo" class="load_timing_info">
@@ -113,5 +123,85 @@ describe("firmware flasher load timing panel", () => {
         expect(stepTexts[0]).toContain("success");
         expect(stepTexts[1]).toContain("parse_firmware");
         expect(stepTexts[1]).toContain("failed");
+    });
+});
+
+describe("firmware flasher download button", () => {
+    beforeEach(() => {
+        pickSaveFile.mockReset();
+        writeFile.mockReset();
+        document.body.innerHTML = `
+            <a class="download_firmware disabled" href="#"></a>
+            <a class="flash_firmware disabled" href="#"></a>
+            <a class="load_remote_file disabled" href="#"></a>
+            <a class="load_file disabled" href="#"></a>
+            <a class="exit_dfu disabled" href="#"></a>
+            <span class="progressLabel"></span>
+        `;
+        firmware_flasher.localFirmwareLoaded = false;
+        firmware_flasher.parsed_hex = undefined;
+        firmware_flasher.uf2_binary = undefined;
+        firmware_flasher.firmware_type = undefined;
+        firmware_flasher.filename = null;
+    });
+
+    it("toggles the download button explicitly", () => {
+        firmware_flasher.enableDownloadFirmwareButton(true);
+        expect(document.querySelector("a.download_firmware")?.classList.contains("disabled")).toBe(false);
+
+        firmware_flasher.enableDownloadFirmwareButton(false);
+        expect(document.querySelector("a.download_firmware")?.classList.contains("disabled")).toBe(true);
+    });
+
+    it("re-enables download after flashing state reset only for remote firmware", () => {
+        firmware_flasher.parsed_hex = { bytes_total: 1234 };
+        firmware_flasher.localFirmwareLoaded = false;
+
+        firmware_flasher.resetFlashingState();
+        expect(document.querySelector("a.download_firmware")?.classList.contains("disabled")).toBe(false);
+
+        firmware_flasher.localFirmwareLoaded = true;
+        firmware_flasher.resetFlashingState();
+        expect(document.querySelector("a.download_firmware")?.classList.contains("disabled")).toBe(true);
+    });
+
+    it("keeps download disabled after stale remote UF2 state is cleared", () => {
+        firmware_flasher.localFirmwareLoaded = false;
+        firmware_flasher.enableDownloadFirmwareButton(false);
+
+        firmware_flasher.uf2_binary = undefined;
+        firmware_flasher.firmware_type = undefined;
+        firmware_flasher.filename = null;
+
+        firmware_flasher.resetFlashingState();
+
+        expect(document.querySelector("a.download_firmware")?.classList.contains("disabled")).toBe(true);
+    });
+
+    it("saves online HEX firmware using the current filename", async () => {
+        pickSaveFile.mockResolvedValue({ name: "remote.hex" });
+        writeFile.mockResolvedValue();
+
+        firmware_flasher.firmware_type = "HEX";
+        firmware_flasher.filename = "remote.hex";
+        firmware_flasher.intel_hex = ":100000000C9445000C946E000C946E000C946E00";
+
+        await expect(firmware_flasher.saveLoadedFirmware()).resolves.toBe(true);
+        expect(pickSaveFile).toHaveBeenCalledWith("remote.hex", "fileSystemPickerFiles", ".hex");
+        expect(writeFile).toHaveBeenCalledWith({ name: "remote.hex" }, ":100000000C9445000C946E000C946E000C946E00");
+    });
+
+    it("saves online UF2 firmware as binary", async () => {
+        const bytes = new Uint8Array([1, 2, 3, 4]);
+        pickSaveFile.mockResolvedValue({ name: "remote.uf2" });
+        writeFile.mockResolvedValue();
+
+        firmware_flasher.firmware_type = "UF2";
+        firmware_flasher.filename = "remote.uf2";
+        firmware_flasher.uf2_binary = bytes;
+
+        await expect(firmware_flasher.saveLoadedFirmware()).resolves.toBe(true);
+        expect(pickSaveFile).toHaveBeenCalledWith("remote.uf2", "fileSystemPickerFiles", ".uf2");
+        expect(writeFile).toHaveBeenCalledWith({ name: "remote.uf2" }, bytes);
     });
 });

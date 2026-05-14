@@ -3320,6 +3320,9 @@
     "firmwareFlasherButtonLoadOnline": {
         "message": "从网络加载固件"
     },
+    "firmwareFlasherButtonDownload": {
+        "message": "下载固件到本地"
+    },
     "firmwareFlasherButtonDownloading": {
         "message": "下载中..."
     },
