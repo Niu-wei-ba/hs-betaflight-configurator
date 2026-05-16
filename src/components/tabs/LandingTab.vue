@@ -236,26 +236,31 @@ import GUI from "../../js/gui";
 import { i18n } from "../../js/localization";
 import communityCtaUrl from "../../images/landing-community-cta.png";
 import qqQrUrl from "../../images/hs-qq-qr.png";
+import poster5InchHuafeijiUrl from "../../images/share-posters/5-inch-huafeiji-share-poster.png";
+import posterBaojunX5Url from "../../images/share-posters/baojun-x5-share-poster.png";
+import posterMario5WideXSimUrl from "../../images/share-posters/mario5-wide-x-sim-share-poster.png";
+import posterMark5Url from "../../images/share-posters/mark5-share-poster.png";
+import posterWucunHuafeiUrl from "../../images/share-posters/wucun-huafei-share-poster.png";
 
 const showcasePosters = [
     {
-        src: "https://public-1322839452.cos.ap-guangzhou.myqcloud.com/5%E5%AF%B8%E8%8A%B1%E9%A3%9E%E6%9C%BA-share-poster.png",
+        src: poster5InchHuafeijiUrl,
         alt: "五寸花飞机海报",
     },
     {
-        src: "https://public-1322839452.cos.ap-guangzhou.myqcloud.com/Mario5%E5%AE%BDX%EF%BC%88%E6%A8%A1%E6%8B%9F%E7%89%88%EF%BC%89-share-poster.png",
+        src: posterMario5WideXSimUrl,
         alt: "Mario5 模拟版海报",
     },
     {
-        src: "https://public-1322839452.cos.ap-guangzhou.myqcloud.com/Mark5-share-poster.png",
+        src: posterMark5Url,
         alt: "Mark5 海报",
     },
     {
-        src: "https://public-1322839452.cos.ap-guangzhou.myqcloud.com/%E4%BA%94%E5%AF%B8%E8%8A%B1%E9%A3%9E-share-poster.png",
+        src: posterWucunHuafeiUrl,
         alt: "五寸花飞海报",
     },
     {
-        src: "https://public-1322839452.cos.ap-guangzhou.myqcloud.com/%E6%9A%B4%E5%90%9BX5-%E4%BA%94%E5%AF%B8%E8%B6%85%E8%80%90%E7%82%B8-share-poster.png",
+        src: posterBaojunX5Url,
         alt: "暴君 X5 超耐炸海报",
     },
 ];
