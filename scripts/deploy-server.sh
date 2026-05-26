@@ -8,10 +8,12 @@ SSH_HOST="${BFC_DEPLOY_SSH_HOST:-root@106.54.16.124}"
 SSH_KEY="${BFC_DEPLOY_SSH_KEY:-/Users/lihao/Downloads/ssh.pem}"
 SITE_URL="${BFC_DEPLOY_SITE_URL:-https://bf.hs-fpv.com}"
 SITE_ROOT="${BFC_DEPLOY_SITE_ROOT:-/www/wwwroot/bf.hs-fpv.com}"
+NGINX_EXTENSION_DIR="${BFC_DEPLOY_NGINX_EXTENSION_DIR:-/www/server/panel/vhost/nginx/extension/bf.hs-fpv.com}"
 KEEP_RELEASES="${BFC_DEPLOY_KEEP_RELEASES:-5}"
 NODE_VERSION="${BFC_DEPLOY_NODE_VERSION:-20.19.0}"
 VITE_SOURCE_CODE_URL="${VITE_SOURCE_CODE_URL:-https://github.com/Niu-wei-ba/hs-betaflight-configurator}"
 RELEASE_ID="${BFC_DEPLOY_RELEASE_ID:-$(git rev-parse --short HEAD)}"
+SECURITY_HEADERS_CONF="$PROJECT_ROOT/deploy/nginx/bf-security-headers.conf"
 
 if ! [[ "$KEEP_RELEASES" =~ ^[0-9]+$ ]] || (( KEEP_RELEASES < 1 )); then
     echo "BFC_DEPLOY_KEEP_RELEASES must be a positive integer." >&2
@@ -49,6 +51,14 @@ ssh_server "mkdir -p '$SITE_ROOT/releases/$RELEASE_ID'"
 rsync -az --delete -e "$RSYNC_SSH" \
     src/dist/ \
     "$SSH_HOST:$SITE_ROOT/releases/$RELEASE_ID/"
+
+if [[ -f "$SECURITY_HEADERS_CONF" ]]; then
+    ssh_server "mkdir -p '$NGINX_EXTENSION_DIR'"
+    rsync -az -e "$RSYNC_SSH" \
+        "$SECURITY_HEADERS_CONF" \
+        "$SSH_HOST:$NGINX_EXTENSION_DIR/"
+    ssh_server "nginx -t && nginx -s reload"
+fi
 
 ssh_server bash -s -- \
     "$RELEASE_ID" \

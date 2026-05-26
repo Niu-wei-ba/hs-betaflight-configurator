@@ -26,6 +26,7 @@ The deployment is configured through Vite environment variables:
 - `VITE_SOURCE_CODE_URL`
 - `VITE_DOCS_BASE_URL`
 - `VITE_BUILD_API_BASE_URL`
+- `VITE_DEV_PROXY_TARGET` (local dev only; Vite proxy target for `/api`, `/healthz`, `/presets`, `/firmware-files`, `/docs`)
 - `VITE_FIRMWARE_USE_VERSION_INDEX_FILTER` (optional; default off — full version list like official Betaflight; set `true` to restrict the dropdown to entries present in `/api/firmware/versions`)
 - `VITE_PRESETS_OFFICIAL_URL`
 - `VITE_PRESETS_BACKUP_URL`
@@ -41,25 +42,25 @@ Firmware metadata, Cloud Build fallback, upstream firmware proxying, and build-t
 
 - `/Users/lihao/Documents/hs-betaflight-firmware-api`
 
-This frontend only talks to a Betaflight Build API-compatible service through `VITE_BUILD_API_BASE_URL`. Firmware files are downloaded from the URL returned by that service; for HS-FPV deployments that URL is a same-origin backend proxy rather than an object-storage URL.
+This frontend talks to a Betaflight Build API-compatible service through same-origin routes by default. `VITE_BUILD_API_BASE_URL` is only needed when a deployment intentionally serves the frontend and build API from different origins. Firmware files are downloaded from the URL returned by that service; for HS-FPV deployments that URL is a same-origin backend proxy rather than an object-storage URL.
 
 For **board and firmware version lists** to match [official Cloud Build API](https://betaflight.com/docs/development/API/Cloud-Build-API) behavior (`https://build.betaflight.com`), the mirror service should return the same payloads for `GET /api/targets` and `GET /api/targets/{target}` (e.g. periodic sync or reverse proxy + cache). The optional `GET /api/firmware/versions` route can supply channel metadata for labels; the UI no longer hides releases that are missing from that index unless `VITE_FIRMWARE_USE_VERSION_INDEX_FILTER=true`.
 
 ## Local Development
 
-Run the private firmware API separately, then start this frontend against it:
+Run the private firmware API separately, then start the frontend with Vite proxying all backend routes through the same origin:
 
 ```bash
 nvm use
-VITE_BUILD_API_BASE_URL=http://127.0.0.1:4180 yarn dev
+VITE_DEV_PROXY_TARGET=http://127.0.0.1:4180 yarn dev
 ```
 
 Useful checks:
 
 ```bash
-curl http://127.0.0.1:4180/healthz
-curl http://127.0.0.1:4180/api/targets
-curl "http://127.0.0.1:4180/api/firmware/url?version=2025.12.2&target=SPEEDYBEEF405V3"
+curl http://127.0.0.1:8000/healthz
+curl http://127.0.0.1:8000/api/targets
+curl "http://127.0.0.1:8000/api/firmware/url?version=2025.12.2&target=SPEEDYBEEF405V3"
 ```
 
 ## Presets

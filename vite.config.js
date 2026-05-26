@@ -10,6 +10,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { resolve } from "path";
 
 const commitHash = child.execSync("git rev-parse --short HEAD").toString().trim();
+const devProxyTarget = process.env.VITE_DEV_PROXY_TARGET || "http://127.0.0.1:4180";
 
 function serveFileFromDirectory(directory) {
     return (req, res, next) => {
@@ -130,6 +131,28 @@ export default defineConfig({
         port: 8000,
         strictPort: true,
         host: "0.0.0.0", // Listen on all network interfaces for Android device access
+        proxy: {
+            "/api": {
+                target: devProxyTarget,
+                changeOrigin: false,
+            },
+            "/healthz": {
+                target: devProxyTarget,
+                changeOrigin: false,
+            },
+            "/presets": {
+                target: devProxyTarget,
+                changeOrigin: false,
+            },
+            "/firmware-files": {
+                target: devProxyTarget,
+                changeOrigin: false,
+            },
+            "/docs": {
+                target: devProxyTarget,
+                changeOrigin: false,
+            },
+        },
     },
     preview: {
         port: 8080,

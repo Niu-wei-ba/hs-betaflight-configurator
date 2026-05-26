@@ -16,6 +16,12 @@ afterEach(() => {
 });
 
 describe("AppConfig proxy builders", () => {
+    it("defaults API URLs to the current origin when no override is set", async () => {
+        const appConfigModule = await loadAppConfigModule();
+
+        expect(appConfigModule.buildApiUrl("/targets")).toBe(`${window.location.origin}/api/targets`);
+    });
+
     it("builds same-origin external proxy URLs", async () => {
         const appConfigModule = await loadAppConfigModule({
             VITE_BUILD_API_BASE_URL: "https://mirror.example.com",
