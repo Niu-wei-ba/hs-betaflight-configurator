@@ -1,16 +1,6 @@
 <template>
     <BaseTab tab-name="landing">
         <div class="content_wrapper landing-page">
-            <aside class="landing-side-qr" aria-label="左侧 QQ 二维码">
-                <div class="landing-side-qr-head">
-                    <span class="landing-side-qr-title">QQ 交流群</span>
-                    <span class="landing-side-qr-note">扫码加入</span>
-                </div>
-                <div class="landing-side-qr-frame">
-                    <img class="welcome-qr-image" :src="qqQrUrl" alt="HS-FPV QQ 交流群二维码" />
-                </div>
-            </aside>
-
             <section class="landing-hero">
                 <div class="hero-copy">
                     <div class="hero-copy-main">
@@ -114,100 +104,27 @@
                     </div>
                 </div>
 
-                <div class="hero-sidebar">
-                    <section class="panel-card hero-poster-card" aria-label="飞手配置海报">
-                        <div class="panel-head">
-                            <span class="panel-head-icon panel-head-icon-blue">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    width="20"
-                                    height="20"
-                                    fill="currentColor"
-                                    class="panel-head-svg"
-                                >
-                                    <path
-                                        d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-1 14H6V7h12v10Zm-8.5-2.5 2.3-2.9 1.7 2.1 2.5-3.2L18 15H8.5Z"
-                                    ></path>
-                                </svg>
-                            </span>
-                            <div>
-                                <h2>飞手配置海报</h2>
-                                <p>记录你的穿越机配置，生成可分享的装备卡片</p>
-                            </div>
+                <aside class="hero-sidebar" aria-label="赞助商和交流群">
+                    <section class="sponsor-logo-card">
+                        <div class="sponsor-logo-copy">
+                            <span class="sponsor-logo-kicker">Sponsor</span>
+                            <h2>赞助商支持</h2>
                         </div>
-
-                        <div class="hero-carousel-frame hero-carousel-frame-poster">
-                            <button
-                                type="button"
-                                class="hero-carousel-arrow hero-carousel-arrow-left"
-                                aria-label="上一张海报"
-                                @click="showPrevPoster"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    width="20"
-                                    height="20"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="hero-carousel-arrow-icon"
-                                >
-                                    <path d="m15 18-6-6 6-6"></path>
-                                </svg>
-                            </button>
-
-                            <a
-                                v-for="(poster, index) in showcasePosters"
-                                :key="poster.src"
-                                :href="poster.src"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="hero-carousel-slide"
-                                :class="{ 'is-active': index === activePosterIndex }"
-                            >
-                                <img :src="poster.src" :alt="poster.alt" :loading="index === 0 ? 'eager' : 'lazy'" />
-                            </a>
-
-                            <button
-                                type="button"
-                                class="hero-carousel-arrow hero-carousel-arrow-right"
-                                aria-label="下一张海报"
-                                @click="showNextPoster"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    width="20"
-                                    height="20"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="hero-carousel-arrow-icon"
-                                >
-                                    <path d="m9 18 6-6-6-6"></path>
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div class="hero-carousel-dots">
-                            <button
-                                v-for="(poster, index) in showcasePosters"
-                                :key="`${poster.alt}-${index}`"
-                                type="button"
-                                class="hero-carousel-dot"
-                                :class="{ 'is-active': index === activePosterIndex }"
-                                :aria-label="`切换到第 ${index + 1} 张海报`"
-                                @click="setActivePoster(index)"
-                            ></button>
+                        <div class="sponsor-logo-frame">
+                            <img class="sponsor-logo-image" :src="sponsorBuckLogoUrl" alt="BUCK 赞助商 Logo" />
                         </div>
                     </section>
-                </div>
+
+                    <section class="community-qr-card" aria-label="花生FPV交流群">
+                        <div class="community-qr-copy">
+                            <h2>花生FPV交流群</h2>
+                            <span>扫码加入</span>
+                        </div>
+                        <div class="community-qr-frame">
+                            <img class="welcome-qr-image" :src="qqQrUrl" alt="花生FPV交流群二维码" />
+                        </div>
+                    </section>
+                </aside>
             </section>
 
             <div class="language-switcher">
@@ -230,40 +147,13 @@
 </template>
 
 <script>
-import { defineComponent, onBeforeUnmount, onMounted, ref } from "vue";
+import { defineComponent, onMounted, ref } from "vue";
 import BaseTab from "./BaseTab.vue";
 import GUI from "../../js/gui";
 import { i18n } from "../../js/localization";
 import communityCtaUrl from "../../images/landing-community-cta.png";
 import qqQrUrl from "../../images/hs-qq-qr.png";
-import poster5InchHuafeijiUrl from "../../images/share-posters/5-inch-huafeiji-share-poster.png";
-import posterBaojunX5Url from "../../images/share-posters/baojun-x5-share-poster.png";
-import posterMario5WideXSimUrl from "../../images/share-posters/mario5-wide-x-sim-share-poster.png";
-import posterMark5Url from "../../images/share-posters/mark5-share-poster.png";
-import posterWucunHuafeiUrl from "../../images/share-posters/wucun-huafei-share-poster.png";
-
-const showcasePosters = [
-    {
-        src: poster5InchHuafeijiUrl,
-        alt: "五寸花飞机海报",
-    },
-    {
-        src: posterMario5WideXSimUrl,
-        alt: "Mario5 模拟版海报",
-    },
-    {
-        src: posterMark5Url,
-        alt: "Mark5 海报",
-    },
-    {
-        src: posterWucunHuafeiUrl,
-        alt: "五寸花飞海报",
-    },
-    {
-        src: posterBaojunX5Url,
-        alt: "暴君 X5 超耐炸海报",
-    },
-];
+import sponsorBuckLogoUrl from "../../images/sponsors/buck-logo.png";
 
 const heroHighlights = [
     {
@@ -300,8 +190,6 @@ export default defineComponent({
     setup() {
         const availableLanguages = ref(["DEFAULT", ...i18n.getLanguagesAvailables()]);
         const selectedLanguage = ref(i18n.selectedLanguage);
-        const activePosterIndex = ref(0);
-        let posterTimer = null;
 
         function changeLanguage(lang) {
             if (i18n.selectedLanguage !== lang) {
@@ -310,54 +198,18 @@ export default defineComponent({
             }
         }
 
-        function setActivePoster(index) {
-            activePosterIndex.value = index;
-        }
-
-        function showPrevPoster() {
-            activePosterIndex.value = (activePosterIndex.value - 1 + showcasePosters.length) % showcasePosters.length;
-        }
-
-        function showNextPoster() {
-            activePosterIndex.value = (activePosterIndex.value + 1) % showcasePosters.length;
-        }
-
-        function startPosterRotation() {
-            const reducedMotionQuery =
-                typeof window.matchMedia === "function" ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
-
-            if (reducedMotionQuery?.matches) {
-                return;
-            }
-
-            posterTimer = window.setInterval(() => {
-                showNextPoster();
-            }, 3600);
-        }
-
         onMounted(() => {
             GUI.content_ready();
-            startPosterRotation();
-        });
-
-        onBeforeUnmount(() => {
-            if (posterTimer !== null) {
-                window.clearInterval(posterTimer);
-            }
         });
 
         return {
-            activePosterIndex,
             availableLanguages,
             changeLanguage,
             communityCtaUrl,
             heroHighlights,
             qqQrUrl,
-            setActivePoster,
             selectedLanguage,
-            showcasePosters,
-            showNextPoster,
-            showPrevPoster,
+            sponsorBuckLogoUrl,
         };
     },
 });
@@ -455,59 +307,12 @@ export default defineComponent({
     z-index: 1;
 }
 
-.landing-side-qr {
-    position: fixed;
-    left: 1rem;
-    top: 372px;
-    z-index: 6;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 13rem;
-    padding: 10px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(16, 36, 79, 0.08);
-    box-shadow: 0 12px 28px rgba(16, 36, 79, 0.08);
-}
-
-.landing-side-qr-head {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.landing-side-qr-title {
-    color: var(--landing-ink);
-    font-size: 15px;
-    line-height: 1.2;
-    font-weight: 900;
-}
-
-.landing-side-qr-note {
-    color: rgba(16, 36, 79, 0.52);
-    font-size: 11px;
-    line-height: 1.4;
-    font-weight: 700;
-}
-
-.landing-side-qr-frame {
-    box-sizing: border-box;
-    width: 100%;
-    padding: 12px;
-    border-radius: 16px;
-    background: rgba(247, 249, 255, 0.96);
-    border: 1px solid rgba(16, 36, 79, 0.06);
-    overflow: hidden;
-}
-
 .landing-hero {
     display: grid;
-    grid-template-columns: minmax(0, 590px) minmax(0, 430px);
+    grid-template-columns: minmax(0, 590px) minmax(260px, 360px);
     justify-content: center;
-    gap: 32px;
-    align-items: start;
+    gap: 28px;
+    align-items: stretch;
 }
 
 .hero-copy {
@@ -544,8 +349,6 @@ export default defineComponent({
 .hero-badge-icon,
 .hero-note-icon,
 .entry-icon,
-.panel-head-svg,
-.hero-carousel-arrow-icon,
 .announcement-icon {
     width: 20px;
     height: 20px;
@@ -723,8 +526,6 @@ export default defineComponent({
 }
 
 .entry-card:focus-visible,
-.hero-carousel-dot:focus-visible,
-.hero-carousel-arrow:focus-visible,
 .announcement-link:focus-visible,
 .lang-options a:focus-visible {
     outline: 3px solid rgba(92, 141, 255, 0.28);
@@ -842,158 +643,121 @@ export default defineComponent({
 .hero-sidebar {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: 18px;
     min-width: 0;
-    width: min(100%, 430px);
+    width: min(100%, 360px);
     justify-self: start;
-    align-self: start;
+    align-self: stretch;
 }
 
-.panel-card {
-    padding: 20px;
-    border-radius: 28px;
-    background: rgba(255, 255, 255, 0.92);
+.sponsor-logo-card {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+    width: 100%;
+    padding: 22px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.94);
     border: 1px solid rgba(255, 255, 255, 0.78);
     box-shadow: var(--landing-shadow);
 }
 
-.panel-head {
+.sponsor-logo-copy {
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    width: 100%;
-    margin-bottom: 18px;
+    flex-direction: column;
+    gap: 6px;
 }
 
-.hero-poster-card {
-    --poster-frame-width: min(100%, clamp(240px, 34vh, 360px));
+.sponsor-logo-kicker {
+    color: var(--landing-orange);
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.sponsor-logo-copy h2 {
+    margin: 0;
+    color: var(--landing-ink);
+    font-size: 17px;
+    line-height: 1.2;
+    font-weight: 900;
+}
+
+.sponsor-logo-frame {
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 16 / 7;
+    min-height: 142px;
+    padding: 18px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(16, 36, 79, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.sponsor-logo-image {
+    display: block;
+    width: 100%;
+    max-height: 96px;
+    object-fit: contain;
+}
+
+.community-qr-card {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    width: 100%;
+    min-height: 360px;
+    padding: 28px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow: 0 14px 32px rgba(16, 36, 79, 0.06);
+}
+
+.community-qr-copy {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: fit-content;
-    max-width: 100%;
-    padding: 22px 22px 18px;
+    gap: 6px;
+    min-width: 0;
+    text-align: center;
 }
 
-.hero-poster-card .panel-head {
-    width: var(--poster-frame-width);
-}
-
-.panel-head-icon {
-    display: grid;
-    place-items: center;
-    width: 38px;
-    height: 38px;
-    flex-shrink: 0;
-    border-radius: 14px;
-}
-
-.panel-head-icon-blue {
-    background: var(--landing-blue-soft);
-    color: var(--landing-blue);
-}
-
-.panel-head h2 {
-    margin: 0 0 6px;
-    font-size: 16px;
-    line-height: 1.2;
-    font-weight: 800;
-}
-
-.panel-head p {
+.community-qr-copy h2 {
     margin: 0;
+    color: var(--landing-ink);
+    font-size: 21px;
+    line-height: 1.25;
+    font-weight: 900;
+}
+
+.community-qr-copy span {
     color: rgba(16, 36, 79, 0.52);
     font-size: 13px;
-    line-height: 1.45;
-    font-weight: 600;
+    line-height: 1.4;
+    font-weight: 700;
 }
 
-.hero-carousel-frame {
-    position: relative;
-    aspect-ratio: 1.2 / 0.84;
-    border-radius: 26px;
+.community-qr-frame {
+    box-sizing: border-box;
+    width: min(100%, 226px);
+    padding: 16px;
+    border-radius: 24px;
+    background: rgba(247, 249, 255, 0.96);
+    border: 1px solid rgba(16, 36, 79, 0.06);
     overflow: hidden;
-    background: #081120;
-}
-
-.hero-carousel-frame-poster {
-    align-self: center;
-    width: var(--poster-frame-width);
-    aspect-ratio: 9 / 16;
-    min-height: 0;
-}
-
-.hero-carousel-slide {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.28s ease;
-}
-
-.hero-carousel-slide.is-active {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.hero-carousel-slide img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    object-position: center;
-}
-
-.hero-carousel-arrow {
-    position: absolute;
-    top: 50%;
-    z-index: 2;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    margin-top: -22px;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
-    color: rgba(16, 36, 79, 0.72);
-    box-shadow: 0 12px 24px rgba(16, 36, 79, 0.12);
-    cursor: pointer;
-}
-
-.hero-carousel-arrow-left {
-    left: 12px;
-}
-
-.hero-carousel-arrow-right {
-    right: 12px;
-}
-
-.hero-carousel-dots {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    width: var(--poster-frame-width);
-    padding-top: 12px;
-}
-
-.hero-carousel-dot {
-    width: 8px;
-    height: 8px;
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(16, 36, 79, 0.16);
-    cursor: pointer;
-    transition:
-        width 0.2s ease,
-        background-color 0.2s ease;
-}
-
-.hero-carousel-dot.is-active {
-    width: 22px;
-    background: var(--landing-orange);
 }
 
 .welcome-qr-image {
@@ -1048,13 +812,10 @@ export default defineComponent({
 }
 
 @media (max-width: 1120px) {
-    .landing-side-qr {
-        display: none;
-    }
-
     .landing-hero {
         grid-template-columns: 1fr;
         gap: 30px;
+        align-items: start;
     }
 
     .hero-copy {
@@ -1076,13 +837,19 @@ export default defineComponent({
         margin-left: 0;
     }
 
-    .hero-poster-card {
-        --poster-frame-width: min(100%, clamp(220px, 36vh, 330px));
+    .hero-sidebar {
+        width: min(100%, 520px);
+        justify-self: start;
+        align-self: start;
     }
 
-    .hero-sidebar {
-        width: min(100%, 390px);
-        justify-self: start;
+    .sponsor-logo-card {
+        max-width: 420px;
+    }
+
+    .community-qr-card {
+        max-width: 420px;
+        min-height: 320px;
     }
 }
 
@@ -1097,10 +864,6 @@ export default defineComponent({
         white-space: normal;
     }
 
-    .hero-poster-card {
-        --poster-frame-width: min(100%, clamp(210px, 40vh, 310px));
-    }
-
     .landing-announcement,
     .language-switcher {
         flex-direction: column;
@@ -1110,6 +873,27 @@ export default defineComponent({
     .announcement-copy {
         flex-wrap: wrap;
         gap: 10px;
+    }
+
+    .sponsor-logo-card {
+        padding: 20px;
+    }
+
+    .sponsor-logo-frame {
+        min-height: 132px;
+        padding: 18px;
+    }
+
+    .community-qr-card {
+        max-width: 260px;
+        min-height: auto;
+        padding: 20px;
+        gap: 16px;
+    }
+
+    .community-qr-frame {
+        width: 100%;
+        max-width: 180px;
     }
 }
 
@@ -1128,21 +912,6 @@ export default defineComponent({
 
     .hero-actions-grid {
         max-width: none;
-    }
-
-    .panel-card {
-        padding: 16px;
-        border-radius: 22px;
-    }
-
-    .hero-carousel-arrow {
-        width: 40px;
-        height: 40px;
-        margin-top: -20px;
-    }
-
-    .hero-poster-card {
-        --poster-frame-width: min(100%, clamp(200px, 58vw, 300px));
     }
 }
 </style>
