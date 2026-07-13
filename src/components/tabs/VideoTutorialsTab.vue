@@ -13,16 +13,6 @@
             </header>
 
             <div class="video-tutorials-toolbar">
-                <label class="video-tutorials-search" for="video-tutorials-search">
-                    <span class="visually-hidden">搜索视频教程</span>
-                    <span aria-hidden="true">⌕</span>
-                    <input
-                        id="video-tutorials-search"
-                        v-model="searchQuery"
-                        type="search"
-                        placeholder="搜索标题、简介或标签"
-                    />
-                </label>
                 <button
                     class="video-tutorials-filter"
                     :aria-pressed="selectedCategoryId === null"
@@ -100,10 +90,12 @@
                             </div>
                             <div v-else class="video-tutorial-media">
                                 <img
-                                    v-if="video.thumbnailUrl"
+                                    v-if="video.thumbnailUrl && !thumbnailFailed(video.id)"
                                     :src="video.thumbnailUrl"
                                     :alt="`${video.title} 封面`"
                                     loading="lazy"
+                                    referrerpolicy="no-referrer"
+                                    @error="markThumbnailFailed(video.id)"
                                 />
                                 <div v-else class="video-tutorial-placeholder" aria-hidden="true">
                                     <span>{{ platformLabel(video.platform) }}</span>
@@ -171,10 +163,12 @@ import { computed, defineComponent, onBeforeUnmount, onMounted, ref } from "vue"
 import BaseTab from "./BaseTab.vue";
 import GUI from "../../js/gui";
 import {
+    VIDEO_TUTORIAL_SEARCH_EVENT,
     VIDEO_TUTORIALS_OPEN_EVENT,
     consumeRequestedVideoTutorialCategory,
     filterVideoTutorials,
     getVideoTutorialCatalog,
+    getVideoTutorialEmbedReferrerPolicy,
     getVideoTutorialEmbedUrl,
     isVideoTutorialEmbeddable,
 } from "../../js/video_tutorials";
@@ -199,6 +193,7 @@ export default defineComponent({
         const searchQuery = ref("");
         const selectedCategoryId = ref(null);
         const failedEmbedVideoIds = ref([]);
+        const failedThumbnailIds = ref([]);
 
         const filteredVideos = computed(() =>
             filterVideoTutorials(catalog.videos, {
@@ -242,7 +237,7 @@ export default defineComponent({
         }
 
         function embedReferrerPolicy(video) {
-            return video.platform === "douyin" ? "unsafe-url" : "strict-origin-when-cross-origin";
+            return getVideoTutorialEmbedReferrerPolicy(video);
         }
 
         function getEmbedUrl(video) {
@@ -260,6 +255,16 @@ export default defineComponent({
         function markEmbedFailed(videoId) {
             if (!embedFailed(videoId)) {
                 failedEmbedVideoIds.value = [...failedEmbedVideoIds.value, videoId];
+            }
+        }
+
+        function thumbnailFailed(videoId) {
+            return failedThumbnailIds.value.includes(videoId);
+        }
+
+        function markThumbnailFailed(videoId) {
+            if (!thumbnailFailed(videoId)) {
+                failedThumbnailIds.value = [...failedThumbnailIds.value, videoId];
             }
         }
 
@@ -283,14 +288,22 @@ export default defineComponent({
             selectCategory(event.detail?.categoryId ?? null);
         }
 
+        function applyGlobalSearch(event) {
+            searchQuery.value = String(event.detail?.query ?? "").trim();
+            selectedCategoryId.value = null;
+            event.preventDefault();
+        }
+
         onMounted(() => {
             selectCategory(consumeRequestedVideoTutorialCategory());
             document.addEventListener(VIDEO_TUTORIALS_OPEN_EVENT, openRequestedCategory);
+            document.addEventListener(VIDEO_TUTORIAL_SEARCH_EVENT, applyGlobalSearch);
             GUI.content_ready();
         });
 
         onBeforeUnmount(() => {
             document.removeEventListener(VIDEO_TUTORIALS_OPEN_EVENT, openRequestedCategory);
+            document.removeEventListener(VIDEO_TUTORIAL_SEARCH_EVENT, applyGlobalSearch);
         });
 
         return {
@@ -305,11 +318,13 @@ export default defineComponent({
             isFloating,
             isPortraitVideo,
             markEmbedFailed,
+            markThumbnailFailed,
             openPictureInPicture,
             platformLabel,
             searchQuery,
             selectCategory,
             selectedCategoryId,
+            thumbnailFailed,
             visibleCategories,
         };
     },

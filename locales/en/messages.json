@@ -7874,5 +7874,45 @@
     "osdSetupPreviewCheckRulers": {
         "message": "Rulers",
         "description": "Label for the checkbox to toggle OSD preview rulers around the preview"
+    },
+    "tutorialSearchTitle": {
+        "message": "Video tutorials",
+        "description": "Label for the global video tutorial search"
+    },
+    "tutorialSearchPlaceholder": {
+        "message": "Search video tutorials",
+        "description": "Placeholder for the global video tutorial search input"
+    },
+    "tutorialSearchButton": {
+        "message": "Search",
+        "description": "Button that submits the global video tutorial search"
+    },
+    "tutorialSearchResults": {
+        "message": "Search results",
+        "description": "Heading for the global video tutorial search results panel"
+    },
+    "tutorialSearchResultCount": {
+        "message": "{{count}} videos found",
+        "description": "Result count for the global video tutorial search"
+    },
+    "tutorialSearchNoResults": {
+        "message": "No matching video tutorials found. Try a different keyword.",
+        "description": "Empty state for the global video tutorial search"
+    },
+    "tutorialSearchClose": {
+        "message": "Close",
+        "description": "Button that closes the global video tutorial search panel"
+    },
+    "tutorialSearchBackToResults": {
+        "message": "Back to results",
+        "description": "Button that returns from the video player to search results"
+    },
+    "tutorialSearchEmbedUnavailable": {
+        "message": "This platform cannot be played here right now. Open the original video to watch it.",
+        "description": "Fallback message when the embedded video player is unavailable"
+    },
+    "tutorialSearchOpenSource": {
+        "message": "Open original video",
+        "description": "Link that opens the tutorial source video"
     }
 }

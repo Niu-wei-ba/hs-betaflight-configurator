@@ -324,6 +324,8 @@ class GuiControl {
             });
         });
 
+        document.dispatchEvent(new CustomEvent("video-tutorial-search:content-ready"));
+
         if (callback) {
             callback();
         }

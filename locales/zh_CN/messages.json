@@ -6983,5 +6983,45 @@
     "auxiliaryModeName_LAPTIMERRESET": {
         "message": "重置计圈",
         "description": "Chinese display name for LAPTIMERRESET mode"
+    },
+    "tutorialSearchTitle": {
+        "message": "视频教程",
+        "description": "全局视频教程搜索标题"
+    },
+    "tutorialSearchPlaceholder": {
+        "message": "搜索视频教程",
+        "description": "全局视频教程搜索输入框占位文案"
+    },
+    "tutorialSearchButton": {
+        "message": "搜索",
+        "description": "提交全局视频教程搜索的按钮"
+    },
+    "tutorialSearchResults": {
+        "message": "搜索结果",
+        "description": "全局视频教程搜索结果栏标题"
+    },
+    "tutorialSearchResultCount": {
+        "message": "共找到 {{count}} 个视频",
+        "description": "全局视频教程搜索匹配数量"
+    },
+    "tutorialSearchNoResults": {
+        "message": "没有找到匹配的视频教程。请换一个关键词试试。",
+        "description": "全局视频教程搜索无结果提示"
+    },
+    "tutorialSearchClose": {
+        "message": "关闭",
+        "description": "关闭全局视频教程搜索栏的按钮"
+    },
+    "tutorialSearchBackToResults": {
+        "message": "返回结果",
+        "description": "从视频播放器回到搜索结果的按钮"
+    },
+    "tutorialSearchEmbedUnavailable": {
+        "message": "当前平台暂时无法内嵌播放，请打开原始视频观看。",
+        "description": "视频内嵌播放不可用时的兜底提示"
+    },
+    "tutorialSearchOpenSource": {
+        "message": "打开原始视频",
+        "description": "打开教程原始视频的链接"
     }
 }

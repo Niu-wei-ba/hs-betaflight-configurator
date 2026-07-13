@@ -1,6 +1,7 @@
 import catalog from "../data/video-tutorials.json";
 
 export const VIDEO_TUTORIALS_OPEN_EVENT = "video-tutorials:open";
+export const VIDEO_TUTORIAL_SEARCH_EVENT = "video-tutorials:search";
 
 const categoryIds = new Set(catalog.categories.map((category) => category.id));
 let requestedCategoryId = null;
@@ -73,6 +74,15 @@ export function getVideoTutorialEmbedUrl(video) {
     } catch {
         return "";
     }
+}
+
+/**
+ * Returns the referrer policy required by the platform's supported embed.
+ * Keep every tutorial player on the same policy so the catalog page and the
+ * global search panel behave identically.
+ */
+export function getVideoTutorialEmbedReferrerPolicy(video) {
+    return video?.platform === "douyin" ? "unsafe-url" : "strict-origin-when-cross-origin";
 }
 
 export function consumeRequestedVideoTutorialCategory() {

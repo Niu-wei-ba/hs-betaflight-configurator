@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp, nextTick } from "vue";
-import { getVideoTutorialCatalog } from "../../src/js/video_tutorials";
+import { VIDEO_TUTORIAL_SEARCH_EVENT, getVideoTutorialCatalog } from "../../src/js/video_tutorials";
 import {
     closeFloatingVideoTutorial,
     hasFloatingVideoTutorial,
@@ -71,6 +71,33 @@ describe("VideoTutorialsTab", () => {
         app.unmount();
     });
 
+    it("applies global tutorial searches to the current page and clears the selected category", async () => {
+        const { default: VideoTutorialsTab } = await import("../../src/components/tabs/VideoTutorialsTab.vue");
+        const container = document.createElement("div");
+        document.body.appendChild(container);
+        const app = createApp(VideoTutorialsTab);
+        const vm = app.mount(container);
+        await nextTick();
+
+        const sample = catalog.videos.find((video) => video.categoryId === "osd");
+        vm.selectedCategoryId = "ports";
+        const searchEvent = new CustomEvent(VIDEO_TUTORIAL_SEARCH_EVENT, {
+            cancelable: true,
+            detail: { query: sample.title },
+        });
+        document.dispatchEvent(searchEvent);
+        await nextTick();
+
+        expect(searchEvent.defaultPrevented).toBe(true);
+        expect(vm.searchQuery).toBe(sample.title);
+        expect(vm.selectedCategoryId).toBeNull();
+        expect(container.querySelectorAll(".video-tutorial-card")).toHaveLength(1);
+        expect(container.querySelector(".video-tutorial-card").textContent).toContain(sample.title);
+        expect(container.querySelector(".video-tutorial-section-heading h2").textContent).toBe("OSD教程");
+
+        app.unmount();
+    });
+
     it("directly renders supported video players and preserves platform links as the fallback", async () => {
         catalog.videos.push(
             {
@@ -95,6 +122,16 @@ describe("VideoTutorialsTab", () => {
                 tags: ["端口"],
                 sourceUrl: "https://www.douyin.com/video/123",
                 embedUrl: "https://open.douyin.com/player/video?vid=123&autoplay=0",
+            },
+            {
+                id: "setup-thumbnail-fallback",
+                categoryId: "setup",
+                platform: "bilibili",
+                title: "封面降级教程",
+                description: "封面加载失败时显示平台占位内容。",
+                tags: ["封面"],
+                sourceUrl: "https://www.bilibili.com/video/BV1xx411c7mD",
+                thumbnailUrl: "https://i0.hdslb.com/bfs/archive/test-thumbnail.jpg",
             },
         );
 
@@ -142,6 +179,16 @@ describe("VideoTutorialsTab", () => {
         expect(douyinPlayerUrl.searchParams.get("height")).toBe("100%");
         expect(douyinIframe.getAttribute("referrerpolicy")).toBe("unsafe-url");
         expect(douyinCard.querySelector(".video-tutorial-placeholder")).toBeNull();
+
+        const thumbnailCard = [...container.querySelectorAll(".video-tutorial-card")].find((card) =>
+            card.textContent.includes("封面降级教程"),
+        );
+        const thumbnail = thumbnailCard.querySelector(".video-tutorial-media img");
+        expect(thumbnail.getAttribute("referrerpolicy")).toBe("no-referrer");
+        thumbnail.dispatchEvent(new Event("error"));
+        await nextTick();
+        expect(thumbnailCard.querySelector(".video-tutorial-media img")).toBeNull();
+        expect(thumbnailCard.querySelector(".video-tutorial-placeholder")).not.toBeNull();
 
         iframe.dispatchEvent(new Event("error"));
         await nextTick();
