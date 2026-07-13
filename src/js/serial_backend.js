@@ -597,7 +597,7 @@ function finishOpen() {
 
 function connectCli() {
     CONFIGURATOR.connectionValid = true; // making it possible to open the CLI tab
-    GUI.allowedTabs = ["cli"];
+    GUI.allowedTabs = ["cli", "video_tutorials"];
 
     MSP.clearListeners();
     MSP.disconnect_cleanup();

@@ -369,6 +369,9 @@
     "tabPrivacyPolicy": {
         "message": "Privacy Policy"
     },
+    "tabVideoTutorials": {
+        "message": "Video Tutorials"
+    },
     "tabHelp": {
         "message": "Documentation & Support"
     },

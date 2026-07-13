@@ -28,7 +28,14 @@ class GuiControl {
         this.reboot_timestamp = 0;
         this.REBOOT_CONNECT_MAX_TIME_MS = 10000;
 
-        this.defaultAllowedTabsWhenDisconnected = ["landing", "firmware_flasher", "privacy_policy", "options", "help"];
+        this.defaultAllowedTabsWhenDisconnected = [
+            "landing",
+            "firmware_flasher",
+            "privacy_policy",
+            "options",
+            "help",
+            "video_tutorials",
+        ];
 
         this.defaultAllowedTabs = [
             "setup",
@@ -47,6 +54,7 @@ class GuiControl {
             "ports",
             "receiver",
             "sensors",
+            "video_tutorials",
         ];
 
         this.defaultCloudBuildTabOptions = ["gps", "led_strip", "osd", "servos", "transponder", "vtx"];

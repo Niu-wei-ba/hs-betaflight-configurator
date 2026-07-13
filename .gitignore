@@ -55,3 +55,6 @@ capacitor-plugins/*/android/bin/
 .codex/
 .claude/
 .cursor/
+
+# Local-only video tutorial catalog manager
+/src/video-tutorial-manager.local.html

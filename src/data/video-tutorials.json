@@ -1,0 +1,184 @@
+{
+    "schemaVersion": 1,
+    "categories": [
+        {
+            "id": "setup",
+            "title": "设置"
+        },
+        {
+            "id": "ports",
+            "title": "端口"
+        },
+        {
+            "id": "configuration",
+            "title": "配置"
+        },
+        {
+            "id": "power",
+            "title": "动力 & 电池"
+        },
+        {
+            "id": "failsafe",
+            "title": "失控保护"
+        },
+        {
+            "id": "presets",
+            "title": "预设"
+        },
+        {
+            "id": "pid-tuning",
+            "title": "PID 调校"
+        },
+        {
+            "id": "receiver",
+            "title": "接收机"
+        },
+        {
+            "id": "modes",
+            "title": "模式"
+        },
+        {
+            "id": "adjustments",
+            "title": "调整"
+        },
+        {
+            "id": "gps",
+            "title": "GPS"
+        },
+        {
+            "id": "motors",
+            "title": "电机"
+        },
+        {
+            "id": "osd",
+            "title": "OSD"
+        },
+        {
+            "id": "vtx",
+            "title": "视频发送"
+        },
+        {
+            "id": "led-strip",
+            "title": "LED 灯带"
+        },
+        {
+            "id": "sensors",
+            "title": "传感器"
+        },
+        {
+            "id": "logging",
+            "title": "线传日志"
+        },
+        {
+            "id": "blackbox",
+            "title": "黑盒子"
+        },
+        {
+            "id": "cli",
+            "title": "CLI"
+        }
+    ],
+    "videos": [
+        {
+            "id": "bilibili-betaflight-46-flash-auto-hover",
+            "categoryId": "gps",
+            "platform": "bilibili",
+            "title": "【科普教程】怎么刷写 BF 4.6？怎么设置悬停？时钟同步有必要吗？",
+            "description": "讲解 Betaflight 4.6 固件的刷写方式、版本变化、自动悬停模式的设置步骤，以及时钟同步功能是否有必要开启。",
+            "tags": [
+                "Betaflight 4.6",
+                "刷写固件",
+                "自动悬停",
+                "GPS",
+                "时钟同步"
+            ],
+            "sourceUrl": "https://www.bilibili.com/video/BV1tUmXB7Eon/",
+            "embedUrl": "https://player.bilibili.com/player.html?isOutside=true&aid=115711620028949&bvid=BV1tUmXB7Eon&cid=34713831548&p=1&autoplay=0",
+            "thumbnailUrl": "https://i0.hdslb.com/bfs/archive/533a3050c4111a9acce43ac0310f7946e9d66456.jpg",
+            "duration": "4:27",
+            "authorName": "Yang_FPV",
+            "authorAvatarUrl": "https://i0.hdslb.com/bfs/face/6cb25f881a3c53f8da5f1fc10b4a6a8865db9843.jpg"
+        },
+        {
+            "id": "bilibili-analog-vtx-wiring-troubleshooting",
+            "categoryId": "vtx",
+            "platform": "bilibili",
+            "title": "【干货】模拟图传最详接线使用教程！及乱码黑屏常见问题解决方法！",
+            "description": "讲解模拟图传的工作原理、端口与接线、图传设置和遥控调参，并排查黑屏、乱码等常见问题。",
+            "tags": [
+                "模拟图传",
+                "视频发送",
+                "图传接线",
+                "VTX",
+                "黑屏",
+                "乱码"
+            ],
+            "sourceUrl": "https://www.bilibili.com/video/BV15DZfBiERm/",
+            "embedUrl": "https://player.bilibili.com/player.html?isOutside=true&aid=116112947744779&bvid=BV15DZfBiERm&cid=36210675157&p=1&autoplay=0",
+            "thumbnailUrl": "https://i2.hdslb.com/bfs/archive/f8f95b58a08a229ef557fc1f3d8e90696648cf13.jpg",
+            "duration": "5:00",
+            "authorName": "Yang_FPV",
+            "authorAvatarUrl": "https://i0.hdslb.com/bfs/face/6cb25f881a3c53f8da5f1fc10b4a6a8865db9843.jpg"
+        },
+        {
+            "id": "bilibili-digital-to-analog-osd-fix",
+            "categoryId": "osd",
+            "platform": "bilibili",
+            "title": "穿越机数字图传换回模拟图传后没有OSD信息解决办法",
+            "description": "说明二手飞控从数字图传切换回模拟图传后 OSD 不显示的常见原因，并演示通过 Betaflight CLI 恢复正确 OSD 设置的方法。",
+            "tags": [
+                "OSD",
+                "模拟图传",
+                "数字图传",
+                "图传切换",
+                "CLI"
+            ],
+            "sourceUrl": "https://www.bilibili.com/video/BV1xNrFB5Edy/",
+            "embedUrl": "https://player.bilibili.com/player.html?isOutside=true&aid=115877546563632&bvid=BV1xNrFB5Edy&cid=35327510670&p=1&autoplay=0",
+            "thumbnailUrl": "https://i1.hdslb.com/bfs/archive/89d901f7cd001fe3b53cae0482d826ccd7b153a9.jpg",
+            "duration": "1:19",
+            "authorName": "瞬刻SNAP",
+            "authorAvatarUrl": "https://i1.hdslb.com/bfs/face/769aaab6e8202552b7aa8c8b8727bb58d2be4b62.jpg"
+        },
+        {
+            "id": "bilibili-dji-fpv-sbus-receiver-fix",
+            "categoryId": "receiver",
+            "platform": "bilibili",
+            "title": "BF居然删掉了SBUS协议？用大疆FPV遥控器接收机调参界面没反应怎么解决",
+            "description": "解决使用大疆 FPV 遥控器接收机时，Betaflight 接收机配置页面显示灰色、调参无响应的问题，并说明 SBUS 协议需要采用的设置方式。",
+            "tags": [
+                "接收机",
+                "SBUS",
+                "大疆FPV",
+                "遥控器",
+                "Betaflight"
+            ],
+            "sourceUrl": "https://www.bilibili.com/video/BV1bACPYzEcw/",
+            "embedUrl": "https://player.bilibili.com/player.html?isOutside=true&aid=113713034040471&bvid=BV1bACPYzEcw&cid=27525776308&p=1&autoplay=0",
+            "thumbnailUrl": "https://i0.hdslb.com/bfs/archive/cbefbf9d747c372b08d70bead06ec1257fd6e7f2.jpg",
+            "duration": "1:37",
+            "authorName": "瞬刻SNAP",
+            "authorAvatarUrl": "https://i1.hdslb.com/bfs/face/769aaab6e8202552b7aa8c8b8727bb58d2be4b62.jpg"
+        },
+        {
+            "id": "bilibili-airmode-pros-cons",
+            "categoryId": "modes",
+            "platform": "bilibili",
+            "title": "穿越机的airmode到底有啥用？本期视频一起来研究一下它的利与弊",
+            "description": "讲解 Betaflight Airmode 的作用、适用场景及使用时需要权衡的利弊。",
+            "tags": [
+                "Airmode",
+                "飞行模式",
+                "Betaflight",
+                "穿越机",
+                "调参"
+            ],
+            "sourceUrl": "https://www.bilibili.com/video/BV1sf2LYrEVL/",
+            "embedUrl": "https://player.bilibili.com/player.html?isOutside=true&aid=113267062083594&bvid=BV1sf2LYrEVL&cid=26190219780&p=1&autoplay=0",
+            "thumbnailUrl": "https://i0.hdslb.com/bfs/archive/99d5f5cee776d5aadbeed980fd7776e98c6f00de.jpg",
+            "duration": "3:17",
+            "authorName": "瞬刻SNAP",
+            "authorAvatarUrl": "https://i1.hdslb.com/bfs/face/769aaab6e8202552b7aa8c8b8727bb58d2be4b62.jpg"
+        }
+    ]
+}

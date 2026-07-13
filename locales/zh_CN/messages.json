@@ -279,6 +279,9 @@
     "tabPrivacyPolicy": {
         "message": "隐私政策"
     },
+    "tabVideoTutorials": {
+        "message": "视频教程"
+    },
     "tabHelp": {
         "message": "设置文档 & 支持"
     },
