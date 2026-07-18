@@ -1,148 +1,208 @@
 <template>
     <BaseTab tab-name="landing">
-        <div class="content_wrapper landing-page">
-            <section class="landing-hero">
-                <div class="hero-copy">
-                    <div class="hero-copy-main">
-                        <h1 class="hero-title hero-title-community">
-                            <span class="hero-title-line">专为穿越机玩家</span>
-                            <span class="hero-title-line hero-title-line-indent"
-                                >打造的<span class="hero-title-accent">交流社区</span></span
-                            >
-                        </h1>
+        <main class="content_wrapper landing-page" aria-labelledby="landing-title">
+            <section class="landing-shell">
+                <aside class="landing-sponsor" aria-label="赞助商 BUCK">
+                    <p>赞助支持</p>
+                    <img :src="buckLogoUrl" alt="BUCK" />
+                </aside>
+                <header class="landing-hero">
+                    <p class="hero-kicker">
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="m13 2-9 12h7l-1 8 10-13h-7z"></path>
+                        </svg>
+                        更快下载 · 更稳访问 · 官方同步
+                    </p>
+                    <h1 id="landing-title">Betaflight <em>中国镜像站</em></h1>
+                    <p class="hero-subtitle">为穿越机玩家提供更稳定、更快速的资源与交流平台</p>
+                </header>
 
-                        <p class="hero-subtitle">让花生 FPV 成为中文穿越机玩家共享经验与持续成长的社区入口。</p>
-                    </div>
-
-                    <div class="hero-highlights">
-                        <article v-for="highlight in heroHighlights" :key="highlight.title" class="hero-highlight-item">
-                            <div
-                                class="hero-highlight-icon-shell"
-                                :class="`hero-highlight-icon-shell-${highlight.tint}`"
-                            >
+                <section class="resource-grid" aria-label="快捷入口">
+                    <component
+                        :is="resource.href ? 'a' : 'button'"
+                        v-for="resource in resourceCards"
+                        :key="resource.title"
+                        :href="resource.href"
+                        :target="resource.href ? '_blank' : undefined"
+                        :rel="resource.href ? 'noopener noreferrer' : undefined"
+                        type="button"
+                        class="resource-card"
+                        :class="`resource-card--${resource.id}`"
+                    >
+                        <img class="resource-card__image" :src="resource.image" alt="" aria-hidden="true" />
+                        <span class="resource-card__wash" aria-hidden="true"></span>
+                        <span class="resource-card__copy">
+                            <span class="resource-card__icon" aria-hidden="true">
                                 <svg
-                                    v-if="highlight.icon === 'rocket'"
-                                    xmlns="http://www.w3.org/2000/svg"
+                                    v-if="resource.id === 'docs'"
                                     viewBox="0 0 24 24"
-                                    width="22"
-                                    height="22"
-                                    fill="currentColor"
-                                    class="hero-highlight-icon"
-                                >
-                                    <path
-                                        d="M14.5 3.5c2.9-.2 5.7 2.6 5.5 5.5-.1 1.5-.8 2.9-1.9 4l-2.5 2.5-3.6-3.6 2.5-2.5c1.1-1.1 2.5-1.8 4-1.9ZM10.4 13.6l3 3-2 2a3 3 0 0 1-1.3.8l-3.7 1.1 1.1-3.7a3 3 0 0 1 .8-1.3l2.1-1.9ZM8 7l3 3-3 3-3-3 3-3Z"
-                                    ></path>
-                                </svg>
-                                <svg
-                                    v-else-if="highlight.icon === 'layers'"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    width="22"
-                                    height="22"
                                     fill="none"
                                     stroke="currentColor"
-                                    stroke-width="2"
+                                    stroke-width="1.9"
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
-                                    class="hero-highlight-icon"
                                 >
-                                    <path d="m12 3 9 4.5-9 4.5-9-4.5L12 3Z"></path>
-                                    <path d="m3 12 9 4.5 9-4.5"></path>
-                                    <path d="m3 16.5 9 4.5 9-4.5"></path>
+                                    <path d="M6 3h8l4 4v14H6z"></path>
+                                    <path d="M14 3v5h5"></path>
+                                    <path d="M9 13h6"></path>
+                                    <path d="M9 17h6"></path>
                                 </svg>
                                 <svg
-                                    v-else-if="highlight.icon === 'users'"
-                                    xmlns="http://www.w3.org/2000/svg"
+                                    v-else-if="resource.id === 'community'"
                                     viewBox="0 0 24 24"
-                                    width="22"
-                                    height="22"
-                                    fill="currentColor"
-                                    class="hero-highlight-icon"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.9"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
                                 >
-                                    <path
-                                        d="M16 11a4 4 0 1 0-3.999-4A4 4 0 0 0 16 11Zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm8 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4ZM8 13c-.29 0-.62.02-.97.05A4.2 4.2 0 0 1 9 17v2H2v-2c0-2.21 3.58-3.73 6-3.99Z"
-                                    ></path>
+                                    <circle cx="9" cy="8" r="3"></circle>
+                                    <path d="M3.5 20v-1.2A4.8 4.8 0 0 1 8.3 14h1.4a4.8 4.8 0 0 1 4.8 4.8V20"></path>
+                                    <path d="M16 6.5a2.7 2.7 0 0 1 0 5.2"></path>
+                                    <path d="M17.5 14.2a4.8 4.8 0 0 1 3 4.4V20"></path>
                                 </svg>
                                 <svg
                                     v-else
-                                    xmlns="http://www.w3.org/2000/svg"
                                     viewBox="0 0 24 24"
-                                    width="22"
-                                    height="22"
-                                    fill="currentColor"
-                                    class="hero-highlight-icon"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.9"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
                                 >
-                                    <path
-                                        d="m12 2 7 3v6c0 5-3.4 9.74-7 11-3.6-1.26-7-6-7-11V5l7-3Zm0 5.2L8.9 8.8l.6 3.4L12 14l2.5-1.8.6-3.4L12 7.2Z"
-                                    ></path>
+                                    <path d="M3 14h3l2.2-7 3.5 12 2.5-8H21"></path>
+                                    <path d="M3 19h18"></path>
                                 </svg>
-                            </div>
-
-                            <div class="hero-highlight-copy">
-                                <h2>{{ highlight.title }}</h2>
-                                <p>{{ highlight.lines[0] }}</p>
-                                <p>{{ highlight.lines[1] }}</p>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div class="hero-actions hero-actions-grid">
-                        <div class="hero-actions-copy-stack">
-                            <a
-                                href="https://hs-fpv.com/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="entry-card entry-card-primary"
+                            </span>
+                            <span class="resource-card__text">
+                                <strong>{{ resource.title }}</strong>
+                                <small>{{ resource.description }}</small>
+                            </span>
+                            <span class="resource-card__action"
+                                >{{ resource.action }} <span aria-hidden="true">→</span></span
                             >
-                                <img
-                                    class="entry-card-image"
-                                    :src="communityCtaUrl"
-                                    alt="进入花生FPV社区，探索更多装机方案与经验分享"
-                                />
-                            </a>
+                        </span>
+                    </component>
+                </section>
+
+                <section class="support-grid" aria-label="教程与社群">
+                    <section class="tutorial-section" aria-labelledby="tutorial-title">
+                        <header class="section-heading">
+                            <div>
+                                <span class="section-heading__icon" aria-hidden="true">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.9"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                                        <path d="m10 9 5 3-5 3V9Z"></path>
+                                    </svg>
+                                </span>
+                                <h2 id="tutorial-title">视频教程</h2>
+                            </div>
+                            <button type="button" class="section-heading__link" @click="openVideoTutorials()">
+                                查看全部 <span aria-hidden="true">→</span>
+                            </button>
+                        </header>
+                        <div class="tutorial-grid">
+                            <button
+                                v-for="tutorial in tutorialCards"
+                                :key="tutorial.title"
+                                type="button"
+                                class="tutorial-card"
+                                :class="`tutorial-card--${tutorial.id}`"
+                                @click="openVideoTutorials()"
+                            >
+                                <span class="tutorial-card__media">
+                                    <img :src="tutorial.image" alt="" aria-hidden="true" />
+                                    <span class="tutorial-card__play" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="m9 6 8 6-8 6z"></path>
+                                        </svg>
+                                    </span>
+                                </span>
+                                <strong>{{ tutorial.title }}</strong>
+                                <small>{{ tutorial.description }}</small>
+                            </button>
                         </div>
+                    </section>
+
+                    <aside class="community-panel" aria-labelledby="community-title">
+                        <div class="community-panel__copy">
+                            <div class="community-panel__heading">
+                                <span aria-hidden="true">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.9"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path
+                                            d="M21 11.5a7.2 7.2 0 0 1-7.5 7.2 8.6 8.6 0 0 1-2.7-.5L5 21l1.2-4A6.8 6.8 0 0 1 3 11.5a7.2 7.2 0 0 1 7.5-7.2H14A7.2 7.2 0 0 1 21 11.5Z"
+                                        ></path>
+                                        <path d="M8 11h.01"></path>
+                                        <path d="M12 11h.01"></path>
+                                        <path d="M16 11h.01"></path>
+                                    </svg>
+                                </span>
+                                <h2 id="community-title">官方交流群</h2>
+                            </div>
+                            <ul>
+                                <li v-for="benefit in communityBenefits" :key="benefit">
+                                    <svg
+                                        aria-hidden="true"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <circle cx="12" cy="12" r="8"></circle>
+                                        <path d="m8.5 12 2.2 2.2 4.8-4.8"></path>
+                                    </svg>
+                                    {{ benefit }}
+                                </li>
+                            </ul>
+                        </div>
+                        <figure class="community-panel__qr">
+                            <img :src="qqQrUrl" alt="花生 FPV 官方交流群二维码" />
+                            <figcaption>扫码加入交流群</figcaption>
+                        </figure>
+                    </aside>
+                </section>
+
+                <footer class="language-switcher">
+                    <span class="lang-label">{{ $t("language_choice_message") }}</span>
+                    <div class="lang-options">
+                        <a
+                            v-for="lang in availableLanguages"
+                            :key="lang"
+                            href="#"
+                            :lang="lang"
+                            :class="{ 'selected-lang': lang === selectedLanguage }"
+                            @click.prevent="changeLanguage(lang)"
+                        >
+                            {{ $t(`language_${lang}`) }}
+                        </a>
                     </div>
-                </div>
-
-                <aside class="hero-sidebar" aria-label="赞助商和交流群">
-                    <section class="sponsor-logo-card">
-                        <div class="sponsor-logo-copy">
-                            <span class="sponsor-logo-kicker">Sponsor</span>
-                            <h2>赞助商支持</h2>
-                        </div>
-                        <div class="sponsor-logo-frame">
-                            <img class="sponsor-logo-image" :src="sponsorBuckLogoUrl" alt="BUCK 赞助商 Logo" />
-                        </div>
-                    </section>
-
-                    <section class="community-qr-card" aria-label="花生FPV交流群">
-                        <div class="community-qr-copy">
-                            <h2>花生FPV交流群</h2>
-                            <span>扫码加入</span>
-                        </div>
-                        <div class="community-qr-frame">
-                            <img class="welcome-qr-image" :src="qqQrUrl" alt="花生FPV交流群二维码" />
-                        </div>
-                    </section>
-                </aside>
+                </footer>
             </section>
-
-            <div class="language-switcher">
-                <span class="lang-label">{{ $t("language_choice_message") }}</span>
-                <div class="lang-options">
-                    <a
-                        v-for="lang in availableLanguages"
-                        :key="lang"
-                        href="#"
-                        :lang="lang"
-                        :class="{ 'selected-lang': lang === selectedLanguage }"
-                        @click.prevent="changeLanguage(lang)"
-                    >
-                        {{ $t(`language_${lang}`) }}
-                    </a>
-                </div>
-            </div>
-        </div>
+        </main>
     </BaseTab>
 </template>
 
@@ -151,42 +211,54 @@ import { defineComponent, onMounted, ref } from "vue";
 import BaseTab from "./BaseTab.vue";
 import GUI from "../../js/gui";
 import { i18n } from "../../js/localization";
-import communityCtaUrl from "../../images/landing-community-cta.png";
+import { openVideoTutorials } from "../../js/video_tutorials";
 import qqQrUrl from "../../images/hs-qq-qr.png";
-import sponsorBuckLogoUrl from "../../images/sponsors/buck-logo.png";
+import flightViewUrl from "../../images/osd-bg-1.jpg";
+import fieldViewUrl from "../../images/osd-bg-2.png";
+import buckLogoUrl from "../../images/sponsors/buck-logo.png";
+import resourceDocsUrl from "../../images/landing-resource-docs.png";
+import resourceCommunityUrl from "../../images/landing-resource-community.png";
+import resourceBlackboxUrl from "../../images/landing-resource-blackbox.png";
 
-const heroHighlights = [
+const resourceCards = [
     {
-        title: "配置广场",
-        icon: "rocket",
-        tint: "orange",
-        lines: ["真实装机方案", "配置对比参考"],
+        id: "docs",
+        title: "BF 中文文档",
+        description: "官方文档中文翻译，快速查阅，持续更新",
+        action: "打开文档",
+        href: "https://wiki.hs-fpv.com",
+        image: resourceDocsUrl,
     },
     {
-        title: "经验沉淀",
-        icon: "layers",
-        tint: "blue",
-        lines: ["炸机复盘记录", "排障思路整理"],
+        id: "community",
+        title: "花生 FPV 社区",
+        description: "配置分享、经验交流、问题互助、成长记录",
+        action: "进入社区",
+        href: "https://hs-fpv.com/",
+        image: resourceCommunityUrl,
     },
     {
-        title: "飞友交流",
-        icon: "users",
-        tint: "green",
-        lines: ["问题讨论互助", "日常分享更新"],
-    },
-    {
-        title: "教程资料",
-        icon: "shield",
-        tint: "violet",
-        lines: ["入门到进阶", "持续补充内容"],
+        id: "blackbox",
+        title: "Blackbox Explorer",
+        description: "高效稳定的日志分析平台，支持在线解析与可视化",
+        action: "使用工具",
+        href: "https://bbe.hs-fpv.com",
+        image: resourceBlackboxUrl,
     },
 ];
 
+const tutorialCards = [
+    { id: "beginner", title: "Betaflight 快速入门", description: "新手必看 · 10 分钟上手", image: flightViewUrl },
+    { id: "pid", title: "PID 调参详解", description: "从原理到实战", image: fieldViewUrl },
+    { id: "elrs", title: "ELRS 接收机配置", description: "一步步教你设置", image: flightViewUrl },
+    { id: "blackbox", title: "滤波器设置指南", description: "提升飞行稳定性", image: fieldViewUrl },
+];
+
+const communityBenefits = ["大佬答疑", "AI机器人", "新固件通知", "活动与福利"];
+
 export default defineComponent({
     name: "LandingTab",
-    components: {
-        BaseTab,
-    },
+    components: { BaseTab },
     setup() {
         const availableLanguages = ref(["DEFAULT", ...i18n.getLanguagesAvailables()]);
         const selectedLanguage = ref(i18n.selectedLanguage);
@@ -198,18 +270,18 @@ export default defineComponent({
             }
         }
 
-        onMounted(() => {
-            GUI.content_ready();
-        });
+        onMounted(() => GUI.content_ready());
 
         return {
             availableLanguages,
+            buckLogoUrl,
             changeLanguage,
-            communityCtaUrl,
-            heroHighlights,
+            communityBenefits,
+            openVideoTutorials,
             qqQrUrl,
+            resourceCards,
             selectedLanguage,
-            sponsorBuckLogoUrl,
+            tutorialCards,
         };
     },
 });
@@ -217,701 +289,551 @@ export default defineComponent({
 
 <style scoped>
 .landing-page {
-    --landing-ink: #10244f;
-    --landing-ink-soft: rgba(16, 36, 79, 0.68);
-    --landing-muted: #8b97b6;
-    --landing-line: rgba(16, 36, 79, 0.08);
-    --landing-orange: #ff7d1f;
-    --landing-orange-soft: rgba(255, 125, 31, 0.1);
-    --landing-blue: #5c8dff;
-    --landing-blue-soft: rgba(92, 141, 255, 0.12);
-    --landing-green: #35c983;
-    --landing-green-soft: rgba(53, 201, 131, 0.12);
-    --landing-violet: #8e68ff;
-    --landing-violet-soft: rgba(142, 104, 255, 0.12);
-    --landing-shadow: 0 28px 64px rgba(16, 36, 79, 0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 26px;
+    --ink: #101827;
+    --copy: #5e6878;
+    --muted: #8791a0;
+    --line: #e7e9ed;
+    --paper: #ffffff;
+    --surface: #f5f6f8;
+    --amber: #ffb300;
+    --amber-deep: #ed9800;
     width: 100%;
-    max-width: 1220px;
+    min-height: 100%;
+    box-sizing: border-box;
+    overflow: auto;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+}
+.landing-shell {
+    position: relative;
+    width: min(100%, 1420px);
+    box-sizing: border-box;
     margin: 0 auto;
-    padding: 30px 28px 40px;
-    font-family:
-        "SF Pro Display",
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Helvetica,
-        Arial,
-        sans-serif;
-    color: var(--landing-ink);
-    position: relative;
-    overflow: hidden;
+    padding: 30px 38px 22px;
 }
-
-.landing-page::before {
-    content: "";
+.landing-sponsor {
+    box-shadow: rgba(16, 36, 79, 0.08) 0px 28px 64px 0px;
+    border-radius: 8px;
+    padding: 30px;
     position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(circle at 18% 18%, rgba(255, 137, 41, 0.18), transparent 28%),
-        radial-gradient(circle at 82% 14%, rgba(86, 142, 255, 0.12), transparent 24%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
-    z-index: 0;
-    pointer-events: none;
-}
-
-.landing-page::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image:
-        linear-gradient(
-            30deg,
-            rgba(16, 36, 79, 0.028) 12%,
-            transparent 12.5%,
-            transparent 87%,
-            rgba(16, 36, 79, 0.028) 87.5%,
-            rgba(16, 36, 79, 0.028)
-        ),
-        linear-gradient(
-            150deg,
-            rgba(16, 36, 79, 0.028) 12%,
-            transparent 12.5%,
-            transparent 87%,
-            rgba(16, 36, 79, 0.028) 87.5%,
-            rgba(16, 36, 79, 0.028)
-        ),
-        linear-gradient(
-            90deg,
-            rgba(16, 36, 79, 0.018) 2%,
-            transparent 2.5%,
-            transparent 97%,
-            rgba(16, 36, 79, 0.018) 97.5%,
-            rgba(16, 36, 79, 0.018)
-        );
-    background-size: 44px 76px;
-    background-position:
-        0 0,
-        0 0,
-        22px 38px;
-    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.26), rgba(0, 0, 0, 0.04) 40%, transparent 80%);
-    z-index: 0;
-    pointer-events: none;
-}
-
-.landing-page > * {
-    position: relative;
-    z-index: 1;
-}
-
-.landing-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 590px) minmax(260px, 360px);
-    justify-content: center;
-    gap: 28px;
-    align-items: stretch;
-}
-
-.hero-copy {
+    top: 28px;
+    right: 38px;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
-    padding-top: 16px;
-    min-width: 0;
-}
-
-.hero-copy-main {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-}
-
-.hero-badge {
-    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    min-height: 44px;
-    padding: 10px 16px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.88);
-    border: 1px solid rgba(255, 125, 31, 0.18);
-    box-shadow: 0 12px 28px rgba(16, 36, 79, 0.05);
-    color: var(--landing-orange);
-    font-size: 14px;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 12px;
     line-height: 1;
+}
+
+.landing-sponsor p {
+    color: rgba(0, 0, 0, 0.701);
+    font-size: 16px;
     font-weight: 700;
 }
 
-.hero-badge-icon,
-.hero-note-icon,
-.entry-icon,
-.announcement-icon {
-    width: 20px;
-    height: 20px;
-}
-
-.hero-title {
-    margin: 0;
-    max-width: 12ch;
-    font-size: 50px;
-    line-height: 1.12;
-    letter-spacing: 0;
-    font-weight: 850;
-}
-
-.hero-title-line {
+.landing-sponsor img {
     display: block;
+    width: 200px;
+    object-fit: contain;
 }
-
-.hero-title-line-indent {
-    padding-left: 2em;
-    white-space: nowrap;
+.landing-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 0 30px;
+    text-align: center;
 }
-
-.hero-title-accent {
-    display: inline;
-    color: var(--landing-orange);
-    font-size: 0.92em;
-    font-weight: 900;
+.hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    padding: 9px 18px;
+    border-radius: 999px;
+    background: var(--paper);
+    box-shadow: 0 7px 16px rgba(16, 24, 39, 0.08);
+    color: #3b4658;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
 }
-
+.hero-kicker svg {
+    width: 17px;
+    height: 17px;
+    color: var(--amber-deep);
+}
+.landing-hero h1 {
+    margin: 17px 0 8px;
+    font-size: 48px;
+    line-height: 1.14;
+    font-weight: 850;
+    letter-spacing: 0;
+}
+.landing-hero h1 em {
+    color: var(--amber);
+    font-style: normal;
+}
 .hero-subtitle {
     margin: 0;
-    max-width: 590px;
-    color: var(--landing-ink-soft);
-    font-size: 18px;
-    line-height: 1.55;
-    letter-spacing: -0.02em;
-    white-space: nowrap;
+    color: var(--copy);
+    font-size: 17px;
+    line-height: 1.5;
 }
-
-.hero-highlights {
+.resource-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    width: 100%;
-    max-width: 590px;
-}
-
-.hero-highlight-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    min-width: 0;
-    min-height: 88px;
-    padding: 14px 16px;
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.58);
-    border: 1px solid rgba(16, 36, 79, 0.05);
-    box-shadow: 0 12px 30px rgba(16, 36, 79, 0.04);
-    transition:
-        transform 0.2s ease,
-        border-color 0.2s ease,
-        box-shadow 0.2s ease,
-        background-color 0.2s ease;
-}
-
-.hero-highlight-item:hover {
-    transform: translateY(-2px);
-    border-color: rgba(255, 125, 31, 0.12);
-    background: rgba(255, 255, 255, 0.76);
-    box-shadow: 0 18px 38px rgba(16, 36, 79, 0.08);
-}
-
-.hero-highlight-icon-shell {
-    display: grid;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    flex-shrink: 0;
-    border-radius: 17px;
-}
-
-.hero-highlight-icon-shell-orange {
-    background: var(--landing-orange-soft);
-    color: var(--landing-orange);
-}
-
-.hero-highlight-icon-shell-blue {
-    background: var(--landing-blue-soft);
-    color: var(--landing-blue);
-}
-
-.hero-highlight-icon-shell-green {
-    background: var(--landing-green-soft);
-    color: var(--landing-green);
-}
-
-.hero-highlight-icon-shell-violet {
-    background: var(--landing-violet-soft);
-    color: var(--landing-violet);
-}
-
-.hero-highlight-icon {
-    width: 22px;
-    height: 22px;
-}
-
-.hero-highlight-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-}
-
-.hero-highlight-copy h2 {
-    margin: 0;
-    font-size: 16px;
-    line-height: 1.2;
-    font-weight: 800;
-    color: var(--landing-ink);
-}
-
-.hero-highlight-copy p {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.35;
-    color: rgba(16, 36, 79, 0.52);
-    font-weight: 600;
-}
-
-.hero-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
-    width: 100%;
-    max-width: 590px;
 }
-
-.hero-actions-grid {
+.resource-card {
     display: grid;
-    grid-template-columns: minmax(0, 520px);
-    gap: 16px;
-    width: 100%;
-    max-width: 520px;
-    align-items: stretch;
-    margin-top: 4px;
-    margin-left: 30px;
-}
-
-.hero-actions-copy-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    min-width: 0;
-}
-
-.entry-card {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative;
+    min-height: 220px;
+    overflow: hidden;
     padding: 0;
     border: 0;
-    border-radius: 22px;
+    border-radius: 8px;
+    color: var(--ink);
+    background: var(--paper);
+    box-shadow: 0 5px 18px rgba(16, 24, 39, 0.08);
+    text-align: left;
     text-decoration: none;
     cursor: pointer;
-    position: relative;
-    overflow: hidden;
     transition:
-        transform 0.22s ease,
-        box-shadow 0.22s ease;
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
 }
-
-.entry-card:hover {
-    transform: translateY(-2px) scale(1.035);
+.resource-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(16, 24, 39, 0.14);
 }
-
-.entry-card:focus-visible,
-.announcement-link:focus-visible,
-.lang-options a:focus-visible {
-    outline: 3px solid rgba(92, 141, 255, 0.28);
+.resource-card:focus-visible,
+.tutorial-card:focus-visible,
+.section-heading__link:focus-visible,
+.language-switcher a:focus-visible {
+    outline: 3px solid rgba(255, 179, 0, 0.55);
     outline-offset: 3px;
 }
-
-.entry-card-primary {
-    background: transparent;
-    box-shadow: 0 18px 40px rgba(16, 36, 79, 0.12);
-}
-
-.entry-card-primary::after {
-    content: "";
+.resource-card__image {
     position: absolute;
-    inset: -42% -28%;
-    background: linear-gradient(
-        110deg,
-        transparent 40%,
-        rgba(255, 255, 255, 0.12) 47%,
-        rgba(255, 255, 255, 0.52) 50%,
-        rgba(255, 255, 255, 0.12) 53%,
-        transparent 60%
-    );
-    transform: translateX(-72%) skewX(-18deg);
-    animation: entry-shine 3.8s ease-in-out infinite;
-    pointer-events: none;
-}
-
-.entry-card-image {
-    display: block;
     width: 100%;
-    height: auto;
-    border-radius: 22px;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(0.82) contrast(0.94);
+    transition: transform 0.3s ease;
 }
-
-@keyframes entry-shine {
-    0%,
-    18% {
-        transform: translateX(-72%) skewX(-18deg);
-    }
-
-    48%,
-    100% {
-        transform: translateX(72%) skewX(-18deg);
-    }
+.resource-card:hover .resource-card__image {
+    transform: scale(1.045);
 }
-
-@media (prefers-reduced-motion: reduce) {
-    .entry-card-primary::after {
-        animation: none;
-        opacity: 0;
-    }
+.resource-card__wash {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.96) 0%,
+        rgba(255, 255, 255, 0.87) 52%,
+        rgba(255, 255, 255, 0.32) 100%
+    );
 }
-
-.hero-note {
+.resource-card--community .resource-card__wash {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.96) 0%,
+        rgba(255, 255, 255, 0.82) 58%,
+        rgba(255, 255, 255, 0.14) 100%
+    );
+}
+.resource-card--blackbox .resource-card__image {
+    filter: saturate(0.92) contrast(0.98) brightness(0.82);
+}
+.resource-card--blackbox .resource-card__wash {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.96),
+        rgba(255, 255, 255, 0.83) 52%,
+        rgba(255, 255, 255, 0.4)
+    );
+}
+.resource-card__copy {
+    display: flex;
+    z-index: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    padding: 24px;
+}
+.resource-card__icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    margin-bottom: auto;
+    border-radius: 7px;
+    background: #fff5d8;
+    color: var(--amber-deep);
+}
+.resource-card__icon svg {
+    width: 21px;
+    height: 21px;
+}
+.resource-card__text {
+    display: grid;
+    gap: 8px;
+    max-width: 72%;
+    margin-top: 20px;
+}
+.resource-card__text strong {
+    font-size: 20px;
+    line-height: 1.2;
+}
+.resource-card__text small {
+    color: var(--copy);
+    font-size: 14px;
+    line-height: 1.55;
+}
+.resource-card__action {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    color: rgba(16, 36, 79, 0.42);
-    font-size: 15px;
-    line-height: 1.4;
-    font-weight: 700;
+    gap: 9px;
+    margin-top: 18px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: var(--amber);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
 }
-
-.landing-announcement {
+.resource-card__action span {
+    font-size: 18px;
+}
+.support-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(315px, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+}
+.tutorial-section,
+.community-panel {
+    box-sizing: border-box;
+    border-radius: 8px;
+    background: var(--paper);
+    box-shadow: 0 5px 18px rgba(16, 24, 39, 0.06);
+}
+.tutorial-section {
+    padding: 20px;
+}
+.section-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 18px;
-    width: 100%;
-    max-width: 720px;
-    min-height: 64px;
-    padding: 12px 20px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.72);
-    box-shadow: 0 18px 36px rgba(16, 36, 79, 0.06);
-}
-
-.announcement-copy {
-    display: flex;
-    align-items: center;
     gap: 16px;
-    min-width: 0;
+    margin-bottom: 18px;
 }
-
-.announcement-badge {
-    display: inline-flex;
+.section-heading > div,
+.community-panel__heading {
+    display: flex;
     align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-    color: var(--landing-orange);
-    font-size: 14px;
-    line-height: 1;
-    font-weight: 800;
+    gap: 10px;
 }
-
-.announcement-text,
-.announcement-date {
-    font-size: 14px;
-    line-height: 1.4;
-    color: rgba(16, 36, 79, 0.72);
-    font-weight: 600;
-}
-
-.announcement-link {
-    flex-shrink: 0;
-    color: var(--landing-orange);
-    text-decoration: none;
-    font-size: 14px;
-    line-height: 1;
-    font-weight: 800;
-}
-
-.hero-sidebar {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 18px;
-    min-width: 0;
-    width: min(100%, 360px);
-    justify-self: start;
-    align-self: stretch;
-}
-
-.sponsor-logo-card {
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 18px;
-    width: 100%;
-    padding: 22px;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(255, 255, 255, 0.78);
-    box-shadow: var(--landing-shadow);
-}
-
-.sponsor-logo-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.sponsor-logo-kicker {
-    color: var(--landing-orange);
-    font-size: 12px;
-    line-height: 1;
-    font-weight: 900;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-}
-
-.sponsor-logo-copy h2 {
-    margin: 0;
-    color: var(--landing-ink);
-    font-size: 17px;
-    line-height: 1.2;
-    font-weight: 900;
-}
-
-.sponsor-logo-frame {
-    box-sizing: border-box;
+.section-heading__icon,
+.community-panel__heading > span {
     display: grid;
+    width: 28px;
+    height: 28px;
     place-items: center;
-    width: 100%;
-    aspect-ratio: 16 / 7;
-    min-height: 142px;
-    padding: 18px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.72);
-    border: 1px solid rgba(16, 36, 79, 0.06);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    border: 1px solid #ffd979;
+    border-radius: 6px;
+    color: var(--amber-deep);
 }
-
-.sponsor-logo-image {
-    display: block;
-    width: 100%;
-    max-height: 96px;
-    object-fit: contain;
+.section-heading__icon svg,
+.community-panel__heading svg {
+    width: 18px;
+    height: 18px;
 }
-
-.community-qr-card {
-    box-sizing: border-box;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    width: 100%;
-    min-height: 360px;
-    padding: 28px;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(255, 255, 255, 0.78);
-    box-shadow: 0 14px 32px rgba(16, 36, 79, 0.06);
+.section-heading h2,
+.community-panel h2 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.2;
 }
-
-.community-qr-copy {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
+.section-heading__link {
+    padding: 3px 0;
+    border: 0;
+    background: transparent;
+    color: var(--amber-deep);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.section-heading__link span {
+    margin-left: 4px;
+    font-size: 18px;
+}
+.tutorial-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+.tutorial-card {
     min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.tutorial-card__media {
+    position: relative;
+    display: grid;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    border-radius: 7px;
+    background: #1c2633;
+}
+.tutorial-card__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(12, 20, 31, 0.1), rgba(12, 20, 31, 0.54));
+}
+.tutorial-card__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+.tutorial-card--pid img {
+    transform: scale(1.2) translateX(-11%);
+    filter: saturate(0.5) hue-rotate(35deg) brightness(0.72);
+}
+.tutorial-card--elrs img {
+    transform: scale(1.26) translate(6%, 7%);
+    filter: saturate(0.55) contrast(1.1) brightness(0.68);
+}
+.tutorial-card--blackbox img {
+    transform: scale(1.24) translateX(10%);
+    filter: saturate(0.48) hue-rotate(145deg) brightness(0.58);
+}
+.tutorial-card:hover img {
+    transform: scale(1.07);
+}
+.tutorial-card--pid:hover img {
+    transform: scale(1.27) translateX(-11%);
+}
+.tutorial-card--elrs:hover img {
+    transform: scale(1.33) translate(6%, 7%);
+}
+.tutorial-card--blackbox:hover img {
+    transform: scale(1.31) translateX(10%);
+}
+.tutorial-card__play {
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--amber);
+    color: #fff;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 4px 12px rgba(65, 44, 0, 0.25);
+}
+.tutorial-card__play svg {
+    width: 22px;
+    height: 22px;
+    margin-left: 2px;
+}
+.tutorial-card strong {
+    display: block;
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.3;
+}
+.tutorial-card small {
+    display: block;
+    margin-top: 5px;
+    color: var(--copy);
+    font-size: 12px;
+    line-height: 1.4;
+}
+.community-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 132px;
+    align-items: center;
+    gap: 10px;
+    padding: 21px;
+}
+.community-panel__copy {
+    min-width: 0;
+}
+.community-panel ul {
+    display: grid;
+    gap: 12px;
+    margin: 22px 0 0;
+    padding: 0;
+    list-style: none;
+    color: #3f4958;
+    font-size: 14px;
+}
+.community-panel li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.community-panel li svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    color: var(--amber-deep);
+}
+.community-panel__qr {
+    width: 132px;
+    margin: 0;
     text-align: center;
 }
-
-.community-qr-copy h2 {
-    margin: 0;
-    color: var(--landing-ink);
-    font-size: 21px;
-    line-height: 1.25;
-    font-weight: 900;
-}
-
-.community-qr-copy span {
-    color: rgba(16, 36, 79, 0.52);
-    font-size: 13px;
-    line-height: 1.4;
-    font-weight: 700;
-}
-
-.community-qr-frame {
-    box-sizing: border-box;
-    width: min(100%, 226px);
-    padding: 16px;
-    border-radius: 24px;
-    background: rgba(247, 249, 255, 0.96);
-    border: 1px solid rgba(16, 36, 79, 0.06);
-    overflow: hidden;
-}
-
-.welcome-qr-image {
+.community-panel__qr img {
     display: block;
     width: 100%;
-    height: auto;
-    border-radius: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
 }
-
+.community-panel__qr figcaption {
+    margin-top: 8px;
+    color: var(--copy);
+    font-size: 12px;
+    white-space: nowrap;
+}
 .language-switcher {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-top: 14px;
+    justify-content: center;
+    gap: 10px;
     padding-top: 18px;
-    border-top: 1px solid rgba(16, 36, 79, 0.06);
+    color: var(--copy);
+    font-size: 12px;
 }
-
-.lang-label {
-    color: rgba(16, 36, 79, 0.52);
-    font-size: 13px;
-    line-height: 1.4;
-    font-weight: 700;
-}
-
 .lang-options {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 8px;
 }
-
-.lang-options a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 38px;
-    padding: 0 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(16, 36, 79, 0.08);
-    background: rgba(255, 255, 255, 0.88);
-    color: rgba(16, 36, 79, 0.66);
+.language-switcher a {
+    color: inherit;
     text-decoration: none;
-    font-size: 13px;
-    line-height: 1;
-    font-weight: 700;
 }
-
-.lang-options a.selected-lang {
-    border-color: rgba(255, 125, 31, 0.24);
-    color: var(--landing-orange);
+.language-switcher a:not(:last-child)::after {
+    content: "/";
+    margin-left: 8px;
+    color: #c2c7d0;
 }
-
+.language-switcher .selected-lang {
+    color: var(--amber-deep);
+    font-weight: 800;
+}
 @media (max-width: 1120px) {
-    .landing-hero {
+    .landing-shell {
+        padding: 28px;
+    }
+    .support-grid {
         grid-template-columns: 1fr;
-        gap: 30px;
-        align-items: start;
     }
-
-    .hero-copy {
-        padding-top: 10px;
+    .community-panel {
+        grid-template-columns: minmax(0, 1fr) 152px;
     }
-
-    .hero-highlights {
-        max-width: none;
-    }
-
-    .hero-actions,
-    .landing-announcement {
-        max-width: none;
-    }
-
-    .hero-actions-grid {
-        grid-template-columns: 1fr;
-        max-width: 520px;
-        margin-left: 0;
-    }
-
-    .hero-sidebar {
-        width: min(100%, 520px);
-        justify-self: start;
-        align-self: start;
-    }
-
-    .sponsor-logo-card {
-        max-width: 420px;
-    }
-
-    .community-qr-card {
-        max-width: 420px;
-        min-height: 320px;
+    .community-panel__qr {
+        width: 152px;
     }
 }
-
-@media (max-width: 840px) {
-    .landing-page {
-        padding: 20px 16px 34px;
+@media (max-width: 820px) {
+    .landing-shell {
+        padding: 24px 18px 20px;
     }
-
+    .landing-sponsor {
+        position: static;
+        justify-content: center;
+        margin: 0 0 18px;
+    }
+    .landing-hero h1 {
+        font-size: 40px;
+    }
+    .resource-grid {
+        grid-template-columns: 1fr;
+    }
+    .resource-card {
+        min-height: 205px;
+    }
+    .tutorial-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px 14px;
+    }
+}
+@media (max-width: 520px) {
+    .landing-shell {
+        padding: 20px 12px 16px;
+    }
+    .landing-sponsor {
+        margin-bottom: 14px;
+    }
+    .landing-sponsor img {
+        width: 102px;
+        height: 34px;
+    }
+    .landing-hero {
+        padding-bottom: 22px;
+    }
+    .landing-hero h1 {
+        font-size: 32px;
+    }
+    .hero-kicker {
+        font-size: 12px;
+    }
     .hero-subtitle {
-        max-width: 28ch;
-        font-size: 17px;
-        white-space: normal;
+        font-size: 14px;
     }
-
-    .landing-announcement,
+    .resource-card {
+        min-height: 190px;
+    }
+    .resource-card__copy {
+        padding: 20px;
+    }
+    .tutorial-section,
+    .community-panel {
+        padding: 17px;
+    }
+    .community-panel {
+        grid-template-columns: minmax(0, 1fr) 106px;
+    }
+    .community-panel__qr {
+        width: 106px;
+    }
+    .community-panel ul {
+        gap: 9px;
+        margin-top: 16px;
+        font-size: 13px;
+    }
+    .community-panel__qr figcaption {
+        font-size: 10px;
+    }
     .language-switcher {
         flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .announcement-copy {
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .sponsor-logo-card {
-        padding: 20px;
-    }
-
-    .sponsor-logo-frame {
-        min-height: 132px;
-        padding: 18px;
-    }
-
-    .community-qr-card {
-        max-width: 260px;
-        min-height: auto;
-        padding: 20px;
-        gap: 16px;
-    }
-
-    .community-qr-frame {
-        width: 100%;
-        max-width: 180px;
     }
 }
-
-@media (max-width: 640px) {
-    .hero-title {
-        font-size: 36px;
-    }
-
-    .hero-copy-main {
-        gap: 16px;
-    }
-
-    .hero-highlights {
-        grid-template-columns: 1fr;
-    }
-
-    .hero-actions-grid {
-        max-width: none;
+@media (prefers-reduced-motion: reduce) {
+    .resource-card,
+    .resource-card__image,
+    .tutorial-card__media img {
+        transition: none;
     }
 }
 </style>

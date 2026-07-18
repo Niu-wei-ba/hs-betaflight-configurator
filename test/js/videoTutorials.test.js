@@ -1,175 +1,205 @@
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-    VIDEO_TUTORIALS_OPEN_EVENT,
-    consumeRequestedVideoTutorialCategory,
-    filterVideoTutorials,
-    getVideoTutorialCatalog,
-    getVideoTutorialEmbedUrl,
-    getVideosByCategory,
-    isVideoTutorialEmbeddable,
-    openVideoTutorials,
-} from "../../src/js/video_tutorials";
 
-describe("video tutorial catalog", () => {
-    afterEach(() => {
-        document.body.innerHTML = "";
-        consumeRequestedVideoTutorialCategory();
+const catalogPayload = {
+    categories: [
+        { id: "setup", title: "设置", sortOrder: 0 },
+        { id: "receiver", title: "接收机", sortOrder: 1 },
+    ],
+    videos: [
+        {
+            id: "video-1",
+            platform: "bilibili",
+            title: "ELRS 接收机设置",
+            sourceUrl: "https://www.bilibili.com/video/BV1xx411c7mD/",
+            embedUrl: "https://player.bilibili.com/player.html?bvid=BV1xx411c7mD",
+            durationSeconds: 122,
+            categories: [{ id: "receiver", title: "接收机", confidence: 0.9 }],
+            tags: [{ name: "ELRS", confidence: 0.9 }],
+        },
+    ],
+};
+
+afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+    document.body.innerHTML = "";
+});
+
+describe("database-backed video tutorial catalog", () => {
+    it("derives the shared tutorialId from a legacy catalog bvid", async () => {
+        global.fetch = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    categories: [],
+                    videos: [{ id: "legacy-uuid", platform: "bilibili", bvid: "BV119jR6kEyG", title: "旧目录记录" }],
+                }),
+                { status: 200 },
+            ),
+        );
+        const tutorials = await import("../../src/js/video_tutorials");
+        const loaded = await tutorials.loadVideoTutorialCatalog({ force: true });
+        expect(loaded.videos[0].tutorialId).toBe("bilibili-BV119jR6kEyG");
     });
 
-    it("defines the 19 ordered configurator categories and validates each platform's tutorial metadata", () => {
-        const catalog = getVideoTutorialCatalog();
-
-        expect(catalog.categories.map((category) => category.id)).toEqual([
-            "setup",
-            "ports",
-            "configuration",
-            "power",
-            "failsafe",
-            "presets",
-            "pid-tuning",
-            "receiver",
-            "modes",
-            "adjustments",
-            "gps",
-            "motors",
-            "osd",
-            "vtx",
-            "led-strip",
-            "sensors",
-            "logging",
-            "blackbox",
-            "cli",
-        ]);
-        expect(catalog.videos.length).toBeGreaterThan(0);
-        expect(getVideosByCategory("not-a-category")).toEqual([]);
-
-        const categoryIds = new Set(catalog.categories.map((category) => category.id));
-        const videoIds = catalog.videos.map((video) => video.id);
-        const bilibiliVideos = catalog.videos.filter((video) => video.platform === "bilibili");
-        expect(new Set(videoIds)).toHaveLength(videoIds.length);
-        expect(bilibiliVideos.length).toBeGreaterThan(0);
-        for (const video of catalog.videos) {
-            expect(categoryIds).toContain(video.categoryId);
-            expect(video.title).not.toBe("");
-            expect(video.description).not.toBe("");
-            expect(video.tags.length).toBeGreaterThan(0);
-            expect(video.sourceUrl).toMatch(/^https:\/\//);
-            expect(video.duration).toMatch(/^\d+:\d{2}$/);
-            expect(video.authorName).not.toBe("");
-            expect(video.authorAvatarUrl).toMatch(/^https:\/\//);
-            if (video.thumbnailUrl) {
-                expect(video.thumbnailUrl).toMatch(/^https:\/\//);
-            }
-        }
-
-        for (const video of bilibiliVideos) {
-            expect(video.sourceUrl).toMatch(/^https:\/\/www\.bilibili\.com\/video\/BV[0-9A-Za-z]{10}\/$/);
-            expect(video.embedUrl).toContain("isOutside=true");
-            expect(video.embedUrl).toMatch(/[?&]aid=\d+/);
-            expect(video.embedUrl).toMatch(/[?&]cid=\d+/);
-            expect(video.embedUrl).toContain("autoplay=0");
-            expect(video.thumbnailUrl).toMatch(/^https:\/\//);
-        }
-    });
-
-    it("uses responsive dimensions for official Douyin embeds without changing catalog source URLs", () => {
-        const douyinEmbedUrl = getVideoTutorialEmbedUrl({
-            platform: "douyin",
-            embedUrl: "https://open.douyin.com/player/video?vid=123&autoplay=0",
+    it("loads the catalog from /api/tutorials/catalog and does not require a static JSON catalog", async () => {
+        global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(catalogPayload), { status: 200 }));
+        const tutorials = await import("../../src/js/video_tutorials");
+        const catalog = await tutorials.loadVideoTutorialCatalog();
+        expect(String(fetch.mock.calls[0][0])).toContain("/api/tutorials/catalog");
+        expect(fetch.mock.calls[0][1]).toEqual(expect.any(Object));
+        expect(catalog.categories).toHaveLength(2);
+        expect(catalog.videos[0]).toMatchObject({
+            categoryId: "receiver",
+            categoryIds: ["receiver"],
+            tags: ["ELRS"],
+            duration: "2:02",
         });
-        const douyinUrl = new URL(douyinEmbedUrl);
-
-        expect(douyinUrl.searchParams.get("autoplay")).toBe("0");
-        expect(douyinUrl.searchParams.get("mode")).toBe("mobile");
-        expect(douyinUrl.searchParams.get("width")).toBe("100%");
-        expect(douyinUrl.searchParams.get("height")).toBe("100%");
-        expect(getVideoTutorialEmbedUrl({ embedUrl: "not a URL" })).toBe("");
+        expect(tutorials.filterVideoTutorials(catalog.videos, { categoryId: "receiver", search: "elrs" })).toHaveLength(
+            1,
+        );
     });
 
-    it("filters supplied video metadata by category, title, description, and tags", () => {
-        const videos = [
-            {
-                id: "pid-bilibili",
-                categoryId: "pid-tuning",
-                title: "PID 调校入门",
-                description: "从基础参数开始调参",
-                tags: ["调参", "黑盒子"],
-            },
-            {
-                id: "ports-douyin",
-                categoryId: "ports",
-                title: "端口配置教程",
-                description: "配置串口与接收机",
-                tags: ["MSP"],
-            },
-        ];
-
-        expect(filterVideoTutorials(videos, { search: "黑盒子" })).toEqual([videos[0]]);
-        expect(filterVideoTutorials(videos, { search: "接收机", categoryId: "ports" })).toEqual([videos[1]]);
-        expect(filterVideoTutorials(videos, { categoryId: "pid-tuning" })).toEqual([videos[0]]);
+    it("sends semantic search requests and returns matched timestamps rather than seeking the iframe", async () => {
+        global.fetch = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    query: "接收机串口",
+                    results: [
+                        {
+                            id: "segment-1",
+                            video: catalogPayload.videos[0],
+                            startSeconds: 65,
+                            endSeconds: 97,
+                            text: "把串口协议改为 CRSF",
+                            similarity: 0.92,
+                        },
+                    ],
+                }),
+                { status: 200 },
+            ),
+        );
+        const tutorials = await import("../../src/js/video_tutorials");
+        const result = await tutorials.searchVideoTutorials({ query: "接收机串口" });
+        expect(String(fetch.mock.calls.at(-1)[0])).toContain("/api/tutorials/search");
+        expect(fetch.mock.calls.at(-1)[1]).toEqual(expect.objectContaining({ method: "POST" }));
+        expect(result.results[0]).toMatchObject({ matchedText: "把串口协议改为 CRSF", timeRange: "1:05–1:37" });
     });
 
-    it("only allows HTTPS embed URLs and keeps the platform source link as a separate fallback", () => {
-        expect(
-            isVideoTutorialEmbeddable({
-                platform: "bilibili",
-                sourceUrl: "https://www.bilibili.com/video/BV1xx411c7mD",
-                embedUrl: "https://player.bilibili.com/player.html?bvid=BV1xx411c7mD",
-            }),
-        ).toBe(true);
-        expect(
-            isVideoTutorialEmbeddable({
-                platform: "douyin",
-                sourceUrl: "https://www.douyin.com/video/123",
-            }),
-        ).toBe(false);
-        expect(
-            isVideoTutorialEmbeddable({
-                platform: "douyin",
-                sourceUrl: "https://www.douyin.com/video/123",
-                embedUrl: "https://open.douyin.com/player/video?vid=123&autoplay=0",
-            }),
-        ).toBe(true);
-        expect(isVideoTutorialEmbeddable({ embedUrl: "http://example.com/player" })).toBe(false);
+    it("allows category navigation before asynchronous catalog validation has completed", async () => {
+        const tutorials = await import("../../src/js/video_tutorials");
+        document.body.innerHTML = '<ul id="tabs"><li class="tab_video_tutorials"><a></a></li></ul>';
+        expect(tutorials.openVideoTutorials("receiver")).toBe(true);
+        expect(tutorials.consumeRequestedVideoTutorialCategory()).toBe("receiver");
     });
+});
 
-    it("opens the shared tutorial tab and delivers a requested category to future contextual entries", () => {
-        document.body.innerHTML = `
-            <div id="tabs">
-                <ul class="mode-disconnected"><li class="tab_video_tutorials"><a href="#">视频教程</a></li></ul>
-                <ul class="mode-connected"><li class="tab_video_tutorials"><a href="#">视频教程</a></li></ul>
-                <ul class="mode-connected-cli"><li class="tab_video_tutorials"><a href="#">视频教程</a></li></ul>
-            </div>
-        `;
-        const links = [...document.querySelectorAll(".tab_video_tutorials a")];
-        const click = vi.fn();
-        links[0].addEventListener("click", click);
-
-        expect(openVideoTutorials("ports")).toBe(true);
-        expect(click).toHaveBeenCalledOnce();
-        expect(consumeRequestedVideoTutorialCategory()).toBe("ports");
-        expect(openVideoTutorials("unknown-category")).toBe(false);
-
-        const openEvent = vi.fn();
-        document.addEventListener(VIDEO_TUTORIALS_OPEN_EVENT, openEvent);
-        links[1].closest("li").classList.add("active");
-
-        expect(openVideoTutorials("setup")).toBe(true);
-        expect(openEvent).toHaveBeenCalledOnce();
-        expect(openEvent.mock.calls[0][0].detail).toEqual({ categoryId: "setup" });
-
-        document.removeEventListener(VIDEO_TUTORIALS_OPEN_EVENT, openEvent);
+describe("video/document search sources", () => {
+    it("merges transcript and document hits into one tutorial result", async () => {
+        global.fetch = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    query: "模式",
+                    results: [
+                        {
+                            contentType: "video_transcript",
+                            text: "模式页面",
+                            startSeconds: 12,
+                            endSeconds: 20,
+                            similarity: 0.82,
+                            video: {
+                                tutorialId: "bilibili-BV119jR6kEyG",
+                                title: "模式教程",
+                                sourceUrl: "https://www.bilibili.com/video/BV119jR6kEyG/",
+                                document: { available: true, version: 1 },
+                            },
+                        },
+                        {
+                            contentType: "document",
+                            text: "配置三档开关",
+                            similarity: 0.94,
+                            video: {
+                                tutorialId: "bilibili-BV119jR6kEyG",
+                                title: "模式教程",
+                                sourceUrl: "https://www.bilibili.com/video/BV119jR6kEyG/",
+                                document: { available: true, version: 1 },
+                            },
+                            document: {
+                                available: true,
+                                url: "/api/tutorials/bilibili-BV119jR6kEyG/document",
+                                version: 1,
+                            },
+                        },
+                    ],
+                }),
+                { status: 200 },
+            ),
+        );
+        const tutorials = await import("../../src/js/video_tutorials");
+        const result = await tutorials.searchVideoTutorials({ query: "模式" });
+        expect(result.results).toHaveLength(1);
+        expect(result.results[0]).toMatchObject({
+            tutorialId: "bilibili-BV119jR6kEyG",
+            contentTypes: ["video_transcript", "document"],
+            sourceLabels: ["视频字幕", "教程文档"],
+            timeRange: "0:12–0:20",
+        });
     });
+});
 
-    it("renders the shared tutorial entry in disconnected, connected, and CLI-only sidebars", () => {
-        document.body.innerHTML = readFileSync("src/index.html", "utf8");
+describe("technical tutorial search precision", () => {
+    it("does not show unrelated semantic fallback results for a technical identifier", async () => {
+        global.fetch = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    query: "zadig",
+                    results: [
+                        {
+                            contentType: "video_transcript",
+                            text: "没有搭载 SBUS 协议的话，像视频里这样操作一下就可以了。",
+                            video: {
+                                tutorialId: "bilibili-BV1bACPYzEcw",
+                                title: "BF 居然删掉了 SBUS 协议？",
+                                tags: [{ name: "SBUS" }],
+                                sourceUrl: "https://www.bilibili.com/video/BV1bACPYzEcw/",
+                            },
+                        },
+                        {
+                            contentType: "document",
+                            text: "打开 Zadig，在设备列表中选择 STM32 Bootloader。",
+                            video: {
+                                tutorialId: "bilibili-BV1qgV26FEGg",
+                                title: "七寸远航悬停教程",
+                                tags: [{ name: "Zadig" }],
+                                sourceUrl: "https://www.bilibili.com/video/BV1qgV26FEGg/",
+                            },
+                        },
+                    ],
+                }),
+                { status: 200 },
+            ),
+        );
+        const tutorials = await import("../../src/js/video_tutorials");
+        const result = await tutorials.searchVideoTutorials({ query: "ZADIG" });
+        expect(result.results).toHaveLength(1);
+        expect(result.results[0]).toMatchObject({
+            tutorialId: "bilibili-BV1qgV26FEGg",
+            matchedText: expect.stringContaining("Zadig"),
+        });
+    });
+});
 
-        expect(document.querySelectorAll("#tabs ul.mode-disconnected .tab_video_tutorials a")).toHaveLength(1);
-        expect(
-            document.querySelectorAll("#tabs ul.mode-connected:not(.mode-connected-cli) .tab_video_tutorials a"),
-        ).toHaveLength(1);
-        expect(document.querySelectorAll("#tabs ul.mode-connected-cli .tab_video_tutorials a")).toHaveLength(1);
-        expect(document.querySelectorAll('[i18n="tabVideoTutorials"]')).toHaveLength(3);
+describe("tutorial video URLs", () => {
+    it("preserves canonical source URLs and never appends playback timestamps", async () => {
+        const tutorials = await import("../../src/js/video_tutorials");
+        const video = {
+            sourceUrl: "https://www.bilibili.com/video/BV119jR6kEyG/?from=search#chapter-1",
+            embedUrl: "https://player.bilibili.com/player.html?bvid=BV119jR6kEyG#player",
+        };
+
+        expect(tutorials.getVideoTutorialSourceUrl(video)).toBe(video.sourceUrl);
+        expect(tutorials.getVideoTutorialSourceUrl(video, { startSeconds: 12.9 })).toBe(video.sourceUrl);
+        expect(tutorials.getVideoTutorialEmbedUrl(video, { startSeconds: 12.9 })).toBe(
+            "https://player.bilibili.com/player.html?bvid=BV119jR6kEyG&autoplay=0#player",
+        );
     });
 });

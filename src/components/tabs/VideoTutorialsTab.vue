@@ -12,7 +12,12 @@
                 <p class="video-tutorials-count">{{ filteredVideos.length }} 个匹配视频</p>
             </header>
 
-            <div class="video-tutorials-toolbar">
+            <p v-if="isLoading" class="video-tutorials-no-results" role="status">正在加载视频教程目录…</p>
+            <p v-else-if="loadError" class="video-tutorials-no-results" role="alert">
+                {{ loadError }} <button type="button" class="video-tutorials-filter" @click="loadCatalog">重试</button>
+            </p>
+
+            <div v-if="!isLoading && !loadError" class="video-tutorials-toolbar">
                 <button
                     class="video-tutorials-filter"
                     :aria-pressed="selectedCategoryId === null"
@@ -34,14 +39,17 @@
             </div>
 
             <p
-                v-if="hasActiveFilters && visibleCategories.length === 0"
+                v-if="!isLoading && !loadError && hasActiveFilters && visibleCategories.length === 0"
                 class="video-tutorials-no-results"
                 role="status"
             >
                 没有找到匹配的视频教程。请换一个关键词或分类试试。
             </p>
 
-            <div v-else class="video-tutorials-sections">
+            <div
+                v-if="!isLoading && !loadError && !(hasActiveFilters && visibleCategories.length === 0)"
+                class="video-tutorials-sections"
+            >
                 <section
                     v-for="category in visibleCategories"
                     :id="`video-tutorial-category-${category.id}`"
@@ -57,7 +65,12 @@
                     </div>
 
                     <div v-if="category.videos.length" class="video-tutorial-grid">
-                        <article v-for="video in category.videos" :key="video.id" class="video-tutorial-card">
+                        <article
+                            v-for="video in category.videos"
+                            :id="`video-tutorial-${video.tutorialId || video.id}`"
+                            :key="video.id"
+                            class="video-tutorial-card"
+                        >
                             <div
                                 v-if="isEmbeddable(video)"
                                 class="video-tutorial-player"
@@ -65,6 +78,7 @@
                             >
                                 <iframe
                                     v-if="!embedFailed(video.id) && !hasFloatingPlayer()"
+                                    :key="getPlaybackKey(video)"
                                     :src="getEmbedUrl(video)"
                                     :title="video.title"
                                     scrolling="no"
@@ -137,14 +151,24 @@
                                 <ul v-if="video.tags?.length" class="video-tutorial-tags">
                                     <li v-for="tag in video.tags" :key="tag">{{ tag }}</li>
                                 </ul>
-                                <a
-                                    :href="video.sourceUrl"
-                                    class="video-tutorial-source"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    在{{ platformLabel(video.platform) }}打开原视频 <span aria-hidden="true">↗</span>
-                                </a>
+                                <div class="video-tutorial-card-actions">
+                                    <a
+                                        :href="getSourceUrl(video)"
+                                        class="video-tutorial-source"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        观看视频 <span aria-hidden="true">↗</span>
+                                    </a>
+                                    <button
+                                        v-if="video.document?.available"
+                                        type="button"
+                                        class="video-tutorial-document-link"
+                                        @click="openDocument(video)"
+                                    >
+                                        阅读文档
+                                    </button>
+                                </div>
                             </div>
                         </article>
                     </div>
@@ -154,6 +178,17 @@
                     </div>
                 </section>
             </div>
+
+            <div v-if="selectedDocumentVideo" class="video-tutorial-document-overlay" role="dialog" aria-modal="true">
+                <VideoTutorialDocument
+                    :tutorial="selectedDocumentVideo"
+                    :video="selectedDocumentVideo"
+                    :document="selectedDocument"
+                    :loading="documentLoading"
+                    :error="documentError"
+                    @close="closeDocument"
+                />
+            </div>
         </section>
     </BaseTab>
 </template>
@@ -161,16 +196,22 @@
 <script>
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref } from "vue";
 import BaseTab from "./BaseTab.vue";
+import VideoTutorialDocument from "../VideoTutorialDocument.vue";
 import GUI from "../../js/gui";
 import {
+    VIDEO_TUTORIAL_DOCUMENT_OPEN_EVENT,
     VIDEO_TUTORIAL_SEARCH_EVENT,
     VIDEO_TUTORIALS_OPEN_EVENT,
     consumeRequestedVideoTutorialCategory,
     filterVideoTutorials,
-    getVideoTutorialCatalog,
     getVideoTutorialEmbedReferrerPolicy,
     getVideoTutorialEmbedUrl,
+    getVideoTutorialSourceUrl,
+    getVideoTutorialCatalog,
     isVideoTutorialEmbeddable,
+    loadVideoTutorialCatalog,
+    loadVideoTutorialDocument,
+    subscribeVideoTutorialCatalog,
 } from "../../js/video_tutorials";
 import {
     hasFloatingVideoTutorial,
@@ -178,152 +219,221 @@ import {
     openFloatingVideoTutorial,
 } from "../../js/video_tutorial_floating_player";
 
-const platformLabels = {
-    bilibili: "B 站",
-    douyin: "抖音",
-};
+const platformLabels = { bilibili: "B 站", douyin: "抖音" };
 
 export default defineComponent({
     name: "VideoTutorialsTab",
-    components: {
-        BaseTab,
-    },
+    components: { BaseTab, VideoTutorialDocument },
     setup() {
-        const catalog = getVideoTutorialCatalog();
+        const catalog = ref(getVideoTutorialCatalog());
+        const isLoading = ref(true);
+        const loadError = ref("");
         const searchQuery = ref("");
         const selectedCategoryId = ref(null);
         const failedEmbedVideoIds = ref([]);
         const failedThumbnailIds = ref([]);
+        const selectedDocumentVideo = ref(null);
+        const selectedDocument = ref(null);
+        const documentLoading = ref(false);
+        const documentError = ref("");
+        let pendingCategoryId = consumeRequestedVideoTutorialCategory();
+        let pendingDocumentTutorialId = null;
+        let unsubscribeCatalog = () => {};
 
+        const categories = computed(() => catalog.value.categories);
         const filteredVideos = computed(() =>
-            filterVideoTutorials(catalog.videos, {
+            filterVideoTutorials(catalog.value.videos, {
                 search: searchQuery.value,
                 categoryId: selectedCategoryId.value,
             }),
         );
-
         const visibleCategories = computed(() => {
             const videosByCategory = new Map();
             filteredVideos.value.forEach((video) => {
-                const videos = videosByCategory.get(video.categoryId) ?? [];
-                videos.push(video);
-                videosByCategory.set(video.categoryId, videos);
+                (video.categoryIds?.length ? video.categoryIds : [video.categoryId])
+                    .filter(Boolean)
+                    .forEach((categoryId) => {
+                        const videos = videosByCategory.get(categoryId) ?? [];
+                        videos.push(video);
+                        videosByCategory.set(categoryId, videos);
+                    });
             });
-
-            const shouldHideEmptyCategories = Boolean(searchQuery.value.trim()) || Boolean(selectedCategoryId.value);
-
-            return catalog.categories
+            const shouldHideEmpty = Boolean(searchQuery.value.trim()) || Boolean(selectedCategoryId.value);
+            return categories.value
                 .filter((category) => !selectedCategoryId.value || category.id === selectedCategoryId.value)
-                .map((category) => ({
-                    ...category,
-                    videos: videosByCategory.get(category.id) ?? [],
-                }))
+                .map((category) => ({ ...category, videos: videosByCategory.get(category.id) ?? [] }))
                 .filter(
                     (category) =>
-                        !shouldHideEmptyCategories ||
-                        category.videos.length > 0 ||
-                        selectedCategoryId.value === category.id,
+                        !shouldHideEmpty || category.videos.length || selectedCategoryId.value === category.id,
                 );
         });
-
         const hasActiveFilters = computed(() => Boolean(searchQuery.value.trim()) || Boolean(selectedCategoryId.value));
 
+        function applyPendingCategory() {
+            if (!pendingCategoryId) return;
+            if (categories.value.some((category) => category.id === pendingCategoryId)) {
+                selectedCategoryId.value = pendingCategoryId;
+            }
+            pendingCategoryId = null;
+        }
+        function openPendingDocument() {
+            if (!pendingDocumentTutorialId || isLoading.value) return;
+            const video = catalog.value.videos.find(
+                (item) => (item.tutorialId || item.id) === pendingDocumentTutorialId,
+            );
+            pendingDocumentTutorialId = null;
+            if (video) openDocument(video);
+        }
+        function refreshCatalog(nextCatalog, error) {
+            catalog.value = nextCatalog;
+            loadError.value = error?.message || "";
+            isLoading.value = false;
+            applyPendingCategory();
+            openPendingDocument();
+        }
+        async function loadCatalog() {
+            isLoading.value = true;
+            loadError.value = "";
+            try {
+                refreshCatalog(await loadVideoTutorialCatalog({ force: true }));
+            } catch (error) {
+                refreshCatalog(getVideoTutorialCatalog(), error);
+            }
+        }
         function platformLabel(platform) {
             return platformLabels[platform] ?? platform;
         }
-
         function isEmbeddable(video) {
             return isVideoTutorialEmbeddable(video);
         }
-
         function embedReferrerPolicy(video) {
             return getVideoTutorialEmbedReferrerPolicy(video);
         }
-
         function getEmbedUrl(video) {
             return getVideoTutorialEmbedUrl(video);
         }
-
+        function getSourceUrl(video) {
+            return getVideoTutorialSourceUrl(video);
+        }
+        function getPlaybackKey(video) {
+            return video.tutorialId || video.id;
+        }
         function isPortraitVideo(video) {
             return video.platform === "douyin";
         }
-
         function embedFailed(videoId) {
             return failedEmbedVideoIds.value.includes(videoId);
         }
-
         function markEmbedFailed(videoId) {
-            if (!embedFailed(videoId)) {
-                failedEmbedVideoIds.value = [...failedEmbedVideoIds.value, videoId];
-            }
+            if (!embedFailed(videoId)) failedEmbedVideoIds.value = [...failedEmbedVideoIds.value, videoId];
         }
-
         function thumbnailFailed(videoId) {
             return failedThumbnailIds.value.includes(videoId);
         }
-
         function markThumbnailFailed(videoId) {
-            if (!thumbnailFailed(videoId)) {
-                failedThumbnailIds.value = [...failedThumbnailIds.value, videoId];
-            }
+            if (!thumbnailFailed(videoId)) failedThumbnailIds.value = [...failedThumbnailIds.value, videoId];
         }
-
         function hasFloatingPlayer() {
             return hasFloatingVideoTutorial();
         }
-
         function isFloating(videoId) {
             return isFloatingVideoTutorial(videoId);
         }
-
         function openPictureInPicture(video) {
             openFloatingVideoTutorial(video);
         }
-
+        async function openDocument(video) {
+            selectedDocumentVideo.value = video;
+            selectedDocument.value = null;
+            documentError.value = "";
+            documentLoading.value = true;
+            try {
+                selectedDocument.value = await loadVideoTutorialDocument(video.tutorialId || video.id);
+            } catch (error) {
+                documentError.value = error?.message || "教程文档加载失败。仍可观看视频。";
+            } finally {
+                documentLoading.value = false;
+            }
+        }
+        function closeDocument() {
+            selectedDocumentVideo.value = null;
+            selectedDocument.value = null;
+            documentError.value = "";
+        }
         function selectCategory(categoryId) {
             selectedCategoryId.value = categoryId;
         }
-
         function openRequestedCategory(event) {
-            selectCategory(event.detail?.categoryId ?? null);
+            const requested = event.detail?.categoryId ?? null;
+            if (!requested) {
+                selectCategory(null);
+                return;
+            }
+            if (isLoading.value) {
+                pendingCategoryId = requested;
+                return;
+            }
+            selectCategory(categories.value.some((category) => category.id === requested) ? requested : null);
         }
-
         function applyGlobalSearch(event) {
-            searchQuery.value = String(event.detail?.query ?? "").trim();
-            selectedCategoryId.value = null;
-            event.preventDefault();
+            // Semantic results are shown in the global panel. Keep category navigation functional without local keyword filtering.
+            const categoryId = event.detail?.categoryId;
+            if (categoryId) openRequestedCategory({ detail: { categoryId } });
+        }
+        function openRequestedDocument(event) {
+            const tutorialId = event.detail?.tutorialId;
+            if (!tutorialId) return;
+            const video = catalog.value.videos.find((item) => (item.tutorialId || item.id) === tutorialId);
+            if (!video) {
+                if (isLoading.value) pendingDocumentTutorialId = tutorialId;
+                return;
+            }
+            openDocument(video);
         }
 
         onMounted(() => {
-            selectCategory(consumeRequestedVideoTutorialCategory());
+            unsubscribeCatalog = subscribeVideoTutorialCatalog(refreshCatalog);
             document.addEventListener(VIDEO_TUTORIALS_OPEN_EVENT, openRequestedCategory);
             document.addEventListener(VIDEO_TUTORIAL_SEARCH_EVENT, applyGlobalSearch);
+            document.addEventListener(VIDEO_TUTORIAL_DOCUMENT_OPEN_EVENT, openRequestedDocument);
+            loadCatalog();
             GUI.content_ready();
         });
-
         onBeforeUnmount(() => {
+            unsubscribeCatalog();
             document.removeEventListener(VIDEO_TUTORIALS_OPEN_EVENT, openRequestedCategory);
             document.removeEventListener(VIDEO_TUTORIAL_SEARCH_EVENT, applyGlobalSearch);
+            document.removeEventListener(VIDEO_TUTORIAL_DOCUMENT_OPEN_EVENT, openRequestedDocument);
         });
-
         return {
-            categories: catalog.categories,
+            categories,
             embedFailed,
             embedReferrerPolicy,
             filteredVideos,
             getEmbedUrl,
+            getPlaybackKey,
+            getSourceUrl,
             hasActiveFilters,
             hasFloatingPlayer,
             isEmbeddable,
             isFloating,
+            isLoading,
             isPortraitVideo,
+            loadCatalog,
+            loadError,
             markEmbedFailed,
             markThumbnailFailed,
+            closeDocument,
+            documentError,
+            documentLoading,
+            openDocument,
             openPictureInPicture,
             platformLabel,
             searchQuery,
             selectCategory,
             selectedCategoryId,
+            selectedDocument,
+            selectedDocumentVideo,
             thumbnailFailed,
             visibleCategories,
         };
@@ -670,6 +780,35 @@ export default defineComponent({
     font-size: 11px;
 }
 
+.video-tutorial-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    align-items: center;
+    margin-top: 14px;
+}
+
+.video-tutorial-document-link {
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 125, 31, 0.32);
+    border-radius: 7px;
+    background: #fff7ee;
+    color: #b95000;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.video-tutorial-document-overlay {
+    position: fixed;
+    z-index: 20;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(20, 35, 66, 0.48);
+}
 .video-tutorial-source {
     display: inline-block;
     margin-top: 15px;

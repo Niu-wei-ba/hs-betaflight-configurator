@@ -11,6 +11,9 @@ import { resolve } from "path";
 
 const commitHash = child.execSync("git rev-parse --short HEAD").toString().trim();
 const devProxyTarget = process.env.VITE_DEV_PROXY_TARGET || "http://127.0.0.1:4180";
+const devProxyChangeOrigin = process.env.VITE_DEV_PROXY_CHANGE_ORIGIN === "true";
+const devServerHost = process.env.VITE_DEV_HOST || "0.0.0.0";
+const devServerPort = Number(process.env.VITE_DEV_PORT || 8000);
 
 function serveFileFromDirectory(directory) {
     return (req, res, next) => {
@@ -128,29 +131,29 @@ export default defineConfig({
         },
     },
     server: {
-        port: 8000,
+        port: devServerPort,
         strictPort: true,
-        host: "0.0.0.0", // Listen on all network interfaces for Android device access
+        host: devServerHost,
         proxy: {
             "/api": {
                 target: devProxyTarget,
-                changeOrigin: false,
+                changeOrigin: devProxyChangeOrigin,
             },
             "/healthz": {
                 target: devProxyTarget,
-                changeOrigin: false,
+                changeOrigin: devProxyChangeOrigin,
             },
             "/presets": {
                 target: devProxyTarget,
-                changeOrigin: false,
+                changeOrigin: devProxyChangeOrigin,
             },
             "/firmware-files": {
                 target: devProxyTarget,
-                changeOrigin: false,
+                changeOrigin: devProxyChangeOrigin,
             },
             "/docs": {
                 target: devProxyTarget,
-                changeOrigin: false,
+                changeOrigin: devProxyChangeOrigin,
             },
         },
     },

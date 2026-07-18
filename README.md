@@ -48,12 +48,19 @@ For **board and firmware version lists** to match [official Cloud Build API](htt
 
 ## Local Development
 
-Run the private firmware API separately, then start the frontend with Vite proxying all backend routes through the same origin:
+Use the local launcher to select Node 20, start the private firmware API when needed, start Vite, and verify the same-origin proxy:
 
 ```bash
-nvm use
-VITE_DEV_PROXY_TARGET=http://127.0.0.1:4180 yarn dev
+yarn start:local
 ```
+
+To use the production API while keeping the Configurator UI local, pass `-prod` through Yarn:
+
+```bash
+yarn start:local -- -prod
+```
+
+The launcher listens on `http://127.0.0.1:8000` by default. Copy [`scripts/local-dev.env.example`](/Users/lihao/Documents/betaflight-configurator/scripts/local-dev.env.example) to `.env.local-dev` to override the sibling API path, proxy targets, host, port, or Node 20 bin directory. `.env.local-dev` is intentionally ignored by Git. `yarn start:prod` is a shorthand for the production-proxy mode.
 
 Useful checks:
 

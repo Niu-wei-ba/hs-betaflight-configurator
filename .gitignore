@@ -58,3 +58,9 @@ capacitor-plugins/*/android/bin/
 
 # Local-only video tutorial catalog manager
 /src/video-tutorial-manager.local.html
+
+# Local-only Bilibili ingestion workspace: source, media, models, cookies and secrets must never be committed.
+/local-video-ingest/
+
+# Per-machine local development launcher configuration.
+/.env.local-dev

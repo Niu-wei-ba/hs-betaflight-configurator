@@ -13,6 +13,7 @@ import ConfigurationTab from "../components/tabs/ConfigurationTab.vue";
 import VideoTutorialsTab from "../components/tabs/VideoTutorialsTab.vue";
 import VideoTutorialFloatingPlayer from "../components/VideoTutorialFloatingPlayer.vue";
 import VideoTutorialSearchPanel from "../components/VideoTutorialSearchPanel.vue";
+import VideoTutorialDocument from "../components/VideoTutorialDocument.vue";
 
 // Registry of Vue tab components - used by main.js for dynamic mounting
 export const VueTabComponents = {
@@ -44,5 +45,6 @@ export const BetaflightComponents = {
         app.component("VideoTutorialsTab", VideoTutorialsTab);
         app.component("VideoTutorialFloatingPlayer", VideoTutorialFloatingPlayer);
         app.component("VideoTutorialSearchPanel", VideoTutorialSearchPanel);
+        app.component("VideoTutorialDocument", VideoTutorialDocument);
     },
 };
