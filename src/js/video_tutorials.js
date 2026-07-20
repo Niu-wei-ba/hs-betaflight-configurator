@@ -255,10 +255,10 @@ export function getVideoTutorialSourceUrl(video) {
     return video?.sourceUrl || "";
 }
 
-export function getVideoTutorialEmbedUrl(video) {
+export function getVideoTutorialEmbedUrl(video, { autoplay = false } = {}) {
     try {
         const url = new URL(video?.embedUrl);
-        url.searchParams.set("autoplay", "0");
+        url.searchParams.set("autoplay", autoplay ? "1" : "0");
         if (video?.platform === "douyin" && url.hostname === "open.douyin.com") {
             url.searchParams.set("mode", "mobile");
             url.searchParams.set("width", "100%");

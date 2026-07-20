@@ -201,5 +201,8 @@ describe("tutorial video URLs", () => {
         expect(tutorials.getVideoTutorialEmbedUrl(video, { startSeconds: 12.9 })).toBe(
             "https://player.bilibili.com/player.html?bvid=BV119jR6kEyG&autoplay=0#player",
         );
+        expect(tutorials.getVideoTutorialEmbedUrl(video, { autoplay: true })).toBe(
+            "https://player.bilibili.com/player.html?bvid=BV119jR6kEyG&autoplay=1#player",
+        );
     });
 });

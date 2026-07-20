@@ -76,31 +76,73 @@
                                 class="video-tutorial-player"
                                 :class="{ 'video-tutorial-player--portrait': isPortraitVideo(video) }"
                             >
-                                <iframe
-                                    v-if="!embedFailed(video.id) && !hasFloatingPlayer()"
-                                    :key="getPlaybackKey(video)"
-                                    :src="getEmbedUrl(video)"
-                                    :title="video.title"
-                                    scrolling="no"
-                                    border="0"
-                                    frameborder="no"
-                                    framespacing="0"
-                                    allow="encrypted-media; fullscreen; picture-in-picture"
-                                    allowfullscreen
-                                    loading="lazy"
-                                    :referrerpolicy="embedReferrerPolicy(video)"
-                                    @error="markEmbedFailed(video.id)"
-                                ></iframe>
-                                <p v-else-if="hasFloatingPlayer()" class="video-tutorial-picture-in-picture-status">
+                                <p v-if="hasFloatingPlayer()" class="video-tutorial-picture-in-picture-status">
                                     {{
                                         isFloating(video.id)
                                             ? "正在画中画播放"
                                             : "已暂停内嵌播放器，以保证画中画播放稳定"
                                     }}
                                 </p>
-                                <p v-else class="video-tutorial-embed-fallback">
-                                    当前平台不允许内嵌播放，请使用下方原始链接观看。
-                                </p>
+                                <template v-else-if="isInlinePlayerActive(category.id, video)">
+                                    <div
+                                        v-if="embedFailed(getInlinePlayerKey(category.id, video))"
+                                        class="video-tutorial-embed-fallback"
+                                        role="alert"
+                                    >
+                                        <p>播放器加载失败。</p>
+                                        <div class="video-tutorial-embed-fallback__actions">
+                                            <button type="button" @click="retryInlinePlayer(category.id, video)">
+                                                重新加载
+                                            </button>
+                                            <a :href="getSourceUrl(video)" target="_blank" rel="noopener noreferrer">
+                                                打开原视频 <span aria-hidden="true">↗</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <template v-else>
+                                        <iframe
+                                            :key="getPlaybackKey(category.id, video)"
+                                            :src="getEmbedUrl(video)"
+                                            :title="video.title"
+                                            scrolling="no"
+                                            border="0"
+                                            frameborder="no"
+                                            framespacing="0"
+                                            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                                            allowfullscreen
+                                            :referrerpolicy="embedReferrerPolicy(video)"
+                                            @load="markEmbedLoaded(getInlinePlayerKey(category.id, video))"
+                                            @error="markEmbedFailed(getInlinePlayerKey(category.id, video))"
+                                        ></iframe>
+                                        <p
+                                            v-if="isInlinePlayerLoading(getInlinePlayerKey(category.id, video))"
+                                            class="video-tutorial-player-loading"
+                                            role="status"
+                                        >
+                                            播放器加载中…
+                                        </p>
+                                    </template>
+                                </template>
+                                <button
+                                    v-else
+                                    class="video-tutorial-player-launch"
+                                    type="button"
+                                    :aria-label="`播放《${video.title}》`"
+                                    @click="openInlinePlayer(category.id, video)"
+                                >
+                                    <img
+                                        v-if="video.thumbnailUrl && !thumbnailFailed(video.id)"
+                                        :src="video.thumbnailUrl"
+                                        alt=""
+                                        loading="lazy"
+                                        referrerpolicy="no-referrer"
+                                        @error="markThumbnailFailed(video.id)"
+                                    />
+                                    <span v-else class="video-tutorial-placeholder" aria-hidden="true">
+                                        {{ platformLabel(video.platform) }}
+                                    </span>
+                                    <span class="video-tutorial-player-launch__icon" aria-hidden="true"></span>
+                                </button>
                             </div>
                             <div v-else class="video-tutorial-media">
                                 <img
@@ -230,7 +272,10 @@ export default defineComponent({
         const loadError = ref("");
         const searchQuery = ref("");
         const selectedCategoryId = ref(null);
-        const failedEmbedVideoIds = ref([]);
+        const activeInlinePlayerKey = ref(null);
+        const failedEmbedPlayerKeys = ref([]);
+        const inlinePlayerLoading = ref(false);
+        const inlinePlayerVersion = ref(0);
         const failedThumbnailIds = ref([]);
         const selectedDocumentVideo = ref(null);
         const selectedDocument = ref(null);
@@ -285,6 +330,7 @@ export default defineComponent({
             if (video) openDocument(video);
         }
         function refreshCatalog(nextCatalog, error) {
+            clearInlinePlayer();
             catalog.value = nextCatalog;
             loadError.value = error?.message || "";
             isLoading.value = false;
@@ -292,6 +338,7 @@ export default defineComponent({
             openPendingDocument();
         }
         async function loadCatalog() {
+            clearInlinePlayer();
             isLoading.value = true;
             loadError.value = "";
             try {
@@ -310,22 +357,51 @@ export default defineComponent({
             return getVideoTutorialEmbedReferrerPolicy(video);
         }
         function getEmbedUrl(video) {
-            return getVideoTutorialEmbedUrl(video);
+            return getVideoTutorialEmbedUrl(video, { autoplay: true });
         }
         function getSourceUrl(video) {
             return getVideoTutorialSourceUrl(video);
         }
-        function getPlaybackKey(video) {
-            return video.tutorialId || video.id;
+        function getInlinePlayerKey(categoryId, video) {
+            return `${categoryId}:${video.tutorialId || video.id}`;
+        }
+        function getPlaybackKey(categoryId, video) {
+            return `${getInlinePlayerKey(categoryId, video)}:${inlinePlayerVersion.value}`;
         }
         function isPortraitVideo(video) {
             return video.platform === "douyin";
         }
-        function embedFailed(videoId) {
-            return failedEmbedVideoIds.value.includes(videoId);
+        function isInlinePlayerActive(categoryId, video) {
+            return activeInlinePlayerKey.value === getInlinePlayerKey(categoryId, video);
         }
-        function markEmbedFailed(videoId) {
-            if (!embedFailed(videoId)) failedEmbedVideoIds.value = [...failedEmbedVideoIds.value, videoId];
+        function isInlinePlayerLoading(playerKey) {
+            return activeInlinePlayerKey.value === playerKey && inlinePlayerLoading.value;
+        }
+        function clearInlinePlayer() {
+            activeInlinePlayerKey.value = null;
+            inlinePlayerLoading.value = false;
+        }
+        function openInlinePlayer(categoryId, video) {
+            const playerKey = getInlinePlayerKey(categoryId, video);
+            activeInlinePlayerKey.value = playerKey;
+            failedEmbedPlayerKeys.value = failedEmbedPlayerKeys.value.filter((key) => key !== playerKey);
+            inlinePlayerLoading.value = true;
+            inlinePlayerVersion.value += 1;
+        }
+        function retryInlinePlayer(categoryId, video) {
+            openInlinePlayer(categoryId, video);
+        }
+        function embedFailed(playerKey) {
+            return failedEmbedPlayerKeys.value.includes(playerKey);
+        }
+        function markEmbedFailed(playerKey) {
+            if (!embedFailed(playerKey)) {
+                failedEmbedPlayerKeys.value = [...failedEmbedPlayerKeys.value, playerKey];
+            }
+            if (activeInlinePlayerKey.value === playerKey) inlinePlayerLoading.value = false;
+        }
+        function markEmbedLoaded(playerKey) {
+            if (activeInlinePlayerKey.value === playerKey) inlinePlayerLoading.value = false;
         }
         function thumbnailFailed(videoId) {
             return failedThumbnailIds.value.includes(videoId);
@@ -340,6 +416,7 @@ export default defineComponent({
             return isFloatingVideoTutorial(videoId);
         }
         function openPictureInPicture(video) {
+            clearInlinePlayer();
             openFloatingVideoTutorial(video);
         }
         async function openDocument(video) {
@@ -361,6 +438,7 @@ export default defineComponent({
             documentError.value = "";
         }
         function selectCategory(categoryId) {
+            clearInlinePlayer();
             selectedCategoryId.value = categoryId;
         }
         function openRequestedCategory(event) {
@@ -400,6 +478,7 @@ export default defineComponent({
             GUI.content_ready();
         });
         onBeforeUnmount(() => {
+            clearInlinePlayer();
             unsubscribeCatalog();
             document.removeEventListener(VIDEO_TUTORIALS_OPEN_EVENT, openRequestedCategory);
             document.removeEventListener(VIDEO_TUTORIAL_SEARCH_EVENT, applyGlobalSearch);
@@ -411,22 +490,27 @@ export default defineComponent({
             embedReferrerPolicy,
             filteredVideos,
             getEmbedUrl,
+            getInlinePlayerKey,
             getPlaybackKey,
             getSourceUrl,
             hasActiveFilters,
             hasFloatingPlayer,
             isEmbeddable,
             isFloating,
+            isInlinePlayerActive,
+            isInlinePlayerLoading,
             isLoading,
             isPortraitVideo,
             loadCatalog,
             loadError,
             markEmbedFailed,
+            markEmbedLoaded,
             markThumbnailFailed,
             closeDocument,
             documentError,
             documentLoading,
             openDocument,
+            openInlinePlayer,
             openPictureInPicture,
             platformLabel,
             searchQuery,
@@ -435,6 +519,7 @@ export default defineComponent({
             selectedDocument,
             selectedDocumentVideo,
             thumbnailFailed,
+            retryInlinePlayer,
             visibleCategories,
         };
     },
@@ -617,6 +702,7 @@ export default defineComponent({
 
 .video-tutorial-player,
 .video-tutorial-media {
+    position: relative;
     aspect-ratio: 16 / 9;
     overflow: hidden;
     background: #eaf0fb;
@@ -628,6 +714,67 @@ export default defineComponent({
     height: 100%;
     border: 0;
     background: #1d2941;
+}
+
+.video-tutorial-player-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    margin: 0;
+    place-items: center;
+    background: rgba(29, 41, 65, 0.9);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.video-tutorial-player-launch {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: #253b6c;
+    color: #fff;
+    cursor: pointer;
+}
+
+.video-tutorial-player-launch:focus-visible {
+    outline: 3px solid var(--tutorial-accent);
+    outline-offset: -3px;
+}
+
+.video-tutorial-player-launch img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-tutorial-player-launch__icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    width: 48px;
+    height: 48px;
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    border-radius: 50%;
+    background: var(--primary-500);
+    place-items: center;
+    transform: translate(-50%, -50%);
+}
+
+.video-tutorial-player-launch__icon::before {
+    width: 0;
+    height: 0;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    border-left: 14px solid #fff;
+    content: "";
+    transform: translateX(1px);
 }
 
 .video-tutorial-player--portrait {
@@ -687,7 +834,7 @@ export default defineComponent({
     width: 100%;
     height: 100%;
     place-items: center;
-    background: linear-gradient(135deg, #253b6c, #587fe0);
+    background: #253b6c;
     color: #fff;
     font-size: 24px;
     font-weight: 700;
@@ -697,11 +844,37 @@ export default defineComponent({
     display: grid;
     height: 100%;
     padding: 16px;
-    margin: 0;
     place-items: center;
+    align-content: center;
+    gap: 12px;
+    background: #fff7ee;
     color: #9a500f;
     font-size: 13px;
     text-align: center;
+}
+
+.video-tutorial-embed-fallback p {
+    margin: 0;
+}
+
+.video-tutorial-embed-fallback__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.video-tutorial-embed-fallback__actions button,
+.video-tutorial-embed-fallback__actions a {
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 125, 31, 0.32);
+    border-radius: 7px;
+    background: #fff;
+    color: #9a500f;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
 }
 
 .video-tutorial-card-body {
