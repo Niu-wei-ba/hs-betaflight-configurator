@@ -56,6 +56,7 @@ class GuiControl {
             "blackbox_viewer",
             "video_tutorials",
             "support_snapshot",
+            "esc_melody",
         ];
 
         this.defaultCloudBuildTabOptions = ["gps", "led_strip", "osd", "servos", "vtx", "flight_plan"];
