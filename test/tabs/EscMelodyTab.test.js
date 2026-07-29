@@ -87,7 +87,7 @@ describe("EscMelodyTab", () => {
     it("keeps offline editing available while locking the hardware safety flow", async () => {
         const { app, container } = await mountTab();
         const safetyButton = [...container.querySelectorAll("button")].find((button) =>
-            button.textContent.includes("进入安全检查"),
+            button.textContent.includes("安全写入"),
         );
         const addRestButton = [...container.querySelectorAll("button")].find((button) =>
             button.textContent.includes("休止"),
@@ -99,6 +99,13 @@ describe("EscMelodyTab", () => {
         expect(container.textContent).toContain("配置页 CRC");
         expect(container.querySelector(".esc-melody-sidebar > .esc-scan-panel")).not.toBeNull();
         expect(container.querySelector(".esc-melody-header .esc-melody-connection")).toBeNull();
+        const workflowSteps = container.querySelectorAll(".esc-melody-workflow-step");
+        expect(workflowSteps).toHaveLength(3);
+        expect([...workflowSteps].map((step) => step.textContent.trim())).toEqual([
+            "1扫描电调",
+            "2选择 / 编辑音乐",
+            "3安全写入",
+        ]);
         expect(container.querySelector('[aria-label="扫描电调"]').disabled).toBe(true);
         expect(safetyButton.disabled).toBe(true);
         addRestButton.click();
@@ -213,6 +220,65 @@ describe("EscMelodyTab", () => {
         container.querySelector('[title="撤销"]').click();
         await nextTick();
         expect(container.querySelectorAll(".esc-melody-note")).toHaveLength(36);
+
+        app.unmount();
+    });
+
+    it("overwrites every writable ESC with a one-track preset after a multi-track preset", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const scannedEscs = createWritableEscs([60, 62, 64, 65]);
+        scanEscs.mockResolvedValue(scannedEscs);
+        backupEscs.mockImplementation(async (escs) => {
+            for (const esc of escs) {
+                esc.originalEeprom = new Uint8Array(esc.settingsLength).fill(esc.channel + 1);
+                esc.backedUp = true;
+            }
+        });
+        writeMelody.mockImplementation(async (targets) => ({ ok: true, written: targets }));
+        const { app, container } = await mountTab();
+
+        findButton(container, "扫描电调").click();
+        await vi.waitFor(() => expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false));
+
+        const search = container.querySelector('[aria-label="搜索旋律库"]');
+        search.value = "Bad Apple";
+        search.dispatchEvent(new Event("input"));
+        await nextTick();
+        container.querySelector(".melody-preset-list .melody-list-item").click();
+        await nextTick();
+        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false);
+
+        search.value = "Two-Tigers";
+        search.dispatchEvent(new Event("input"));
+        await nextTick();
+        container.querySelector(".melody-preset-list .melody-list-item").click();
+        await nextTick();
+
+        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
+        expect(container.querySelectorAll(".preset-track-tab")).toHaveLength(0);
+        expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(0);
+        expect(container.querySelectorAll(".melody-write-mark")).toHaveLength(4);
+        expect(container.querySelector(".actionbar-status").textContent).toContain("4 路将分别写入");
+
+        findButton(container, "安全写入").click();
+        await nextTick();
+        expect(container.querySelector(".safety-write-melody").textContent).toContain("Two-Tigers");
+        findButton(container, "备份到本机").click();
+        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
+        await nextTick();
+        findButton(container, "开始写入").click();
+
+        await vi.waitFor(() => expect(writeMelody).toHaveBeenCalledOnce());
+        const [targets, melodyForEsc] = writeMelody.mock.calls[0];
+        expect(targets.map((esc) => esc.channel)).toEqual([0, 1, 2, 3]);
+        expect(
+            targets.map((esc) => melodyForEsc(esc).notes.map((note) => [note.midi, note.start, note.duration])),
+        ).toEqual(
+            Array.from({ length: 4 }, () =>
+                melodyForEsc(targets[0]).notes.map((note) => [note.midi, note.start, note.duration]),
+            ),
+        );
 
         app.unmount();
     });
@@ -771,7 +837,7 @@ describe("EscMelodyTab", () => {
         expect(container.querySelector(".esc-melody-note").textContent).toContain("E4");
         expect(container.querySelector(".melody-conflict-notice")).toBeNull();
         expect(container.querySelectorAll(".melody-write-mark")).toHaveLength(2);
-        expect(findButton(container, "进入安全检查").disabled).toBe(false);
+        expect(findButton(container, "安全写入").disabled).toBe(false);
 
         container.querySelector('[title="RTTTL 代码"]').click();
         await nextTick();
@@ -893,10 +959,10 @@ describe("EscMelodyTab", () => {
         expect(targets[2].textContent).toContain("OX32");
         expect(targets[2].classList.contains("target-invalid")).toBe(true);
         expect(container.querySelector(".rtttl-code-summary .code-adjust")).not.toBeNull();
-        expect(findButton(container, "进入安全检查").disabled).toBe(false);
+        expect(findButton(container, "安全写入").disabled).toBe(false);
         codeSaveButton(container).click();
         await nextTick();
-        expect(findButton(container, "进入安全检查").disabled).toBe(true);
+        expect(findButton(container, "安全写入").disabled).toBe(true);
 
         app.unmount();
     });
@@ -995,7 +1061,7 @@ describe("EscMelodyTab", () => {
 
         expect(container.querySelectorAll(".esc-melody-note")).toHaveLength(initialNotes);
         expect(container.querySelectorAll(".melody-dirty-mark")).toHaveLength(0);
-        expect(findButton(container, "进入安全检查").disabled).toBe(true);
+        expect(findButton(container, "安全写入").disabled).toBe(true);
 
         container.querySelectorAll(".replace-melody-button")[0].click();
         await nextTick();
@@ -1025,7 +1091,7 @@ describe("EscMelodyTab", () => {
         await nextTick();
         expect(container.querySelectorAll(".melody-dirty-mark")).toHaveLength(1);
 
-        findButton(container, "进入安全检查").click();
+        findButton(container, "安全写入").click();
         await nextTick();
         findButton(container, "备份到本机").click();
         await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
@@ -1036,7 +1102,7 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() => expect(writeMelody).toHaveBeenCalledOnce());
         expect(writeMelody.mock.calls[0][0].map((esc) => esc.channel)).toEqual([0]);
         expect(backupEscs.mock.calls[0][0].map((esc) => esc.channel)).toEqual([0, 1]);
-        expect(findButton(container, "进入安全检查").disabled).toBe(true);
+        expect(findButton(container, "安全写入").disabled).toBe(true);
 
         app.unmount();
     });
@@ -1057,10 +1123,10 @@ describe("EscMelodyTab", () => {
         findButton(container, "扫描电调").click();
         await vi.waitFor(() => expect(container.querySelectorAll(".melody-write-mark")).toHaveLength(2));
         expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
-        expect(findButton(container, "进入安全检查").disabled).toBe(false);
+        expect(findButton(container, "安全写入").disabled).toBe(false);
         expect(container.querySelector(".actionbar-status").textContent).toContain("2 路将分别写入");
 
-        findButton(container, "进入安全检查").click();
+        findButton(container, "安全写入").click();
         await nextTick();
         expect(container.querySelector(".safety-dialog").textContent).toContain("逐路写入 2 路电调");
         findButton(container, "备份到本机").click();
@@ -1107,7 +1173,7 @@ describe("EscMelodyTab", () => {
         await nextTick();
         expect(container.querySelectorAll(".melody-dirty-mark")).toHaveLength(2);
 
-        findButton(container, "进入安全检查").click();
+        findButton(container, "安全写入").click();
         await nextTick();
         findButton(container, "备份到本机").click();
         await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
@@ -1141,7 +1207,7 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() => expect(scanEscs).toHaveBeenCalledOnce());
         findButton(container, "音符").click();
         await nextTick();
-        findButton(container, "进入安全检查").click();
+        findButton(container, "安全写入").click();
         await nextTick();
         findButton(container, "备份到本机").click();
         await vi.waitFor(() => {
@@ -1189,7 +1255,7 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() => expect(scanEscs).toHaveBeenCalledOnce());
         findButton(container, "音符").click();
         await nextTick();
-        findButton(container, "进入安全检查").click();
+        findButton(container, "安全写入").click();
         await nextTick();
         findButton(container, "备份到本机").click();
 
@@ -1203,7 +1269,7 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
-    it("restores each channel from its scanned current-music snapshot", async () => {
+    it("preserves each scanned current-music snapshot after a one-track preset synchronizes ESCs", async () => {
         globalThis.CONFIGURATOR.connectionValid = true;
         scanEscs.mockResolvedValue(createWritableEscs([60, 67]));
         const { app, container } = await mountTab();
@@ -1215,16 +1281,19 @@ describe("EscMelodyTab", () => {
         findButton(container, "Two-Tigers").click();
         await nextTick();
         expect(container.querySelector(".current-melody-item").classList.contains("active")).toBe(false);
+        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
 
-        findButton(container, "当前音乐").click();
+        container.querySelector('[aria-label="页面同步旋律"]').click();
         await nextTick();
-        expect(container.querySelector(".esc-melody-note").textContent).toContain("C4");
-        expect(container.querySelector(".current-melody-item").classList.contains("active")).toBe(true);
+        expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(2);
 
         container.querySelectorAll(".editor-channel-tab")[1].click();
         await nextTick();
         expect(container.querySelector(".current-source-badge").textContent).toContain("ESC 2");
+        findButton(container, "当前音乐").click();
+        await nextTick();
         expect(container.querySelector(".esc-melody-note").textContent).toContain("G4");
+        expect(container.querySelector(".current-melody-item").classList.contains("active")).toBe(true);
 
         app.unmount();
     });
@@ -1315,7 +1384,7 @@ describe("EscMelodyTab", () => {
         await nextTick();
         expect(container.querySelectorAll(".esc-melody-note")).toHaveLength(65);
         expect(container.querySelector(".validation-badge").textContent).toContain("需调整");
-        expect(findButton(container, "进入安全检查").disabled).toBe(true);
+        expect(findButton(container, "安全写入").disabled).toBe(true);
 
         app.unmount();
     });
@@ -1539,6 +1608,38 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
+    it("keeps the physical restore safety confirmations checked while backing up the current state", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const scannedEscs = createWritableEscs();
+        scanEscs.mockResolvedValue(scannedEscs);
+        backupEscs.mockImplementation(async (escs) => {
+            for (const esc of escs) {
+                esc.originalEeprom = new Uint8Array(esc.settingsLength).fill(esc.channel + 1);
+                esc.backedUp = true;
+            }
+        });
+        const restorePackage = createRestorePackage(scannedEscs);
+        const { app, container } = await mountTab();
+
+        findButton(container, "扫描电调").click();
+        await vi.waitFor(() => expect(scanEscs).toHaveBeenCalledOnce());
+        await selectRestoreFile(container, restorePackage);
+
+        const safetyInputs = container.querySelectorAll(".restore-safety-section .safety-check input");
+        for (const input of [...safetyInputs].slice(0, 3)) input.click();
+        await nextTick();
+        expect([...safetyInputs].slice(0, 3).every((input) => input.checked)).toBe(true);
+
+        findButton(container, "备份当前状态").click();
+        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(safetyInputs[3].checked).toBe(true));
+
+        expect([...safetyInputs].slice(0, 3).every((input) => input.checked)).toBe(true);
+        expect(findButton(container, "开始恢复").disabled).toBe(false);
+
+        app.unmount();
+    });
+
     it("blocks restoration when the mandatory current-state backup download fails", async () => {
         globalThis.CONFIGURATOR.connectionValid = true;
         const scannedEscs = createWritableEscs();
@@ -1644,7 +1745,7 @@ function codeSaveButton(container) {
 }
 
 function createWritableEscs(pitches = [60, 60]) {
-    return Array.from({ length: 2 }, (_, channel) => ({
+    return Array.from({ length: pitches.length }, (_, channel) => ({
         id: `esc-${channel}`,
         channel,
         model: "STM32F051",
