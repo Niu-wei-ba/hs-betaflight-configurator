@@ -2114,7 +2114,11 @@
     }
     .safety-dialog-header > div {
         display: flex;
+        min-width: 0;
         gap: 10px;
+    }
+    .safety-dialog-header > div > div {
+        min-width: 0;
     }
     .safety-dialog-header > div > .fas {
         color: #b77f00;
@@ -2131,7 +2135,8 @@
         font-size: 11px;
     }
     .safety-write-melody {
-        display: flex;
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
         align-items: baseline;
         gap: 7px;
         min-width: 0;
@@ -2144,12 +2149,14 @@
             font-weight: 700;
         }
         strong {
-            overflow: hidden;
+            min-width: 0;
+            overflow: visible;
             color: #494949;
             font-size: 12px;
             font-weight: 700;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            overflow-wrap: anywhere;
+            text-overflow: clip;
+            white-space: normal;
         }
     }
     .safety-check {
