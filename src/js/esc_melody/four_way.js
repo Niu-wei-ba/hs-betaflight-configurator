@@ -205,6 +205,7 @@ export class FourWaySession {
                     `4-way command 0x${message.command.toString(16)} failed with ACK 0x${message.ack.toString(16)}`,
                 );
                 error.name = "FourWayAckError";
+                error.command = message.command;
                 error.ack = message.ack;
                 pending.reject(error);
             } else {

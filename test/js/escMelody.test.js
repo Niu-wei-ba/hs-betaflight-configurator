@@ -999,6 +999,42 @@ describe("ESC 4-way controller integration", () => {
         expect(session.stops).toEqual([{ exit: true }]);
     });
 
+    it("rebuilds passthrough once when the first write init-flash request receives ACK 0x0F", async () => {
+        const esc = createBackedUpEsc(0);
+        const memory = new Map();
+        const firstSession = createSession((command) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) {
+                const error = ackError(FOUR_WAY_ACK.generalError);
+                error.command = FOUR_WAY_COMMANDS.deviceInitFlash;
+                throw error;
+            }
+            throw new Error("Unexpected command");
+        });
+        const recoveredSession = createSession((command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0x06, 0x1f, 0x02, 4]);
+            if (command === FOUR_WAY_COMMANDS.deviceWrite) {
+                memory.set(address, new Uint8Array(params));
+                return response([0]);
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceRead) return response(memory.get(address));
+            throw new Error("Unexpected command");
+        });
+        const controller = createController([firstSession, recoveredSession]);
+        const melody = { name: "Test", bpm: 132, notes: [{ midi: 60, start: 0, duration: 1 }] };
+
+        const result = await controller.writeEsc(esc, melody);
+
+        expect(result.esc).toBe(esc);
+        expect(firstSession.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(3);
+        expect(firstSession.calls.some((call) => call.command === FOUR_WAY_COMMANDS.deviceWrite)).toBe(false);
+        expect(firstSession.stops).toEqual([{ exit: true }]);
+        expect(
+            recoveredSession.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash),
+        ).toHaveLength(1);
+        expect(recoveredSession.calls.some((call) => call.command === FOUR_WAY_COMMANDS.deviceWrite)).toBe(true);
+        expect(recoveredSession.stops).toEqual([{ exit: true }]);
+    });
+
     it("restores each written channel from its own backup", async () => {
         const escs = [0, 1].map((channel) =>
             createEscRecord(channel, {
