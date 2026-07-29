@@ -225,7 +225,7 @@ import {
 } from "../js/video_tutorials";
 
 const CONTENT_READY_EVENT = "video-tutorial-search:content-ready";
-const SEARCH_DISABLED_TABS = new Set(["landing", "privacy_policy", "help"]);
+const SEARCH_DISABLED_TABS = new Set(["landing", "privacy_policy", "help", "esc_melody"]);
 const fallbackMessages = {
     tutorialSearchTitle: "视频教程",
     tutorialSearchPlaceholder: "语义搜索 Betaflight 教程",

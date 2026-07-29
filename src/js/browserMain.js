@@ -16,6 +16,7 @@ import "../css/tabs/receiver.less";
 import "../css/tabs/servos.less";
 import "../css/tabs/gps.less";
 import "../css/tabs/motors.less";
+import "../css/tabs/esc_melody.less";
 import "../css/tabs/led_strip.less";
 import "../css/tabs/sensors.less";
 import "../css/tabs/cli.less";

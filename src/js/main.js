@@ -245,6 +245,9 @@ function startProcess() {
                     case "video_tutorials":
                         mountVueTab("video_tutorials", content_ready);
                         break;
+                    case "esc_melody":
+                        mountVueTab("esc_melody", content_ready);
+                        break;
                     case "auxiliary":
                         import("./tabs/auxiliary").then(({ auxiliary }) => auxiliary.initialize(content_ready));
                         break;

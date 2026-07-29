@@ -700,10 +700,13 @@ export function read_serial(info) {
 }
 
 export async function update_sensor_status() {
+    if (GUI.connect_lock) return;
     const statuswrapper = $("#quad-status_wrapper");
 
     await MSP.promise(MSPCodes.MSP_ANALOG);
+    if (GUI.connect_lock) return;
     await MSP.promise(MSPCodes.MSP_BATTERY_STATE);
+    if (GUI.connect_lock) return;
 
     if (FC.ANALOG !== undefined) {
         let nbCells = Math.floor(FC.ANALOG.voltage / FC.BATTERY_CONFIG.vbatmaxcellvoltage) + 1;
@@ -732,7 +735,9 @@ export async function update_sensor_status() {
     }
 
     await MSP.promise(MSPCodes.MSP_BOXNAMES);
+    if (GUI.connect_lock) return;
     await MSP.promise(MSPCodes.MSP_STATUS_EX);
+    if (GUI.connect_lock) return;
 
     const active = performance.now() - FC.ANALOG.last_received_timestamp < 300;
     $(".linkicon").toggleClass("active", active);
@@ -755,10 +760,19 @@ export async function update_sensor_status() {
     statuswrapper.show();
 }
 
+let liveDataRefreshInFlight = false;
+
 async function update_live_status() {
     // cli or presets tab do not use MSP connection
-    if (GUI.active_tab !== "cli" && GUI.active_tab !== "presets") {
-        await update_sensor_status();
+    // 4-way ESC operations own the serial link. Sending an MSP poll here
+    // would interleave frames and can corrupt a write or read-back verify.
+    if (!liveDataRefreshInFlight && !GUI.connect_lock && GUI.active_tab !== "cli" && GUI.active_tab !== "presets") {
+        liveDataRefreshInFlight = true;
+        try {
+            await update_sensor_status();
+        } finally {
+            liveDataRefreshInFlight = false;
+        }
     }
 }
 

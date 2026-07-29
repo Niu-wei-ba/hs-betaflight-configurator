@@ -35,6 +35,7 @@ class GuiControl {
             "options",
             "help",
             "video_tutorials",
+            "esc_melody",
         ];
 
         this.defaultAllowedTabs = [
@@ -55,6 +56,7 @@ class GuiControl {
             "receiver",
             "sensors",
             "video_tutorials",
+            "esc_melody",
         ];
 
         this.defaultCloudBuildTabOptions = ["gps", "led_strip", "osd", "servos", "transponder", "vtx"];

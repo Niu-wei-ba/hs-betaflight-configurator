@@ -780,6 +780,7 @@ input[type="number"] {
     wizzard: url(../images/icons/cf_icon_wizard_grey.svg);
     advanced: url(../images/icons/cf_icon_advanced_grey.svg);
     mission: url(../images/icons/cf_icon_mission_grey.svg);
+    melody: url(../images/icons/cf_icon_motor_grey.svg);
 };
 
 each(@tabIcons, {
@@ -803,7 +804,22 @@ each(@tabIcons, {
         }
     }
 })
-    #cache {
+
+// ESC melody intentionally uses the familiar music-note glyph instead of the motor icon.
+#tabs .ic_melody::before {
+    min-width: 1rem;
+    min-height: 1rem;
+    margin-right: 4px;
+    background: transparent;
+    color: inherit;
+    content: "🎵";
+    font-size: 14px;
+    line-height: 1rem;
+    mask: none;
+    -webkit-mask: none;
+}
+
+#cache {
     display: none;
 }
 .data-loading {
@@ -1503,6 +1519,7 @@ table {
 .tab-logging,
 .tab-modes,
 .tab-motors,
+.tab-esc_melody,
 .tab-pid_tuning,
 .tab-ports,
 .tab-receiver,

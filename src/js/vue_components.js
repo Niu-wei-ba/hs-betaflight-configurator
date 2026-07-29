@@ -14,6 +14,7 @@ import VideoTutorialsTab from "../components/tabs/VideoTutorialsTab.vue";
 import VideoTutorialFloatingPlayer from "../components/VideoTutorialFloatingPlayer.vue";
 import VideoTutorialSearchPanel from "../components/VideoTutorialSearchPanel.vue";
 import VideoTutorialDocument from "../components/VideoTutorialDocument.vue";
+import EscMelodyTab from "../components/tabs/EscMelodyTab.vue";
 
 // Registry of Vue tab components - used by main.js for dynamic mounting
 export const VueTabComponents = {
@@ -24,6 +25,7 @@ export const VueTabComponents = {
     servos: ServosTab,
     configuration: ConfigurationTab,
     video_tutorials: VideoTutorialsTab,
+    esc_melody: EscMelodyTab,
 };
 
 // Create a Vue plugin that registers all components globally
@@ -46,5 +48,6 @@ export const BetaflightComponents = {
         app.component("VideoTutorialFloatingPlayer", VideoTutorialFloatingPlayer);
         app.component("VideoTutorialSearchPanel", VideoTutorialSearchPanel);
         app.component("VideoTutorialDocument", VideoTutorialDocument);
+        app.component("EscMelodyTab", EscMelodyTab);
     },
 };

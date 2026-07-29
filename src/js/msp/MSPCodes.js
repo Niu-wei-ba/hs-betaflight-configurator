@@ -173,7 +173,8 @@ const MSPCodes = {
     MSP_ACC_TRIM: 240,
     MSP_SERVO_MIX_RULES: 241,
     MSP_SET_SERVO_MIX_RULE: 242, // Not used
-    MSP_SET_4WAY_IF: 245, // Not used
+    MSP_SET_4WAY_IF: 245, // MSP passthrough entry point
+    MSP_PASSTHROUGH_ESC_4WAY: 0xff,
     MSP_SET_RTC: 246,
     MSP_RTC: 247, // Not used
     MSP_SET_BOARD_INFO: 248, // Not used

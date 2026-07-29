@@ -118,11 +118,12 @@ export default defineComponent({
 <style lang="less" scoped>
 /** Status bar **/
 #status-bar {
+    box-sizing: border-box;
     display: flex;
     white-space: nowrap;
     gap: 0.5rem;
     bottom: 0;
-    width: calc(100% - 20px);
+    width: 100%;
     height: 20px;
     line-height: 20px;
     padding: 0.5rem 1rem;
