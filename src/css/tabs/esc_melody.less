@@ -20,6 +20,7 @@
     }
 
     .esc-melody-header {
+        position: relative;
         display: flex;
         align-items: flex-end;
         gap: 18px;
@@ -38,6 +39,68 @@
             color: var(--esc-muted);
             font-size: 12px;
         }
+    }
+
+    .esc-melody-title-group {
+        min-width: 0;
+    }
+
+    .esc-melody-workflow {
+        position: absolute;
+        bottom: 17px;
+        left: 50%;
+        display: flex;
+        align-items: center;
+        width: max-content;
+        max-width: calc(100% - 380px);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        transform: translateX(-50%);
+    }
+
+    .esc-melody-workflow-step {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        padding: 0 18px 0 0;
+        margin-right: 12px;
+
+        &:not(:last-child)::after {
+            position: absolute;
+            top: 10px;
+            right: 3px;
+            width: 10px;
+            height: 1px;
+            background: #c8c8c4;
+            content: "";
+        }
+
+        strong {
+            overflow: hidden;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 22px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    .esc-melody-workflow-index {
+        display: inline-flex;
+        flex: 0 0 22px;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        margin-right: 7px;
+        border: 1px solid #c8c8c4;
+        border-radius: 50%;
+        color: #858581;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
     }
 
     .esc-melody-kicker {
@@ -1466,7 +1529,7 @@
         position: fixed;
         right: 0;
         bottom: 0;
-        left: 0;
+        left: 17rem;
         z-index: 15;
         display: flex;
         align-items: center;
@@ -2067,6 +2130,28 @@
         color: #888;
         font-size: 11px;
     }
+    .safety-write-melody {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        min-width: 0;
+        margin-bottom: 2px !important;
+
+        span {
+            flex: 0 0 auto;
+            color: #927007;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        strong {
+            overflow: hidden;
+            color: #494949;
+            font-size: 12px;
+            font-weight: 700;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
     .safety-check {
         display: flex;
         align-items: flex-start;
@@ -2247,6 +2332,12 @@
             grid-template-columns: 178px minmax(350px, 1fr) 246px;
             gap: 8px;
         }
+        .esc-melody-workflow {
+            position: static;
+            width: min(460px, 55%);
+            margin: 0 0 1px auto;
+            transform: none;
+        }
         .piano-roll-wrap {
             height: 300px;
         }
@@ -2280,7 +2371,32 @@
         }
     }
 
+    @media (max-width: 1055px) {
+        .esc-melody-actionbar {
+            left: 42px;
+        }
+    }
+
     @media (max-width: 760px) {
+        .esc-melody-header {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .esc-melody-workflow {
+            width: 100%;
+            margin-bottom: 0;
+        }
+        .esc-melody-workflow-step {
+            padding-right: 8px;
+            padding-left: 8px;
+            margin-right: 4px;
+
+            &:not(:last-child)::after {
+                right: -2px;
+                width: 4px;
+            }
+        }
         .restore-dialog-body {
             grid-template-columns: minmax(0, 1fr);
         }
@@ -2296,6 +2412,12 @@
         }
         .rtttl-code-footer-multi .safety-hint {
             flex-basis: 100%;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .esc-melody-actionbar {
+            left: 0;
         }
     }
 

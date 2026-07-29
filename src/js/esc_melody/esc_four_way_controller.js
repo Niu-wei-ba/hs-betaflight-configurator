@@ -33,6 +33,7 @@ export class EscFourWayController {
         passthroughSettleDelay = 4500,
         passthroughExitDelay = 3000,
         initRetryDelays = [0, 500, 1000],
+        writeInitRecoveryAttempts = 2,
         delay = wait,
     } = {}) {
         this.serial = serialAdapter;
@@ -45,6 +46,7 @@ export class EscFourWayController {
         this.passthroughSettleDelay = passthroughSettleDelay;
         this.passthroughExitDelay = passthroughExitDelay;
         this.initRetryDelays = initRetryDelays;
+        this.writeInitRecoveryAttempts = writeInitRecoveryAttempts;
         this.delay = delay;
         this.session = null;
         this.inPassthrough = false;
@@ -266,7 +268,7 @@ export class EscFourWayController {
     async backupEsc(esc) {
         await this.enter();
         try {
-            await this.selectEsc(esc);
+            await this.selectEscWithInitRecovery(esc);
             return await this.backupSelectedEsc(esc);
         } finally {
             await this.exit();
@@ -281,7 +283,7 @@ export class EscFourWayController {
             for (let index = 0; index < targets.length; index += 1) {
                 const esc = targets[index];
                 this.report({ phase: "backup", channel: esc.channel, index, total: targets.length });
-                await this.selectEsc(esc);
+                await this.selectEscWithInitRecovery(esc);
                 backups.push(await this.backupSelectedEsc(esc));
             }
             return backups;
@@ -320,7 +322,7 @@ export class EscFourWayController {
     async writeSelectedEsc(esc, melody) {
         if (!esc?.canWrite) throw new Error(esc?.reason || "This ESC cannot be written");
         const encoded = encodeFirmwareMelody(melody, esc.firmwareFamily, esc.capacity || 128);
-        await this.selectEscForWrite(esc);
+        await this.selectEscWithInitRecovery(esc);
         if (!esc.backedUp) await this.backupSelectedEsc(esc);
 
         const patched = patchSettingsImage(esc.originalEeprom, esc, encoded.bytes, encoded.waitMs);
@@ -344,19 +346,19 @@ export class EscFourWayController {
         return { esc, encoded };
     }
 
-    async selectEscForWrite(esc) {
-        try {
-            return await this.selectEsc(esc);
-        } catch (error) {
-            if (!isRetryableWriteInitFailure(error)) throw error;
+    async selectEscWithInitRecovery(esc) {
+        for (let recovery = 0; ; recovery += 1) {
+            try {
+                return await this.selectEsc(esc);
+            } catch (error) {
+                if (!isRetryableInitFailure(error) || recovery >= this.writeInitRecoveryAttempts) throw error;
 
-            // OX32 can reject the first init-flash request immediately after
-            // a new passthrough session. No erase or write has happened yet,
-            // so one clean session rebuild is safe and avoids making users
-            // manually start the whole write flow a second time.
-            await this.exit();
-            await this.enter();
-            return this.selectEsc(esc);
+                // Some ESCs can reject init-flash after a busy passthrough
+                // session. This happens before accessing the current channel,
+                // so a bounded clean-session rebuild is safe.
+                await this.exit();
+                await this.enter();
+            }
         }
     }
 
@@ -386,7 +388,7 @@ export class EscFourWayController {
     async recoverEsc(esc) {
         await this.enter();
         try {
-            await this.selectEsc(esc);
+            await this.selectEscWithInitRecovery(esc);
             return await this.recoverSelectedEsc(esc);
         } finally {
             await this.exit();
@@ -401,7 +403,7 @@ export class EscFourWayController {
             for (let index = 0; index < targets.length; index += 1) {
                 const esc = targets[index];
                 this.report({ phase: "recover", channel: esc.channel, index, total: targets.length });
-                await this.selectEsc(esc);
+                await this.selectEscWithInitRecovery(esc);
                 recovered.push(await this.recoverSelectedEsc(esc));
             }
             return recovered;
@@ -422,7 +424,7 @@ export class EscFourWayController {
                 this.report({ phase: "restore", channel: esc?.channel, index, total: queue.length });
                 try {
                     if (esc) esc.restoreTouched = false;
-                    await this.selectEsc(esc);
+                    await this.selectEscWithInitRecovery(esc);
                     await this.restoreBackupSelectedEsc(esc, target.backupEntry);
                     restored.push(esc);
                     rollback.push(esc);
@@ -647,7 +649,7 @@ function isTransportFailure(error) {
     return /timed out|serial adapter|connection was lost/i.test(error?.message || "");
 }
 
-function isRetryableWriteInitFailure(error) {
+function isRetryableInitFailure(error) {
     return error?.command === FOUR_WAY_COMMANDS.deviceInitFlash && error?.ack === FOUR_WAY_ACK.generalError;
 }
 
