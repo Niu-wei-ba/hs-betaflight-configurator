@@ -320,7 +320,7 @@ export class EscFourWayController {
     async writeSelectedEsc(esc, melody) {
         if (!esc?.canWrite) throw new Error(esc?.reason || "This ESC cannot be written");
         const encoded = encodeFirmwareMelody(melody, esc.firmwareFamily, esc.capacity || 128);
-        await this.selectEsc(esc);
+        await this.selectEscForWrite(esc);
         if (!esc.backedUp) await this.backupSelectedEsc(esc);
 
         const patched = patchSettingsImage(esc.originalEeprom, esc, encoded.bytes, encoded.waitMs);
@@ -342,6 +342,22 @@ export class EscFourWayController {
         );
         esc.verified = true;
         return { esc, encoded };
+    }
+
+    async selectEscForWrite(esc) {
+        try {
+            return await this.selectEsc(esc);
+        } catch (error) {
+            if (!isRetryableWriteInitFailure(error)) throw error;
+
+            // OX32 can reject the first init-flash request immediately after
+            // a new passthrough session. No erase or write has happened yet,
+            // so one clean session rebuild is safe and avoids making users
+            // manually start the whole write flow a second time.
+            await this.exit();
+            await this.enter();
+            return this.selectEsc(esc);
+        }
     }
 
     async writeMelody(escs, melody) {
@@ -629,6 +645,10 @@ export function patchSettingsImage(original, esc, melodyBytes, waitMs = 0) {
 
 function isTransportFailure(error) {
     return /timed out|serial adapter|connection was lost/i.test(error?.message || "");
+}
+
+function isRetryableWriteInitFailure(error) {
+    return error?.command === FOUR_WAY_COMMANDS.deviceInitFlash && error?.ack === FOUR_WAY_ACK.generalError;
 }
 
 function decodeNullTerminated(bytes) {
