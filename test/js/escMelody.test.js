@@ -1035,6 +1035,45 @@ describe("ESC 4-way controller integration", () => {
         expect(recoveredSession.stops).toEqual([{ exit: true }]);
     });
 
+    it("rebuilds passthrough again when an OX32 write channel keeps rejecting init-flash", async () => {
+        const esc = createBackedUpEsc(0);
+        const memory = new Map();
+        const rejectedSession = () =>
+            createSession((command) => {
+                if (command === FOUR_WAY_COMMANDS.deviceInitFlash) {
+                    const error = ackError(FOUR_WAY_ACK.generalError);
+                    error.command = FOUR_WAY_COMMANDS.deviceInitFlash;
+                    throw error;
+                }
+                throw new Error("Unexpected command");
+            });
+        const firstSession = rejectedSession();
+        const secondSession = rejectedSession();
+        const recoveredSession = createSession((command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0x06, 0x1f, 0x02, 4]);
+            if (command === FOUR_WAY_COMMANDS.deviceWrite) {
+                memory.set(address, new Uint8Array(params));
+                return response([0]);
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceRead) return response(memory.get(address));
+            throw new Error("Unexpected command");
+        });
+        const controller = createController([firstSession, secondSession, recoveredSession]);
+        const melody = { name: "Test", bpm: 132, notes: [{ midi: 60, start: 0, duration: 1 }] };
+
+        const result = await controller.writeEsc(esc, melody);
+
+        expect(result.esc).toBe(esc);
+        expect(firstSession.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(3);
+        expect(secondSession.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(
+            3,
+        );
+        expect(firstSession.stops).toEqual([{ exit: true }]);
+        expect(secondSession.stops).toEqual([{ exit: true }]);
+        expect(recoveredSession.calls.some((call) => call.command === FOUR_WAY_COMMANDS.deviceWrite)).toBe(true);
+        expect(recoveredSession.stops).toEqual([{ exit: true }]);
+    });
+
     it("restores each written channel from its own backup", async () => {
         const escs = [0, 1].map((channel) =>
             createEscRecord(channel, {
@@ -1118,6 +1157,38 @@ describe("ESC 4-way controller integration", () => {
         expect(restoredMemory.get(0)).toEqual(new Uint8Array(0xb0).fill(0x70));
         expect(restoredMemory.get(1)).toEqual(new Uint8Array(0xb0).fill(0x71));
         expect(rollbackSession.stops).toEqual([{ exit: true }]);
+    });
+
+    it("rebuilds passthrough before EEPROM restoration when init-flash returns ACK 0x0F", async () => {
+        const esc = createBackedUpEsc(0);
+        const backup = createEscBackupPackage([esc]);
+        const firstSession = createSession((command) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) {
+                const error = ackError(FOUR_WAY_ACK.generalError);
+                error.command = FOUR_WAY_COMMANDS.deviceInitFlash;
+                throw error;
+            }
+            throw new Error("Unexpected command");
+        });
+        const memory = new Map();
+        const recoveredSession = createSession((command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0x06, 0x1f, 0x02, 4]);
+            if (command === FOUR_WAY_COMMANDS.deviceWrite) {
+                memory.set(address, new Uint8Array(params));
+                return response([0]);
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceRead) return response(memory.get(address));
+            throw new Error("Unexpected command");
+        });
+        const controller = createController([firstSession, recoveredSession]);
+
+        const result = await controller.restoreBackup([{ esc, backupEntry: backup.escs[0] }]);
+
+        expect(result).toMatchObject({ ok: true, restored: [esc] });
+        expect(firstSession.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(3);
+        expect(firstSession.stops).toEqual([{ exit: true }]);
+        expect(memory.get(esc.settingsOffset)).toEqual(esc.originalEeprom);
+        expect(recoveredSession.stops).toEqual([{ exit: true }]);
     });
 
     it("stops EEPROM restoration after the first mismatch and includes the touched failed channel in rollback", async () => {

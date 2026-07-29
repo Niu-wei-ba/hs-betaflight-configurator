@@ -2,13 +2,25 @@
     <BaseTab tab-name="esc_melody" extra-class="esc-melody-tab">
         <div class="esc-melody-shell">
             <header class="esc-melody-header" :inert="draftModalOpen ? '' : undefined">
-                <div>
+                <div class="esc-melody-title-group">
                     <div class="esc-melody-kicker">
                         <span class="esc-melody-emoji" aria-hidden="true">🎵</span> ESC WORKBENCH
                     </div>
-                    <h1>电调音</h1>
+                    <h1>电调音乐</h1>
                     <p>编辑开机旋律，先在电脑试听，再按兼容性安全写入电调。</p>
                 </div>
+                <ol class="esc-melody-workflow" aria-label="电调音乐操作步骤">
+                    <li class="esc-melody-workflow-step">
+                        <span class="esc-melody-workflow-index" aria-hidden="true">1</span><strong>扫描电调</strong>
+                    </li>
+                    <li class="esc-melody-workflow-step">
+                        <span class="esc-melody-workflow-index" aria-hidden="true">2</span
+                        ><strong>选择 / 编辑音乐</strong>
+                    </li>
+                    <li class="esc-melody-workflow-step">
+                        <span class="esc-melody-workflow-index" aria-hidden="true">3</span><strong>安全写入</strong>
+                    </li>
+                </ol>
             </header>
 
             <div
@@ -696,7 +708,7 @@
                         :disabled="!connected || locked || !pendingWriteEscs.length || !writeValidation.valid"
                         @click="openSafety"
                     >
-                        <span class="fas fa-lock" aria-hidden="true"></span> 进入安全检查
+                        <span class="fas fa-lock" aria-hidden="true"></span> 安全写入
                     </button>
                 </div>
             </footer>
@@ -862,6 +874,9 @@
                             <span class="fas fa-user-shield" aria-hidden="true"></span>
                             <div>
                                 <h2 id="safety-title">写入前安全检查</h2>
+                                <p class="safety-write-melody">
+                                    <span>本次写入音乐</span><strong>{{ safetyWriteMelodySummary }}</strong>
+                                </p>
                                 <p>将逐路写入 {{ pendingWriteEscs.length }} 路电调，四项全部确认后才能继续。</p>
                             </div>
                         </div>
@@ -896,7 +911,8 @@
                     </div>
                     <div v-if="writeResult && !writeResult.ok" class="write-failure">
                         <strong><span class="fas fa-exclamation-triangle" aria-hidden="true"></span> 写入已停止</strong
-                        ><span>第 {{ (writeResult.failed?.channel || 0) + 1 }} 路校验失败，后续通道未继续。</span
+                        ><span>第 {{ (writeResult.failed?.channel || 0) + 1 }} 路写入失败，后续通道未继续。</span
+                        ><small>{{ writeResult.error?.message || "4-way 通讯或读回校验失败。" }}</small
                         ><button type="button" class="regular-button compact-button" @click="recoverWritten">
                             <span class="fas fa-undo" aria-hidden="true"></span> 恢复已写入通道
                         </button>
@@ -1149,7 +1165,7 @@
                         <div>
                             <span class="fas fa-code" aria-hidden="true"></span>
                             <div>
-                                <h2 id="rtttl-code-title">RTTTL 电调音代码</h2>
+                                <h2 id="rtttl-code-title">RTTTL 电调音乐代码</h2>
                                 <p>
                                     {{
                                         multiCodeMode
@@ -1234,7 +1250,7 @@
                                 <textarea
                                     v-model="item.entry.code"
                                     class="rtttl-code-input"
-                                    :aria-label="`${item.label} RTTTL 电调音代码`"
+                                    :aria-label="`${item.label} RTTTL 电调音乐代码`"
                                     spellcheck="false"
                                 ></textarea>
                                 <div v-if="item.preview.error" class="rtttl-code-error">
@@ -1260,7 +1276,7 @@
                         <textarea
                             v-model="rtttlCode"
                             class="rtttl-code-input"
-                            aria-label="RTTTL 电调音代码"
+                            aria-label="RTTTL 电调音乐代码"
                             spellcheck="false"
                         ></textarea>
                         <div v-if="codePreview.error" class="rtttl-code-error">
@@ -1582,6 +1598,15 @@ export default defineComponent({
             syncAll.value ? writableEscs.value.filter((esc) => esc.editorMelody) : dirtyEscs.value,
         );
         const pendingWriteEscIds = computed(() => new Set(pendingWriteEscs.value.map((esc) => esc.id)));
+        const safetyWriteMelodySummary = computed(() => {
+            const entries = pendingWriteEscs.value.map((esc) => ({
+                channel: esc.channel,
+                name: String(esc.editorMelody?.name || "未命名旋律"),
+            }));
+            const names = new Set(entries.map((entry) => entry.name));
+            if (names.size === 1) return entries[0]?.name || "未命名旋律";
+            return entries.map((entry) => `ESC ${entry.channel + 1}：${entry.name}`).join("；");
+        });
         const syncSourceLabel = computed(() =>
             selectedEsc.value ? `ESC ${selectedEsc.value.channel + 1}` : "当前卷帘",
         );
@@ -2230,9 +2255,36 @@ export default defineComponent({
             }
 
             clearPresetTrackSession();
-            pushHistory();
+            stopPreview();
+            // A one-track preset is intentionally synchronized to every ESC.
+            // Leaving former voices intact would make the startup sound mix
+            // the selected melody with stale independent tracks.
+            const shared = cloneMelody(tracks[0]);
+            for (const esc of writableEscs.value) {
+                esc.editorMelody = cloneMelody(shared);
+                esc.editorHistory = [];
+                esc.editorFuture = [];
+                esc.editorSource = cloneLibrarySource(source);
+                esc.editorDraftId = null;
+                if (!esc.originalMelody) {
+                    esc.melodyReplacementReady = true;
+                    esc.melodyReadStatus = ESC_MELODY_READ_STATUS.REPLACEMENT;
+                }
+                esc.melodyDirty =
+                    Boolean(esc.melodyReplacementReady) || !melodiesEqual(esc.editorMelody, esc.originalMelody);
+            }
+            syncAll.value = writableEscs.value.length > 0;
+            melodyConflict.value = false;
+            history.value = [];
+            future.value = [];
             setActiveLibrarySource(source);
-            applyMelody(tracks[0]);
+            applyMelody(shared);
+            if (writableEscs.value.length) {
+                showMessage(
+                    `已加载“${preset.name}”，将以相同旋律覆盖 ${writableEscs.value.length} 路可写电调。`,
+                    "info",
+                );
+            }
         }
 
         function loadDraft(draft) {
@@ -3060,6 +3112,11 @@ export default defineComponent({
             Object.keys(restoreChecks).forEach((key) => {
                 restoreChecks[key] = false;
             });
+            resetRestoreCurrentBackup();
+        }
+
+        function resetRestoreCurrentBackup() {
+            restoreChecks.currentBackupReady = false;
             restorePreflightBackup.value = null;
             restoreBackupFilename.value = "";
         }
@@ -3122,7 +3179,7 @@ export default defineComponent({
             if (!controller.value || !targets.length) return;
             restoreBackingUp.value = true;
             restoreResult.value = null;
-            resetRestoreSafety();
+            resetRestoreCurrentBackup();
             try {
                 acquireSerialLock();
                 await controller.value.backupEscs(targets);
@@ -3136,7 +3193,7 @@ export default defineComponent({
                 restoreChecks.currentBackupReady = true;
                 showMessage(`恢复前当前状态已保存并下载：${filename}`, "success");
             } catch (error) {
-                resetRestoreSafety();
+                resetRestoreCurrentBackup();
                 showMessage(error?.message || "当前状态备份失败，EEPROM 恢复已禁用。", "error");
             } finally {
                 releaseSerialLock();
@@ -3276,7 +3333,7 @@ export default defineComponent({
         function openSafety() {
             writeResult.value = null;
             if (!escs.value.length) {
-                showMessage("请先扫描电调，再进入安全检查。", "error");
+                showMessage("请先扫描电调后再安全写入。", "error");
                 return;
             }
             syncEditorState();
@@ -3496,6 +3553,7 @@ export default defineComponent({
             dirtyEscs,
             pendingWriteEscs,
             pendingWriteEscIds,
+            safetyWriteMelodySummary,
             writeValidation,
             syncSourceLabel,
             actionbarStatusText,

@@ -35,7 +35,6 @@ class GuiControl {
             "options",
             "help",
             "video_tutorials",
-            "esc_melody",
         ];
 
         this.defaultAllowedTabs = [
