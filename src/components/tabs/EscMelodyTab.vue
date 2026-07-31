@@ -679,6 +679,10 @@
                         accept="application/json,.json"
                         @change="handleRestoreFile"
                     />
+                    <p v-if="safetyWriteDisabledReason" class="safety-write-blocker" role="status">
+                        <span class="fas fa-info-circle" aria-hidden="true"></span>
+                        <span>安全写入不可用：{{ safetyWriteDisabledReason }}</span>
+                    </p>
                     <button
                         type="button"
                         class="regular-button"
@@ -694,8 +698,9 @@
                                       ? "立即保存"
                                       : "已自动保存"
                                 : "另存为草稿"
-                        }}</button
-                    ><button
+                        }}
+                    </button>
+                    <button
                         type="button"
                         class="regular-button"
                         :disabled="!connected || !escs.length || locked"
@@ -1713,6 +1718,22 @@ export default defineComponent({
         const locked = computed(
             () => writing.value || restoring.value || restoreBackingUp.value || scanning.value || GUI.connect_lock,
         );
+        const safetyWriteDisabledReason = computed(() => {
+            if (!connected.value) return "请先连接飞控";
+            if (scanning.value) return "正在扫描电调";
+            if (writing.value) return "正在写入电调";
+            if (restoring.value || restoreBackingUp.value) return "正在恢复 EEPROM";
+            if (GUI.connect_lock) return "串口正被其他操作占用";
+            if (!escs.value.length) return "请先扫描电调";
+            if (!writableEscs.value.length) return "未识别到可写入的电调";
+            if (!pendingWriteEscs.value.length) {
+                return syncAll.value ? "请先选择或编辑一首音乐" : "请先修改至少一路音乐";
+            }
+            if (!writeValidation.value.valid) {
+                return writeValidation.value.errors[0] || "旋律未通过写入校验";
+            }
+            return "";
+        });
         const writeResult = ref(null);
         const controller = ref(null);
         const audioContext = ref(null);
@@ -3557,6 +3578,7 @@ export default defineComponent({
             writeValidation,
             syncSourceLabel,
             actionbarStatusText,
+            safetyWriteDisabledReason,
             operationMessage,
             operationType,
             scanning,

@@ -108,6 +108,7 @@ describe("EscMelodyTab", () => {
         ]);
         expect(container.querySelector('[aria-label="扫描电调"]').disabled).toBe(true);
         expect(safetyButton.disabled).toBe(true);
+        expect(container.querySelector(".safety-write-blocker").textContent).toContain("请先连接飞控");
         addRestButton.click();
         await nextTick();
         expect(container.querySelectorAll(".esc-melody-note")).toHaveLength(initialNotes + 1);
