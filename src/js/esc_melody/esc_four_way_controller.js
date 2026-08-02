@@ -7,7 +7,9 @@ import {
     decodeEscInfo,
     createEscRecord,
     ESC_FIRMWARE,
+    ESC_FIRMWARE_CONFIRMATION_STATUS,
     ESC_MELODY_READ_STATUS,
+    lockEscForFirmwareConfirmation,
 } from "./esc_capabilities.js";
 import { decodeFirmwareMelody, encodeFirmwareMelody, encodeWaitMs } from "./melody.js";
 import {
@@ -112,9 +114,9 @@ export class EscFourWayController {
                     this.activeChannel = channel;
                     const record = decodeEscInfo(initResponse.params, channel);
                     await this.probeFirmware(record);
-                    await this.readSelectedEscMelody(record);
                     record.model = record.model === "ESC not identified" ? `ESC channel ${channel + 1}` : record.model;
                     record.status = "ready";
+                    lockEscForFirmwareConfirmation(record);
                     escs.push(record);
                 } catch (error) {
                     if (isTransportFailure(error)) throw error;
@@ -163,15 +165,7 @@ export class EscFourWayController {
             return esc;
         }
 
-        if (esc.interfaceMode === 4 && (await this.probeOx32(esc))) return esc;
-        if (!esc.settingsOffset) return esc;
-
-        if (esc.firmwareFamily === ESC_FIRMWARE.AM32) {
-            const header = await this.session.send(FOUR_WAY_COMMANDS.deviceRead, [5], esc.settingsOffset);
-            esc.version = `${header.params[3]}.${header.params[4]}`;
-            esc.settingsLength = header.params[1] >= 3 ? 0xc0 : 0xb0;
-            esc.layout = `Flash 0x${esc.settingsOffset.toString(16).toUpperCase()} + 0x30 · ${esc.settingsLength} B · page 1 KB`;
-        }
+        if (esc.interfaceMode === 4) await this.probeOx32(esc);
         return esc;
     }
 
@@ -182,14 +176,10 @@ export class EscFourWayController {
             handshake = parseOx32Handshake(bytes);
         } catch (error) {
             if (/connection was lost|serial adapter/i.test(error?.message || "")) throw error;
-            applyEscFirmwareFamily(esc, ESC_FIRMWARE.UNKNOWN, {
-                canRead: true,
-                canBackup: false,
-                canWrite: false,
-                layout: "ARM firmware · OX32 handshake not readable",
-                reason: "ARM firmware could not be distinguished safely from OX32. Writing is disabled for this channel.",
-            });
-            return true;
+            // A failed OX32 handshake is not evidence that a known AM32 MCU
+            // has changed family. Preserve the candidate and require manual
+            // confirmation rather than applying a guessed ARM layout.
+            return false;
         }
         if (!handshake) return false;
 
@@ -229,6 +219,141 @@ export class EscFourWayController {
             reason,
         });
         return true;
+    }
+
+    /**
+     * Re-select each requested channel in one passthrough session. Confirmation
+     * is intentionally the first point at which settings headers or melodies
+     * are read, and only after the device fingerprint still matches the scan.
+     */
+    async confirmFirmware(queue) {
+        const targets = (queue || []).filter((item) => item?.esc && item.firmwareFamily);
+        const confirmed = [];
+        const failed = [];
+        if (!targets.length) return { confirmed, failed };
+        await this.enter();
+        try {
+            for (let index = 0; index < targets.length; index += 1) {
+                const { esc, firmwareFamily } = targets[index];
+                this.report({ phase: "confirm", channel: esc.channel, index, total: targets.length });
+                esc.confirmationStatus = ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFYING;
+                esc.confirmationReason = "正在复核设备身份与配置布局…";
+                try {
+                    const response = await this.initFlash(esc.channel);
+                    const current = decodeEscInfo(response.params, esc.channel);
+                    this.assertEscFingerprint(esc, current);
+                    this.activeChannel = esc.channel;
+                    await this.verifyConfirmedFirmware(esc, firmwareFamily);
+                    confirmed.push(esc);
+                } catch (error) {
+                    if (isTransportFailure(error)) throw error;
+                    this.lockConfirmationFailure(esc, error?.message || "固件类型或配置布局验证失败。");
+                    failed.push({ esc, error });
+                }
+            }
+            return { confirmed, failed };
+        } finally {
+            await this.exit();
+        }
+    }
+
+    assertEscFingerprint(original, current) {
+        for (const field of ["signature", "inputPin", "interfaceMode"]) {
+            if (original?.[field] !== undefined && current?.[field] !== original[field]) {
+                throw new Error(`ESC ${original.channel + 1} identity changed; confirmation was cancelled`);
+            }
+        }
+    }
+
+    lockConfirmationFailure(esc, reason, status = ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED) {
+        esc.confirmationStatus = status;
+        esc.confirmationReason = reason;
+        esc.layoutVerified = false;
+        esc.canRead = false;
+        esc.canBackup = false;
+        esc.canWrite = false;
+        esc.currentMelody = null;
+        esc.currentMelodyBytes = null;
+        esc.currentWaitBytes = null;
+        esc.melodyReadStatus = ESC_MELODY_READ_STATUS.IDLE;
+        esc.reason = reason;
+        return esc;
+    }
+
+    async verifyConfirmedFirmware(esc, firmwareFamily) {
+        esc.confirmedFirmwareFamily = firmwareFamily;
+        if (firmwareFamily === ESC_FIRMWARE.UNKNOWN) {
+            return this.lockConfirmationFailure(
+                esc,
+                "已确认未知固件类型；为避免损坏配置，读取、备份和写入保持锁定。",
+                ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED,
+            );
+        }
+
+        if (firmwareFamily === ESC_FIRMWARE.BLUEJAY) {
+            if (![0, 1].includes(esc.interfaceMode) || !Number.isInteger(esc.settingsOffset)) {
+                return this.lockConfirmationFailure(esc, "此设备接口与 Bluejay 不匹配，未验证 EEPROM 布局。");
+            }
+            const nameResponse = await this.session.send(FOUR_WAY_COMMANDS.deviceRead, [16], esc.settingsOffset + 0x60);
+            const name = decodeNullTerminated(nameResponse.params);
+            if (!/^Bluejay(?:\s|\(|$)/i.test(name)) {
+                return this.lockConfirmationFailure(esc, `未检测到 Bluejay 固件标识（返回：${name || "空"}）。`);
+            }
+            const header = await this.session.send(FOUR_WAY_COMMANDS.deviceRead, [3], esc.settingsOffset);
+            applyEscFirmwareFamily(esc, ESC_FIRMWARE.BLUEJAY, {
+                version: `${header.params[0]}.${header.params[1]}`,
+                layout: `Pseudo-EEPROM 0x${esc.settingsOffset.toString(16).toUpperCase()} + 0x70 · 128 B melody + rests`,
+                reason: "",
+            });
+            esc.layoutVerified = true;
+        } else if (firmwareFamily === ESC_FIRMWARE.AM32) {
+            if (!Number.isInteger(esc.settingsOffset) || ![0x1f06, 0x3506].includes(esc.signature)) {
+                applyEscFirmwareFamily(esc, ESC_FIRMWARE.AM32, {
+                    layout: "AM32 · MCU 配置布局未支持",
+                    reason: "AM32 已确认，但 MCU 配置布局未支持；不会套用默认 Flash 地址。",
+                });
+                return this.lockConfirmationFailure(
+                    esc,
+                    "AM32 已确认，但 MCU 配置布局未支持；读取、备份和写入保持锁定。",
+                    ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED,
+                );
+            }
+            const header = await this.session.send(FOUR_WAY_COMMANDS.deviceRead, [5], esc.settingsOffset);
+            applyEscFirmwareFamily(esc, ESC_FIRMWARE.AM32, {
+                version: `${header.params[3]}.${header.params[4]}`,
+                settingsLength: header.params[1] >= 3 ? 0xc0 : 0xb0,
+                layout: `Flash 0x${esc.settingsOffset.toString(16).toUpperCase()} + 0x30 · ${header.params[1] >= 3 ? 0xc0 : 0xb0} B · page 1 KB`,
+                reason: "",
+            });
+            esc.layoutVerified = true;
+        } else if (firmwareFamily === ESC_FIRMWARE.OX32) {
+            const detected = await this.probeOx32(esc);
+            if (!detected || esc.firmwareFamily !== ESC_FIRMWARE.OX32 || !Number.isInteger(esc.settingsOffset)) {
+                return this.lockConfirmationFailure(
+                    esc,
+                    "未验证 OX32 握手或 Bootloader 配置布局。",
+                    ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED,
+                );
+            }
+            esc.layoutVerified = true;
+        } else if (firmwareFamily === ESC_FIRMWARE.BLHELI32) {
+            applyEscFirmwareFamily(esc, ESC_FIRMWARE.BLHELI32, {
+                layout: "ARM flash · startup melody layout unavailable",
+                reason: "BLHeli_32 已确认，但没有安全的开机音乐布局；仅支持识别与电脑试听。",
+            });
+            return this.lockConfirmationFailure(
+                esc,
+                "BLHeli_32 已确认，但没有安全的开机音乐布局；读取、备份和写入保持锁定。",
+                ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED,
+            );
+        }
+
+        if (!esc.layoutVerified) return esc;
+        esc.confirmationStatus = ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED;
+        esc.confirmationReason = "固件类型与配置布局已验证。";
+        esc.reason = esc.reason || "";
+        await this.readSelectedEscMelody(esc);
+        return esc;
     }
 
     async readSelectedEscMelody(esc) {

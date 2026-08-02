@@ -4,6 +4,7 @@ import { createEscBackupPackage } from "../../src/js/esc_melody/backups.js";
 
 const contentReady = vi.fn();
 const scanEscs = vi.hoisted(() => vi.fn());
+const confirmFirmware = vi.hoisted(() => vi.fn());
 const backupEscs = vi.hoisted(() => vi.fn());
 const writeMelody = vi.hoisted(() => vi.fn());
 const restoreBackup = vi.hoisted(() => vi.fn());
@@ -18,6 +19,10 @@ vi.mock("../../src/js/esc_melody/esc_four_way_controller.js", () => ({
     EscFourWayController: class {
         scan() {
             return scanEscs();
+        }
+
+        confirmFirmware(queue) {
+            return confirmFirmware(queue);
         }
 
         backupEscs(escs) {
@@ -52,6 +57,7 @@ describe("EscMelodyTab", () => {
         globalThis.CONFIGURATOR = { connectionValid: false };
         contentReady.mockClear();
         scanEscs.mockReset();
+        confirmFirmware.mockReset();
         backupEscs.mockReset();
         writeMelody.mockReset();
         restoreBackup.mockReset();
@@ -113,6 +119,54 @@ describe("EscMelodyTab", () => {
         await nextTick();
         expect(container.querySelectorAll(".esc-melody-note")).toHaveLength(initialNotes + 1);
         expect(contentReady).toHaveBeenCalledOnce();
+
+        app.unmount();
+    });
+
+    it("requires a grouped firmware confirmation before scanned ESCs become editable", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const candidates = createWritableEscs([60, 64]).map((esc) => ({
+            ...esc,
+            canRead: false,
+            canBackup: false,
+            canWrite: false,
+            currentMelody: null,
+            melodyReadStatus: "idle",
+            detectedFirmwareFamily: "am32",
+            detectedFirmwareLabel: "AM32",
+            confirmedFirmwareFamily: null,
+            confirmationStatus: "pending",
+            confirmationReason: "请确认电调固件类型；确认并验证布局前不会读取、备份或写入 EEPROM。",
+            layoutVerified: false,
+        }));
+        scanEscs.mockResolvedValue(candidates);
+        confirmFirmware.mockImplementation(async (queue) => {
+            queue.forEach(({ esc }) => {
+                esc.confirmedFirmwareFamily = "am32";
+                esc.confirmationStatus = "verified";
+                esc.layoutVerified = true;
+                esc.canRead = true;
+                esc.canBackup = true;
+                esc.canWrite = true;
+                esc.melodyReadStatus = "loaded";
+                esc.currentMelody = createCurrentMelody(esc.channel, 60 + esc.channel * 4);
+            });
+            return { confirmed: queue.map(({ esc }) => esc), failed: [] };
+        });
+        const { app, container } = await mountTab();
+
+        findButton(container, "扫描电调").click();
+        await vi.waitFor(() => expect(container.querySelector(".firmware-confirm-dialog")).not.toBeNull());
+        expect(container.querySelectorAll(".firmware-confirm-group")).toHaveLength(1);
+        expect(findButton(container, "安全写入").disabled).toBe(true);
+
+        container.querySelector(".firmware-confirm-ack input").click();
+        await nextTick();
+        findButton(container, "确认并验证").click();
+        await vi.waitFor(() => expect(confirmFirmware).toHaveBeenCalledOnce());
+        expect(confirmFirmware.mock.calls[0][0]).toHaveLength(2);
+        await vi.waitFor(() => expect(container.querySelector(".firmware-confirm-dialog")).toBeNull());
+        expect(container.textContent).toContain("已确认可读写");
 
         app.unmount();
     });

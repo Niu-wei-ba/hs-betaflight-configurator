@@ -74,6 +74,16 @@
                             <span class="fas fa-sync-alt" :class="{ spinning: scanning }" aria-hidden="true"></span>
                             {{ scanning ? "扫描中" : connected ? "扫描电调" : "连接后扫描" }}
                         </button>
+                        <button
+                            v-if="pendingFirmwareConfirmationCount"
+                            type="button"
+                            class="regular-button esc-scan-action esc-confirm-action"
+                            :disabled="locked"
+                            @click="firmwareConfirmOpen = true"
+                        >
+                            <span class="fas fa-shield-alt" aria-hidden="true"></span>
+                            确认电调类型（{{ pendingFirmwareConfirmationCount }}）
+                        </button>
                     </section>
 
                     <section class="melody-panel">
@@ -621,6 +631,11 @@
                             </button>
                             <div class="esc-record-meta">
                                 <span>{{ esc.layout }}</span
+                                ><span
+                                    class="firmware-confirm-mark"
+                                    :class="`read-${esc.confirmationStatus || 'pending'}`"
+                                    >{{ firmwareConfirmationLabel(esc) }}</span
+                                >
                                 ><span class="melody-read-mark" :class="`read-${esc.melodyReadStatus}`">{{
                                     melodyReadLabel(esc)
                                 }}</span
@@ -643,7 +658,13 @@
                             >
                                 使用当前卷帘替换
                             </button>
-                            <p v-if="esc.reason && !esc.canWrite" class="esc-record-reason">{{ esc.reason }}</p>
+                            <p v-if="esc.confirmationReason" class="esc-record-reason">{{ esc.confirmationReason }}</p>
+                            <p
+                                v-if="esc.reason && !esc.canWrite && esc.reason !== esc.confirmationReason"
+                                class="esc-record-reason"
+                            >
+                                {{ esc.reason }}
+                            </p>
                             <p v-if="esc.melodyReadError" class="esc-record-reason">{{ esc.melodyReadError }}</p>
                         </article>
                     </section>
@@ -861,6 +882,98 @@
                         <button type="button" class="regular-button" @click="cancelSyncAll">取消</button>
                         <button type="button" class="primary-button" @click="confirmSyncAll">
                             <span class="fas fa-check" aria-hidden="true"></span> 确认应用
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <div
+                v-if="firmwareConfirmOpen"
+                class="safety-overlay firmware-confirm-overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="firmware-confirm-title"
+            >
+                <section class="safety-dialog firmware-confirm-dialog">
+                    <div class="safety-dialog-header">
+                        <div>
+                            <span class="fas fa-fingerprint" aria-hidden="true"></span>
+                            <div>
+                                <h2 id="firmware-confirm-title">确认电调类型</h2>
+                                <p>
+                                    扫描仅提供候选。确认后会逐路复核身份与配置布局，验证前不会读取、备份或写入 EEPROM。
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="icon-button"
+                            aria-label="关闭"
+                            :disabled="firmwareConfirming"
+                            @click="firmwareConfirmOpen = false"
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <div class="firmware-confirm-list">
+                        <article
+                            v-for="group in firmwareConfirmationGroups"
+                            :key="group.key"
+                            class="firmware-confirm-group"
+                        >
+                            <div class="firmware-confirm-group-title">
+                                <strong>{{ group.channels }}</strong>
+                                <small
+                                    >{{ group.model }} · 签名 {{ group.signature }} · 引脚 {{ group.inputPin }} · 接口
+                                    {{ group.interfaceMode }}</small
+                                >
+                            </div>
+                            <div class="firmware-confirm-controls">
+                                <label>
+                                    <span>固件类型</span>
+                                    <select v-model="firmwareSelections[group.key]" :disabled="firmwareConfirming">
+                                        <option
+                                            v-for="option in firmwareOptionsForGroup(group)"
+                                            :key="option.value"
+                                            :value="option.value"
+                                        >
+                                            {{ option.label }}
+                                        </option>
+                                    </select>
+                                </label>
+                                <label class="firmware-confirm-ack">
+                                    <input
+                                        v-model="firmwareAcknowledged[group.key]"
+                                        type="checkbox"
+                                        :disabled="firmwareConfirming"
+                                    />
+                                    <span>我确认以上 {{ group.escs.length }} 路为所选固件</span>
+                                </label>
+                            </div>
+                            <p>自动候选：{{ group.detectedLabel }}。{{ group.reason }}</p>
+                        </article>
+                    </div>
+                    <div class="safety-dialog-footer">
+                        <button
+                            type="button"
+                            class="regular-button"
+                            :disabled="firmwareConfirming"
+                            @click="firmwareConfirmOpen = false"
+                        >
+                            稍后确认
+                        </button>
+                        <button
+                            type="button"
+                            class="primary-button"
+                            :disabled="firmwareConfirming || !confirmedFirmwareGroupCount"
+                            @click="confirmFirmwareTypes"
+                        >
+                            <span
+                                class="fas"
+                                :class="firmwareConfirming ? 'fa-spinner spinning' : 'fa-check'"
+                                aria-hidden="true"
+                            ></span>
+                            {{ firmwareConfirming ? "正在复核" : `确认并验证（${confirmedFirmwareGroupCount} 组）` }}
                         </button>
                     </div>
                 </section>
@@ -1462,7 +1575,12 @@ import {
     saveMelodyDraft,
 } from "../../js/esc_melody/drafts.js";
 import { EscFourWayController } from "../../js/esc_melody/esc_four_way_controller.js";
-import { ESC_MELODY_READ_STATUS, getIdentifiedEscCount } from "../../js/esc_melody/esc_capabilities.js";
+import {
+    ESC_FIRMWARE,
+    ESC_FIRMWARE_CONFIRMATION_STATUS,
+    ESC_MELODY_READ_STATUS,
+    getIdentifiedEscCount,
+} from "../../js/esc_melody/esc_capabilities.js";
 import {
     createEscBackupPackage,
     downloadEscBackup,
@@ -1513,6 +1631,10 @@ export default defineComponent({
         const activePresetTrackIndex = ref(0);
         const melodyConflict = ref(false);
         const syncConfirmOpen = ref(false);
+        const firmwareConfirmOpen = ref(false);
+        const firmwareConfirming = ref(false);
+        const firmwareSelections = reactive({});
+        const firmwareAcknowledged = reactive({});
         const connected = computed(() =>
             Boolean(model?.CONFIGURATOR?.connectionValid ?? globalThis.CONFIGURATOR?.connectionValid),
         );
@@ -1537,6 +1659,47 @@ export default defineComponent({
         const timelineBeats = computed(() => Math.max(8, Math.ceil(melodyDurationBeats(melody.value) + 1)));
         const timelineStyle = computed(() => ({ "--timeline-beats": timelineBeats.value }));
         const writableEscs = computed(() => escs.value.filter((esc) => esc.canWrite));
+        const pendingFirmwareConfirmationEscs = computed(() =>
+            escs.value.filter(
+                (esc) =>
+                    esc?.status !== "unavailable" &&
+                    [ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING, ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED].includes(
+                        esc.confirmationStatus,
+                    ),
+            ),
+        );
+        const pendingFirmwareConfirmationCount = computed(() => pendingFirmwareConfirmationEscs.value.length);
+        const firmwareConfirmationGroups = computed(() => {
+            const groups = new Map();
+            for (const esc of pendingFirmwareConfirmationEscs.value) {
+                const key = [
+                    esc.signature ?? "--",
+                    esc.inputPin ?? "--",
+                    esc.interfaceMode ?? "--",
+                    esc.detectedFirmwareFamily || esc.firmwareFamily || ESC_FIRMWARE.UNKNOWN,
+                ].join(":");
+                const group = groups.get(key) || {
+                    key,
+                    escs: [],
+                    model: esc.model || "未识别 ESC",
+                    signature: Number.isInteger(esc.signature) ? `0x${esc.signature.toString(16).toUpperCase()}` : "--",
+                    inputPin: esc.inputPin ?? "--",
+                    interfaceMode: esc.interfaceMode ?? "--",
+                    detectedFamily: esc.detectedFirmwareFamily || esc.firmwareFamily || ESC_FIRMWARE.UNKNOWN,
+                    detectedLabel: esc.detectedFirmwareLabel || esc.firmwareLabel || "Unknown",
+                    reason: esc.confirmationReason || "请根据 ESC 固件与型号确认类型。",
+                };
+                group.escs.push(esc);
+                groups.set(key, group);
+            }
+            return [...groups.values()].map((group) => ({
+                ...group,
+                channels: group.escs.map((esc) => `ESC ${esc.channel + 1}`).join("、"),
+            }));
+        });
+        const confirmedFirmwareGroupCount = computed(
+            () => firmwareConfirmationGroups.value.filter((group) => firmwareAcknowledged[group.key]).length,
+        );
         const selectedEsc = computed(() => escs.value.find((esc) => esc.id === selectedEscId.value) || null);
         const displayedEscs = computed(() =>
             escs.value.filter((esc) => esc && !["idle", "unavailable"].includes(esc.status)),
@@ -1725,6 +1888,17 @@ export default defineComponent({
             if (restoring.value || restoreBackingUp.value) return "正在恢复 EEPROM";
             if (GUI.connect_lock) return "串口正被其他操作占用";
             if (!escs.value.length) return "请先扫描电调";
+            if (!writableEscs.value.length && pendingFirmwareConfirmationCount.value) {
+                return `仍有 ${pendingFirmwareConfirmationCount.value} 路电调待确认类型并验证布局`;
+            }
+            const unsupportedAm32 = escs.value.find(
+                (esc) =>
+                    esc.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED &&
+                    esc.confirmedFirmwareFamily === ESC_FIRMWARE.AM32,
+            );
+            if (!writableEscs.value.length && unsupportedAm32) {
+                return "AM32 已确认，但 MCU 配置布局未支持";
+            }
             if (!writableEscs.value.length) return "未识别到可写入的电调";
             if (!pendingWriteEscs.value.length) {
                 return syncAll.value ? "请先选择或编辑一首音乐" : "请先修改至少一路音乐";
@@ -2172,6 +2346,75 @@ export default defineComponent({
             return labels[esc.melodyReadStatus] || "未读取";
         }
 
+        function firmwareConfirmationLabel(esc) {
+            const labels = {
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING]: "待确认",
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFYING]: "布局验证中",
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED]: "布局未支持",
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED]: "确认失败",
+            };
+            if (esc?.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED) {
+                return esc.canWrite ? "已确认可读写" : "已确认 · 受限";
+            }
+            return labels[esc?.confirmationStatus] || "待确认";
+        }
+
+        function firmwareOptionsForGroup(group) {
+            const arm = Number(group?.interfaceMode) === 4;
+            const options = arm
+                ? [ESC_FIRMWARE.AM32, ESC_FIRMWARE.OX32, ESC_FIRMWARE.BLHELI32, ESC_FIRMWARE.UNKNOWN]
+                : [ESC_FIRMWARE.BLUEJAY, ESC_FIRMWARE.UNKNOWN];
+            return options.map((value) => ({ value, label: restoreFirmwareLabel(value) }));
+        }
+
+        function resetFirmwareConfirmationState({ open = false } = {}) {
+            for (const key of Object.keys(firmwareSelections)) delete firmwareSelections[key];
+            for (const key of Object.keys(firmwareAcknowledged)) delete firmwareAcknowledged[key];
+            firmwareConfirming.value = false;
+            firmwareConfirmOpen.value = open;
+        }
+
+        function initializeFirmwareConfirmationGroups() {
+            resetFirmwareConfirmationState({ open: false });
+            for (const group of firmwareConfirmationGroups.value) {
+                const allowed = firmwareOptionsForGroup(group).map((option) => option.value);
+                firmwareSelections[group.key] = allowed.includes(group.detectedFamily)
+                    ? group.detectedFamily
+                    : allowed[0];
+                firmwareAcknowledged[group.key] = false;
+            }
+        }
+
+        async function confirmFirmwareTypes() {
+            if (!controller.value || firmwareConfirming.value) return;
+            const groups = firmwareConfirmationGroups.value.filter((group) => firmwareAcknowledged[group.key]);
+            if (!groups.length) return;
+            const queue = groups.flatMap((group) =>
+                group.escs.map((esc) => ({ esc, firmwareFamily: firmwareSelections[group.key] })),
+            );
+            firmwareConfirming.value = true;
+            try {
+                acquireSerialLock();
+                const result = await controller.value.confirmFirmware(queue);
+                initializeEscEditorState(result.confirmed);
+                if (result.failed.length) {
+                    showMessage(
+                        `已确认 ${result.confirmed.length} 路；${result.failed.length} 路身份或布局验证失败，已保持锁定。`,
+                        "error",
+                    );
+                } else {
+                    showMessage(`已确认并验证 ${result.confirmed.length} 路电调；当前音乐已读取。`, "success");
+                }
+                initializeFirmwareConfirmationGroups();
+                firmwareConfirmOpen.value = Boolean(pendingFirmwareConfirmationCount.value);
+            } catch (error) {
+                showMessage(error?.message || "固件确认失败，串口已恢复普通 MSP。", "error");
+            } finally {
+                releaseSerialLock();
+                firmwareConfirming.value = false;
+            }
+        }
+
         watch(
             melody,
             () => {
@@ -2195,6 +2438,7 @@ export default defineComponent({
                 resetRestoreState();
                 safetyOpen.value = false;
                 invalidateMelodyBackupGate();
+                resetFirmwareConfirmationState();
             }
         });
 
@@ -3325,18 +3569,20 @@ export default defineComponent({
             codeDialogOpen.value = false;
             melodyConflict.value = false;
             syncConfirmOpen.value = false;
+            resetFirmwareConfirmationState();
             resetRestoreState();
             controller.value ||= new EscFourWayController({ onProgress: handleControllerProgress });
             try {
                 acquireSerialLock();
                 escs.value = await controller.value.scan();
-                const melodyCount = initializeEscEditorState(escs.value);
+                initializeEscEditorState(escs.value);
+                initializeFirmwareConfirmationGroups();
                 if (identifiedEscCount.value) {
-                    const conflictCopy = melodyConflict.value ? "，检测到多路音乐不同，已切换为分路编辑" : "";
                     showMessage(
-                        `扫描完成：识别到 ${identifiedEscCount.value} 路电调，读取 ${melodyCount} 路当前音乐${conflictCopy}。`,
+                        `扫描完成：识别到 ${identifiedEscCount.value} 路电调。请确认固件类型，验证布局后才会读取当前音乐。`,
                         "success",
                     );
+                    firmwareConfirmOpen.value = pendingFirmwareConfirmationCount.value > 0;
                 } else {
                     showMessage(
                         `扫描完成：未识别到电调，已检查 ${escs.value.length} 路通道。请确认电调已稳定供电。`,
@@ -3656,6 +3902,16 @@ export default defineComponent({
             rollbackRestore,
             restoreFirmwareLabel,
             formatRestoreAddress,
+            firmwareConfirmOpen,
+            firmwareConfirming,
+            firmwareSelections,
+            firmwareAcknowledged,
+            firmwareConfirmationGroups,
+            pendingFirmwareConfirmationCount,
+            confirmedFirmwareGroupCount,
+            firmwareOptionsForGroup,
+            firmwareConfirmationLabel,
+            confirmFirmwareTypes,
             backupAll,
             performWrite,
             recoverWritten,

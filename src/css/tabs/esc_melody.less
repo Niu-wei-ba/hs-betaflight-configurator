@@ -1702,6 +1702,92 @@
         background: #fff;
         box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
     }
+
+    .firmware-confirm-dialog {
+        width: min(720px, calc(100vw - 32px));
+        max-height: min(760px, calc(100vh - 32px));
+        display: flex;
+        flex-direction: column;
+    }
+
+    .firmware-confirm-list {
+        overflow: auto;
+        padding: 4px 24px 18px;
+    }
+
+    .firmware-confirm-group {
+        border: 1px solid #d8cdbb;
+        border-left: 3px solid #d0922e;
+        border-radius: 6px;
+        background: #fffdf8;
+        margin-top: 12px;
+        padding: 13px 14px;
+    }
+
+    .firmware-confirm-group-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: baseline;
+    }
+
+    .firmware-confirm-group-title strong {
+        color: #4a3420;
+    }
+    .firmware-confirm-group-title small {
+        color: #806c54;
+        text-align: right;
+    }
+    .firmware-confirm-group p {
+        margin: 11px 0 0;
+        color: #806c54;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .firmware-confirm-controls {
+        display: flex;
+        align-items: end;
+        flex-wrap: wrap;
+        gap: 12px 22px;
+        margin-top: 12px;
+    }
+
+    .firmware-confirm-controls > label:first-child {
+        display: grid;
+        gap: 5px;
+        color: #66533d;
+        font-size: 12px;
+    }
+    .firmware-confirm-controls select {
+        min-width: 150px;
+        height: 31px;
+    }
+    .firmware-confirm-ack {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #4a3420;
+        font-size: 13px;
+    }
+
+    .esc-confirm-action {
+        margin-top: 8px;
+    }
+
+    @media (max-width: 600px) {
+        .firmware-confirm-list {
+            padding-inline: 16px;
+        }
+        .firmware-confirm-group-title {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .firmware-confirm-group-title small {
+            text-align: left;
+        }
+    }
     .melody-contribution-overlay {
         z-index: 1010;
     }

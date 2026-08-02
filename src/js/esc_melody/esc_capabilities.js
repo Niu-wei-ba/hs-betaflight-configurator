@@ -15,6 +15,14 @@ export const ESC_MELODY_READ_STATUS = Object.freeze({
     REPLACEMENT: "replacement",
 });
 
+export const ESC_FIRMWARE_CONFIRMATION_STATUS = Object.freeze({
+    PENDING: "pending",
+    VERIFYING: "verifying",
+    VERIFIED: "verified",
+    UNSUPPORTED: "unsupported",
+    FAILED: "failed",
+});
+
 const CAPABILITY_MATRIX = {
     [ESC_FIRMWARE.BLUEJAY]: {
         label: "Bluejay",
@@ -120,6 +128,15 @@ export function createEscRecord(channel, info = {}) {
         melodyReadStatus: info.melodyReadStatus || ESC_MELODY_READ_STATUS.IDLE,
         melodyReadError: info.melodyReadError || "",
         melodyDirty: Boolean(info.melodyDirty),
+        // Discovery is deliberately not an authorization decision. A scan may
+        // suggest a family, but only an explicit user confirmation followed by
+        // a layout probe permits EEPROM access.
+        detectedFirmwareFamily: info.detectedFirmwareFamily || firmwareFamily,
+        detectedFirmwareLabel: info.detectedFirmwareLabel || capability.label,
+        confirmedFirmwareFamily: info.confirmedFirmwareFamily || null,
+        confirmationStatus: info.confirmationStatus || ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
+        confirmationReason: info.confirmationReason || "",
+        layoutVerified: Boolean(info.layoutVerified),
     };
 }
 
@@ -167,6 +184,30 @@ export function applyEscFirmwareFamily(esc, firmwareFamily, overrides = {}) {
     return esc;
 }
 
+/**
+ * Keep the low-risk discovery metadata, but remove every EEPROM permission
+ * until a person has confirmed the firmware family for this connected session.
+ */
+export function lockEscForFirmwareConfirmation(esc) {
+    if (!esc || esc.status === "unavailable") return esc;
+    esc.detectedFirmwareFamily = esc.firmwareFamily || ESC_FIRMWARE.UNKNOWN;
+    esc.detectedFirmwareLabel = getEscCapabilities(esc.detectedFirmwareFamily).label;
+    esc.confirmedFirmwareFamily = null;
+    esc.confirmationStatus = ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING;
+    esc.confirmationReason = "请确认电调固件类型；确认并验证布局前不会读取、备份或写入 EEPROM。";
+    esc.layoutVerified = false;
+    esc.canRead = false;
+    esc.canBackup = false;
+    esc.canWrite = false;
+    esc.backedUp = false;
+    esc.currentMelody = null;
+    esc.currentMelodyBytes = null;
+    esc.currentWaitBytes = null;
+    esc.melodyReadStatus = ESC_MELODY_READ_STATUS.IDLE;
+    esc.melodyReadError = "";
+    return esc;
+}
+
 export function getWritableEscs(escs) {
     return (escs || []).filter((esc) => esc.canWrite && esc.canBackup);
 }
@@ -189,6 +230,11 @@ const AM32_MCUS = Object.freeze({
     0x1f06: { name: "STM32F051", settingsOffset: 0x7c00 },
     0x3506: { name: "ARM64K / GD32", settingsOffset: 0xf800 },
 });
+
+// The 0x1506 identity is seen on AM32 hardware, but its MCU configuration
+// page is not mapped safely yet. Keep it as an AM32 candidate so the user can
+// confirm it explicitly without granting a guessed EEPROM address.
+const AM32_UNMAPPED_SIGNATURES = new Set([0x1506]);
 
 const AM32_BOOTLOADER_PINS = new Set([0x02, 0x14]);
 
@@ -229,6 +275,19 @@ function decodeFourWayDeviceInfo(bytes, channel) {
             settingsOffset: arm.settingsOffset,
             settingsLength: 0xb0,
             melodyRelativeOffset: 0x30,
+        });
+    }
+
+    if (AM32_UNMAPPED_SIGNATURES.has(signature) && interfaceMode === 4) {
+        return createEscRecord(channel, {
+            model: `AM32 candidate 0x${signature.toString(16).toUpperCase()}`,
+            firmwareFamily: ESC_FIRMWARE.AM32,
+            version: "layout confirmation required",
+            layout: "AM32 candidate · MCU configuration layout unsupported",
+            reason: "AM32 candidate detected. Confirm manually; this MCU layout is not mapped for safe EEPROM access.",
+            signature,
+            inputPin,
+            interfaceMode,
         });
     }
 
