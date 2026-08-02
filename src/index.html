@@ -151,7 +151,6 @@
                     <li class="tab_servos" v-show="['USE_SERVOS','USE_WING'].some(opt => FC.CONFIG?.buildOptions?.includes(opt))"><a href="#" i18n="tabServos" class="tabicon ic_servo" i18n_title="tabServos"></a></li>
                     <li class="tab_gps" v-show="FC.CONFIG?.buildOptions?.includes('USE_GPS')"><a href="#" i18n="tabGPS" class="tabicon ic_gps" i18n_title="tabGPS"></a></li>
                     <li class="tab_motors"><a href="#" i18n="tabMotorTesting" class="tabicon ic_motor" i18n_title="tabMotorTesting"></a></li>
-                    <li class="tab_esc_melody"><a href="#" i18n="tabEscMelody" class="tabicon ic_melody" i18n_title="tabEscMelody"></a></li>
                     <li class="tab_osd" v-show="FC.FEATURE_CONFIG?.features?.isEnabled && FC.FEATURE_CONFIG.features.isEnabled('OSD')"><a href="#" i18n="tabOsd" class="tabicon ic_osd" i18n_title="tabOsd"></a></li>
                     <li class="tab_vtx"><a href="#" i18n="tabVtx" class="tabicon ic_vtx" i18n_title="tabVtx"></a></li>
                     <li class="tab_transponder" v-show="FC.FEATURE_CONFIG?.features?.isEnabled && FC.FEATURE_CONFIG.features.isEnabled('TRANSPONDER')"><a href="#" i18n="tabTransponder" class="tabicon ic_transponder" i18n_title="tabTransponder"></a></li>
