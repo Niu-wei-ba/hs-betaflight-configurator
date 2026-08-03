@@ -459,6 +459,10 @@ function checkReportProblem(problemName, problems) {
 async function checkReportProblems() {
     await MSP.promise(MSPCodes.MSP_STATUS);
 
+    // MSP_STATUS already contains activeSensors. Render the indicators now so
+    // the initial connection does not depend on the slower live-data poll.
+    sensor_status(FC.CONFIG.activeSensors, FC.GPS_DATA.fix);
+
     let needsProblemReportingDialog = false;
     let problems = [];
 

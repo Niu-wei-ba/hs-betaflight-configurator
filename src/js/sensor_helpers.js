@@ -30,15 +30,9 @@ export function sensor_status(sensors_detected = 0, gps_fix_state = 0) {
         sensor_status.previous_gps_fix_state = -1;
     }
 
-    // update UI (if necessary)
-    if (
-        sensor_status.previous_sensors_detected === sensors_detected &&
-        sensor_status.previous_gps_fix_state === gps_fix_state
-    ) {
-        return;
-    }
-
-    // set current value
+    // Keep the cached values for diagnostics, but always render. The header DOM
+    // can be recreated without the sensor values changing (for example during
+    // reconnect/tab teardown), so an equality short-circuit can leave it blank.
     sensor_status.previous_sensors_detected = sensors_detected;
     sensor_status.previous_gps_fix_state = gps_fix_state;
 
