@@ -9,6 +9,7 @@ import {
     ESC_FIRMWARE,
     ESC_FIRMWARE_CONFIRMATION_STATUS,
     ESC_MELODY_READ_STATUS,
+    getAm32LayoutForEsc,
     lockEscForFirmwareConfirmation,
 } from "./esc_capabilities.js";
 import { decodeFirmwareMelody, encodeFirmwareMelody, encodeWaitMs } from "./melody.js";
@@ -307,22 +308,26 @@ export class EscFourWayController {
             });
             esc.layoutVerified = true;
         } else if (firmwareFamily === ESC_FIRMWARE.AM32) {
-            if (!Number.isInteger(esc.settingsOffset) || ![0x1f06, 0x3506].includes(esc.signature)) {
+            const am32Layout = getAm32LayoutForEsc(esc);
+            if (!am32Layout) {
                 applyEscFirmwareFamily(esc, ESC_FIRMWARE.AM32, {
                     layout: "AM32 · MCU 配置布局未支持",
-                    reason: "AM32 已确认，但 MCU 配置布局未支持；不会套用默认 Flash 地址。",
+                    reason: "AM32 已确认，但此 Bootloader/MCU 配置布局未支持；不会猜测 EEPROM 地址。",
                 });
                 return this.lockConfirmationFailure(
                     esc,
-                    "AM32 已确认，但 MCU 配置布局未支持；读取、备份和写入保持锁定。",
+                    "AM32 已确认，但此 Bootloader/MCU 配置布局未支持；读取、备份和写入保持锁定。",
                     ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED,
                 );
             }
+            esc.settingsOffset = am32Layout.settingsOffset;
+            esc.settingsPageSize = am32Layout.pageSize;
+            esc.melodyRelativeOffset = 0x30;
             const header = await this.session.send(FOUR_WAY_COMMANDS.deviceRead, [5], esc.settingsOffset);
             applyEscFirmwareFamily(esc, ESC_FIRMWARE.AM32, {
                 version: `${header.params[3]}.${header.params[4]}`,
                 settingsLength: header.params[1] >= 3 ? 0xc0 : 0xb0,
-                layout: `Flash 0x${esc.settingsOffset.toString(16).toUpperCase()} + 0x30 · ${header.params[1] >= 3 ? 0xc0 : 0xb0} B · page 1 KB`,
+                layout: `Flash 0x${esc.settingsOffset.toString(16).toUpperCase()} + 0x30 · ${header.params[1] >= 3 ? 0xc0 : 0xb0} B · page ${am32Layout.pageSize / 1024} KB`,
                 reason: "",
             });
             esc.layoutVerified = true;

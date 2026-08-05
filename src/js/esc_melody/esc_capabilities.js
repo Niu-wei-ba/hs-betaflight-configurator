@@ -227,16 +227,26 @@ const SILABS_MCUS = Object.freeze({
 });
 
 const AM32_MCUS = Object.freeze({
-    0x1f06: { name: "STM32F051", settingsOffset: 0x7c00 },
-    0x3506: { name: "ARM64K / GD32", settingsOffset: 0xf800 },
+    0x1f06: { name: "STM32F051", settingsOffset: 0x7c00, pageSize: 1024 },
+    0x3506: { name: "ARM64K / GD32", settingsOffset: 0xf800, pageSize: 1024 },
+    // AM32's official NXP MCXA153 target uses a 64 KiB flash image with an
+    // 8 KiB configuration sector starting at 0xE000. Its official Bootloader
+    // identifies that target with flash-size code 0x15, which Betaflight's
+    // 4-way interface exposes as ARM signature 0x1506.
+    0x1506: { name: "NXP MCXA153", settingsOffset: 0xe000, pageSize: 8192 },
 });
 
-// The 0x1506 identity is seen on AM32 hardware, but its MCU configuration
-// page is not mapped safely yet. Keep it as an AM32 candidate so the user can
-// confirm it explicitly without granting a guessed EEPROM address.
-const AM32_UNMAPPED_SIGNATURES = new Set([0x1506]);
+const AM32_BOOTLOADER_PINS = new Set([0x02, 0x06, 0x14]);
 
-const AM32_BOOTLOADER_PINS = new Set([0x02, 0x14]);
+export function getAm32LayoutForEsc(esc) {
+    if (!esc || esc.interfaceMode !== 4 || !AM32_BOOTLOADER_PINS.has(esc.inputPin)) return null;
+    const knownMcu = AM32_MCUS[esc.signature];
+    if (!knownMcu) return null;
+    return {
+        ...knownMcu,
+        name: knownMcu.name,
+    };
+}
 
 function decodeFourWayDeviceInfo(bytes, channel) {
     const signature = bytes[0] | (bytes[1] << 8);
@@ -273,21 +283,9 @@ function decodeFourWayDeviceInfo(bytes, channel) {
             inputPin,
             interfaceMode,
             settingsOffset: arm.settingsOffset,
+            settingsPageSize: arm.pageSize,
             settingsLength: 0xb0,
             melodyRelativeOffset: 0x30,
-        });
-    }
-
-    if (AM32_UNMAPPED_SIGNATURES.has(signature) && interfaceMode === 4) {
-        return createEscRecord(channel, {
-            model: `AM32 candidate 0x${signature.toString(16).toUpperCase()}`,
-            firmwareFamily: ESC_FIRMWARE.AM32,
-            version: "layout confirmation required",
-            layout: "AM32 candidate · MCU configuration layout unsupported",
-            reason: "AM32 candidate detected. Confirm manually; this MCU layout is not mapped for safe EEPROM access.",
-            signature,
-            inputPin,
-            interfaceMode,
         });
     }
 

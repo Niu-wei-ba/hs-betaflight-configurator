@@ -967,12 +967,18 @@ describe("ESC 4-way controller integration", () => {
         expect(confirmSession.calls.filter((call) => call.address === 0x7c30)).toHaveLength(2);
     });
 
-    it("keeps AM32 signature 0x1506 locked after manual confirmation without probing a guessed address", async () => {
+    it("opens the AM32 NXP MCXA153 melody layout after manual confirmation", async () => {
+        const current = encodeFirmwareMelody(
+            { name: "Current", bpm: 120, notes: [{ midi: 64, start: 0, duration: 1 }] },
+            "am32",
+        );
         const handler = (command, _params, address) => {
             if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0x06, 0x15, 0x02, 0x04]);
             if (command === FOUR_WAY_COMMANDS.deviceRead && address === OX32_HANDSHAKE_OFFSET) {
                 return response(new Uint8Array(OX32_HANDSHAKE_LENGTH));
             }
+            if (command === FOUR_WAY_COMMANDS.deviceRead && address === 0xe000) return response([1, 3, 0, 2, 16]);
+            if (command === FOUR_WAY_COMMANDS.deviceRead && address === 0xe030) return response(current.bytes);
             throw new Error(`Unexpected command at ${address}`);
         };
         const scanSession = createSession(handler);
@@ -980,25 +986,16 @@ describe("ESC 4-way controller integration", () => {
         const controller = createController([scanSession, confirmSession]);
         const [esc] = await controller.scan({ channels: 1 });
 
-        expect(esc).toMatchObject({
-            firmwareFamily: ESC_FIRMWARE.AM32,
-            detectedFirmwareFamily: ESC_FIRMWARE.AM32,
-            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
-            canRead: false,
-        });
-
         await controller.confirmFirmware([{ esc, firmwareFamily: ESC_FIRMWARE.AM32 }]);
 
         expect(esc).toMatchObject({
-            confirmedFirmwareFamily: ESC_FIRMWARE.AM32,
-            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED,
-            layoutVerified: false,
-            canRead: false,
-            canBackup: false,
-            canWrite: false,
+            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED,
+            layoutVerified: true,
+            settingsOffset: 0xe000,
+            settingsLength: 0xc0,
+            melodyReadStatus: ESC_MELODY_READ_STATUS.LOADED,
         });
-        expect(esc.confirmationReason).toContain("AM32 已确认");
-        expect(confirmSession.calls.some((call) => [0x7c00, 0xf800].includes(call.address))).toBe(false);
+        expect(confirmSession.calls.some((call) => call.address === 0xe030)).toBe(true);
     });
 
     it("backs up, writes, verifies and recovers OX32 settings with the page checksum", async () => {
