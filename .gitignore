@@ -56,3 +56,8 @@ components.d.ts
 /*.pem
 /CLAUDE.md
 /.claude
+/AGENTS.md
+
+# Local tutorial-ingest credentials and Python bytecode.
+/local-video-ingest/.env
+/local-video-ingest/__pycache__/

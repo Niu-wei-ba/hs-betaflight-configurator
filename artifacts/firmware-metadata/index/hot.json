@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-04-06T14:09:08.804Z",
+  "versions": [
+    {
+      "version": "2025.12.2",
+      "channel": "stable"
+    }
+  ],
+  "targets": [
+    "BETAFPVF405",
+    "IFLIGHT_BLITZ_F405",
+    "IFLIGHT_BLITZ_F722",
+    "KAKUTEF7",
+    "KAKUTEH7",
+    "MAMBAF405_2022B",
+    "MAMBAF722_2022B",
+    "MATEKF405TE",
+    "MATEKF722",
+    "SPEEDYBEEF405MINI",
+    "SPEEDYBEEF405V3",
+    "SPEEDYBEEF405V4",
+    "SPEEDYBEEF435AIOELRS"
+  ]
+}

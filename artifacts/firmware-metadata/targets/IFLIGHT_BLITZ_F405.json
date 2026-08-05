@@ -1,0 +1,10 @@
+{
+  "target": "IFLIGHT_BLITZ_F405",
+  "releases": [
+    {
+      "release": "2025.12.2",
+      "type": "Stable",
+      "label": "Stable"
+    }
+  ]
+}

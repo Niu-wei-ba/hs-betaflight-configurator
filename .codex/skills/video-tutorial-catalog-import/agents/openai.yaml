@@ -1,0 +1,4 @@
+interface:
+  display_name: "视频字幕校准与双教程收录"
+  short_description: "用 Bilibili MCP 字幕校准后联合生成视频与 Markdown 教程"
+  default_prompt: "先使用 bilibili-video-info-mcp 获取并保留完整原始字幕 JSON；不得使用本地模型或任何语音转写服务。然后校准术语，生成 Markdown 双教程并联合入库："

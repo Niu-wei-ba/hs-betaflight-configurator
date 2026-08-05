@@ -1,0 +1,15 @@
+{
+  "target": "HSF722",
+  "releases": [
+    {
+      "release": "2025.12.3-rc.1",
+      "type": "ReleaseCandidate",
+      "label": "RC"
+    },
+    {
+      "release": "2025.12.2",
+      "type": "Stable",
+      "label": "Stable"
+    }
+  ]
+}

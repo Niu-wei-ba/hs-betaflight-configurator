@@ -1,0 +1,22 @@
+{
+  "target": "MATEKF405TE",
+  "release": "2025.12.2",
+  "releaseType": "Stable",
+  "releaseUrl": "https://bf.hs-fpv.com/releases/2025.12.2",
+  "date": "2026-02-08",
+  "mcu": "STM32F405",
+  "manufacturer": "MTKS",
+  "cloudBuild": true,
+  "configuration": [
+    "defaults nosave"
+  ],
+  "source": {
+    "type": "betaflight-cloud-build"
+  },
+  "artifact": {
+    "fileName": "MATEKF405TE_2025.12.2.hex",
+    "objectKey": "/firmware/stable/2025.12.2/MATEKF405TE/firmware.hex"
+  },
+  "hot": true,
+  "channel": "stable"
+}

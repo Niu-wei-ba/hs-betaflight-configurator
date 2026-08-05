@@ -1,0 +1,22 @@
+{
+  "target": "MATEKF722",
+  "release": "2025.12.2",
+  "releaseType": "Stable",
+  "releaseUrl": "https://bf.hs-fpv.com/releases/2025.12.2",
+  "date": "2026-02-08",
+  "mcu": "STM32F7X2",
+  "manufacturer": "MTKS",
+  "cloudBuild": true,
+  "configuration": [
+    "defaults nosave"
+  ],
+  "source": {
+    "type": "betaflight-cloud-build"
+  },
+  "artifact": {
+    "fileName": "MATEKF722_2025.12.2.hex",
+    "objectKey": "/firmware/stable/2025.12.2/MATEKF722/firmware.hex"
+  },
+  "hot": true,
+  "channel": "stable"
+}

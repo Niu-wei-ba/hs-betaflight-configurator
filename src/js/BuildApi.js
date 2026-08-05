@@ -228,7 +228,7 @@ export default class BuildApi {
 
     async loadDeviceFilters() {
         try {
-            return await this.fetchJson(`${this._url}/api/app/devices`);
+            return await this.fetchJson("/api/app/devices");
         } catch {
             // offline or network error — caller falls back to cache
             return null;

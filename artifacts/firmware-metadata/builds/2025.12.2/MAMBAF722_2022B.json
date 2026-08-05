@@ -1,0 +1,22 @@
+{
+  "target": "MAMBAF722_2022B",
+  "release": "2025.12.2",
+  "releaseType": "Stable",
+  "releaseUrl": "https://bf.hs-fpv.com/releases/2025.12.2",
+  "date": "2026-02-08",
+  "mcu": "STM32F7X2",
+  "manufacturer": "DIAT",
+  "cloudBuild": true,
+  "configuration": [
+    "defaults nosave"
+  ],
+  "source": {
+    "type": "betaflight-cloud-build"
+  },
+  "artifact": {
+    "fileName": "MAMBAF722_2022B_2025.12.2.hex",
+    "objectKey": "/firmware/stable/2025.12.2/MAMBAF722_2022B/firmware.hex"
+  },
+  "hot": true,
+  "channel": "stable"
+}

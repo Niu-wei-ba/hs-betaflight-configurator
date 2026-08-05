@@ -1,0 +1,10 @@
+{
+  "target": "MAMBAF405_2022B",
+  "releases": [
+    {
+      "release": "2025.12.2",
+      "type": "Stable",
+      "label": "Stable"
+    }
+  ]
+}

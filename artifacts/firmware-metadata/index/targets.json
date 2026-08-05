@@ -1,0 +1,93 @@
+[
+  {
+    "target": "BETAFPVF405",
+    "group": "supported",
+    "mcu": "STM32F405",
+    "manufacturer": "BEFH",
+    "releaseCount": 1
+  },
+  {
+    "target": "IFLIGHT_BLITZ_F405",
+    "group": "supported",
+    "mcu": "STM32F405",
+    "manufacturer": "IFRC",
+    "releaseCount": 1
+  },
+  {
+    "target": "IFLIGHT_BLITZ_F722",
+    "group": "supported",
+    "mcu": "STM32F7X2",
+    "manufacturer": "IFRC",
+    "releaseCount": 1
+  },
+  {
+    "target": "KAKUTEF7",
+    "group": "supported",
+    "mcu": "STM32F745",
+    "manufacturer": "HBRO",
+    "releaseCount": 1
+  },
+  {
+    "target": "KAKUTEH7",
+    "group": "supported",
+    "mcu": "STM32H743",
+    "manufacturer": "HBRO",
+    "releaseCount": 1
+  },
+  {
+    "target": "MAMBAF405_2022B",
+    "group": "supported",
+    "mcu": "STM32F405",
+    "manufacturer": "DIAT",
+    "releaseCount": 1
+  },
+  {
+    "target": "MAMBAF722_2022B",
+    "group": "supported",
+    "mcu": "STM32F7X2",
+    "manufacturer": "DIAT",
+    "releaseCount": 1
+  },
+  {
+    "target": "MATEKF405TE",
+    "group": "supported",
+    "mcu": "STM32F405",
+    "manufacturer": "MTKS",
+    "releaseCount": 1
+  },
+  {
+    "target": "MATEKF722",
+    "group": "supported",
+    "mcu": "STM32F7X2",
+    "manufacturer": "MTKS",
+    "releaseCount": 1
+  },
+  {
+    "target": "SPEEDYBEEF405MINI",
+    "group": "supported",
+    "mcu": "STM32F405",
+    "manufacturer": "SPBE",
+    "releaseCount": 1
+  },
+  {
+    "target": "SPEEDYBEEF405V3",
+    "group": "supported",
+    "mcu": "STM32F405",
+    "manufacturer": "SPBE",
+    "releaseCount": 1
+  },
+  {
+    "target": "SPEEDYBEEF405V4",
+    "group": "supported",
+    "mcu": "STM32F405",
+    "manufacturer": "SPBE",
+    "releaseCount": 1
+  },
+  {
+    "target": "SPEEDYBEEF435AIOELRS",
+    "group": "supported",
+    "mcu": "AT32F435G",
+    "manufacturer": "SPBE",
+    "releaseCount": 1
+  }
+]

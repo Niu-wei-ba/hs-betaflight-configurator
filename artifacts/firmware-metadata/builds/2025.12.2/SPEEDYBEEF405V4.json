@@ -1,0 +1,22 @@
+{
+  "target": "SPEEDYBEEF405V4",
+  "release": "2025.12.2",
+  "releaseType": "Stable",
+  "releaseUrl": "https://bf.hs-fpv.com/releases/2025.12.2",
+  "date": "2026-02-08",
+  "mcu": "STM32F405",
+  "manufacturer": "SPBE",
+  "cloudBuild": true,
+  "configuration": [
+    "defaults nosave"
+  ],
+  "source": {
+    "type": "betaflight-cloud-build"
+  },
+  "artifact": {
+    "fileName": "SPEEDYBEEF405V4_2025.12.2.hex",
+    "objectKey": "/firmware/stable/2025.12.2/SPEEDYBEEF405V4/firmware.hex"
+  },
+  "hot": true,
+  "channel": "stable"
+}

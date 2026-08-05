@@ -1,0 +1,22 @@
+{
+  "key": "bf06a93d9d396a93abe130089b48993f",
+  "release": "2025.12.2",
+  "target": "SPEEDYBEEF405V3",
+  "options": [
+    "CORE_BUILD"
+  ],
+  "optionsHash": "core",
+  "objectKey": "/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex",
+  "file": "SPEEDYBEEF405V3_2025.12.2.hex",
+  "source": {
+    "type": "betaflight-cloud-build"
+  },
+  "url": "https://cdn.example.com/firmware/stable/2025.12.2/SPEEDYBEEF405V3/firmware.hex",
+  "configuration": [
+    "defaults nosave"
+  ],
+  "status": "success",
+  "phase": "cos-hit",
+  "createdAt": "2026-04-06T13:54:08.206Z",
+  "updatedAt": "2026-04-06T14:14:06.707Z"
+}
