@@ -1,0 +1,22 @@
+{
+  "target": "LEGACYF411",
+  "release": "2025.9.8",
+  "releaseType": "Stable",
+  "releaseUrl": "https://bf.hs-fpv.com/releases/2025.9.8",
+  "date": "2025-12-01",
+  "mcu": "STM32F411",
+  "manufacturer": "HS-FPV",
+  "cloudBuild": false,
+  "configuration": [
+    "defaults nosave",
+    "feature OSD",
+    "feature TELEMETRY",
+    "set name = HS-FPV"
+  ],
+  "artifact": {
+    "fileName": "LEGACYF411_2025.9.8.hex",
+    "objectKey": "/firmware/stable/2025.9.8/LEGACYF411/firmware.hex"
+  },
+  "hot": false,
+  "channel": "stable"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "BETAFPVF405",
+  "releases": [
+    {
+      "release": "2025.12.2",
+      "type": "Stable",
+      "label": "Stable"
+    }
+  ]
+}

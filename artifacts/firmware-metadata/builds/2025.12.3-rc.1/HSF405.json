@@ -1,0 +1,22 @@
+{
+  "target": "HSF405",
+  "release": "2025.12.3-rc.1",
+  "releaseType": "ReleaseCandidate",
+  "releaseUrl": "https://bf.hs-fpv.com/releases/2025.12.3-rc.1",
+  "date": "2026-04-06",
+  "mcu": "STM32F405",
+  "manufacturer": "HS-FPV",
+  "cloudBuild": true,
+  "configuration": [
+    "defaults nosave",
+    "feature OSD",
+    "feature TELEMETRY",
+    "set name = HS-FPV"
+  ],
+  "artifact": {
+    "fileName": "HSF405_2025.12.3-rc.1.hex",
+    "objectKey": "/firmware/rc/2025.12.3-rc.1/HSF405/firmware.hex"
+  },
+  "hot": true,
+  "channel": "rc"
+}

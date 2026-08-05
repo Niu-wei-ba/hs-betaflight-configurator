@@ -1,0 +1,10 @@
+{
+  "target": "LEGACYF411",
+  "releases": [
+    {
+      "release": "2025.9.8",
+      "type": "Stable",
+      "label": "Stable"
+    }
+  ]
+}

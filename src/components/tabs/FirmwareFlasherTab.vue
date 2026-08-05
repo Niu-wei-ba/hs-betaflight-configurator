@@ -3,7 +3,6 @@
         <div class="content_wrapper">
             <div class="tab_title">{{ $t("tabFirmwareFlasher") }}</div>
             <WikiButton docUrl="firmware_flasher" />
-            <SponsorTile ref="sponsorTile" sponsor-type="flash" />
 
             <!-- Sub-tab navigation -->
             <div class="subtab-nav">
@@ -174,7 +173,6 @@ import { EventBus } from "../eventBus";
 import STM32 from "../../js/protocols/webstm32";
 import { ispConnected } from "../../js/utils/connection.js";
 import FC from "../../js/fc";
-import SponsorTile from "../sponsor/SponsorTile.vue";
 import FlasherBoardBuildTab from "./firmware-flasher/FlasherBoardBuildTab.vue";
 import FlasherFlashTab from "./firmware-flasher/FlasherFlashTab.vue";
 import { applyExpertMode } from "../../js/utils/applyExpertMode";
@@ -187,7 +185,6 @@ export default defineComponent({
     components: {
         BaseTab,
         WikiButton,
-        SponsorTile,
         FlasherBoardBuildTab,
         FlasherFlashTab,
     },
@@ -277,9 +274,6 @@ export default defineComponent({
             lastFlashResultClass: "",
         });
 
-        // Sponsor component ref
-        const sponsorTile = ref(null);
-
         // Verify board dialog refs
         const verifyBoardDialog = ref(null);
         const verifyBoardContent = ref(null);
@@ -321,18 +315,10 @@ export default defineComponent({
 
         const enableLoadRemoteFileButton = (enabled) => {
             state.loadRemoteButtonDisabled = !enabled;
-            // Resume sponsor when load buttons are re-enabled
-            if (enabled) {
-                sponsorTile.value?.resume();
-            }
         };
 
         const enableLoadFileButton = (enabled) => {
             state.loadFileButtonDisabled = !enabled;
-            // Resume sponsor when load buttons are re-enabled
-            if (enabled) {
-                sponsorTile.value?.resume();
-            }
         };
 
         const enableDfuExitButton = (enabled) => {
@@ -417,8 +403,6 @@ export default defineComponent({
             } else {
                 flashingMessage($t("firmwareFlasherFirmwareNotLoaded"), FLASH_MESSAGE_TYPES.NEUTRAL);
             }
-
-            sponsorTile.value?.resume();
         };
 
         const preservePreFlashingState = () => {
@@ -1125,9 +1109,6 @@ export default defineComponent({
         const startFlashing = async () => {
             const selectedBoardTarget = boardSelection.state.selectedBoard;
 
-            // Pause sponsor during flashing
-            sponsorTile.value?.pause();
-
             await firmwareFlashing.startFlashing({
                 config: state.config,
                 clearBoardConfig,
@@ -1813,8 +1794,6 @@ export default defineComponent({
             cloudBuild,
             boardSelection,
             FLASH_MESSAGE_TYPES,
-            // Template refs
-            sponsorTile,
             verifyBoardDialog,
             verifyBoardContent,
             unstableFirmwareDialog,

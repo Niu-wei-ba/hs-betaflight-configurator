@@ -1,0 +1,956 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>视频教程 JSON 管理器（本地）</title>
+        <style>
+            :root {
+                color-scheme: light;
+                font-family:
+                    Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+                color: #142342;
+                background: #eef3fc;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                min-width: 1024px;
+                min-height: 100vh;
+                margin: 0;
+                background: radial-gradient(circle at top right, #dceaff 0, transparent 34rem), #eef3fc;
+            }
+
+            button,
+            input,
+            select,
+            textarea {
+                font: inherit;
+            }
+
+            button {
+                border: 0;
+                border-radius: 8px;
+                background: #c35908;
+                color: #fff;
+                cursor: pointer;
+                font-weight: 700;
+            }
+
+            button:hover:not(:disabled) {
+                background: #9f4807;
+            }
+
+            button:disabled,
+            input:disabled,
+            select:disabled,
+            textarea:disabled {
+                cursor: not-allowed;
+                opacity: 0.52;
+            }
+
+            input,
+            select,
+            textarea {
+                width: 100%;
+                min-height: 38px;
+                padding: 8px 10px;
+                border: 1px solid #c7d2e3;
+                border-radius: 7px;
+                background: #fff;
+                color: #142342;
+            }
+
+            textarea {
+                min-height: 96px;
+                resize: vertical;
+            }
+
+            input:focus,
+            select:focus,
+            textarea:focus,
+            button:focus-visible {
+                border-color: #c35908;
+                outline: 3px solid rgba(195, 89, 8, 0.18);
+                outline-offset: 1px;
+            }
+
+            .page-header {
+                display: flex;
+                gap: 24px;
+                align-items: center;
+                justify-content: space-between;
+                padding: 28px 36px;
+                border-bottom: 1px solid rgba(20, 35, 66, 0.12);
+                background: rgba(255, 255, 255, 0.92);
+            }
+
+            .page-header h1 {
+                margin: 0;
+                font-size: 24px;
+            }
+
+            .page-header p {
+                margin: 6px 0 0;
+                color: #58667f;
+                font-size: 14px;
+            }
+
+            .header-actions {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+
+            .header-actions button {
+                min-height: 40px;
+                padding: 0 16px;
+            }
+
+            .header-actions .secondary,
+            .secondary {
+                border: 1px solid #b8c6dc;
+                background: #fff;
+                color: #233653;
+            }
+
+            .header-actions .secondary:hover:not(:disabled),
+            .secondary:hover:not(:disabled) {
+                background: #f4f7fc;
+            }
+
+            .app {
+                display: grid;
+                grid-template-columns: minmax(390px, 0.95fr) minmax(510px, 1.35fr);
+                gap: 20px;
+                max-width: 1500px;
+                padding: 24px 36px 40px;
+                margin: 0 auto;
+            }
+
+            .panel {
+                overflow: hidden;
+                border: 1px solid rgba(20, 35, 66, 0.12);
+                border-radius: 14px;
+                background: #fff;
+                box-shadow: 0 12px 36px rgba(28, 55, 99, 0.08);
+            }
+
+            .panel-heading {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                justify-content: space-between;
+                padding: 18px 20px;
+                border-bottom: 1px solid #e2e9f4;
+            }
+
+            .panel-heading h2 {
+                margin: 0;
+                font-size: 17px;
+            }
+
+            .panel-heading span {
+                color: #64738d;
+                font-size: 13px;
+            }
+
+            .catalog-meta {
+                padding: 12px 20px;
+                border-bottom: 1px solid #e2e9f4;
+                background: #f8faff;
+                color: #52627c;
+                font-size: 13px;
+            }
+
+            .toolbar {
+                display: grid;
+                grid-template-columns: 1fr 150px auto;
+                gap: 8px;
+                padding: 16px 20px;
+                border-bottom: 1px solid #e2e9f4;
+            }
+
+            .toolbar button {
+                min-width: 76px;
+            }
+
+            .video-list {
+                min-height: 420px;
+                max-height: calc(100vh - 280px);
+                padding: 10px;
+                overflow: auto;
+            }
+
+            .video-row {
+                display: block;
+                width: 100%;
+                padding: 13px 12px;
+                margin: 0;
+                border: 1px solid transparent;
+                border-radius: 10px;
+                background: transparent;
+                color: #142342;
+                text-align: left;
+            }
+
+            .video-row:hover:not(:disabled) {
+                background: #f3f7fd;
+            }
+
+            .video-row.is-selected {
+                border-color: #e5a56f;
+                background: #fff3e8;
+            }
+
+            .video-row strong,
+            .video-row small,
+            .video-row span {
+                display: block;
+            }
+
+            .video-row strong {
+                overflow: hidden;
+                font-size: 14px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .video-row small {
+                margin-top: 4px;
+                color: #63728b;
+                font-size: 12px;
+            }
+
+            .video-row .row-tags {
+                display: flex;
+                gap: 5px;
+                align-items: center;
+                margin-top: 8px;
+            }
+
+            .badge {
+                display: inline-block;
+                padding: 2px 6px;
+                border-radius: 999px;
+                background: #eaf0f9;
+                color: #40536f;
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            .badge.platform-bilibili {
+                background: #ffe2eb;
+                color: #a22b58;
+            }
+
+            .badge.platform-douyin {
+                background: #e5f4ff;
+                color: #176188;
+            }
+
+            .empty {
+                display: grid;
+                min-height: 260px;
+                padding: 28px;
+                place-items: center;
+                color: #64738d;
+                text-align: center;
+            }
+
+            .editor-body {
+                padding: 20px;
+            }
+
+            .editor-empty {
+                display: grid;
+                min-height: 510px;
+                place-items: center;
+                color: #64738d;
+                text-align: center;
+            }
+
+            .form-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px 16px;
+            }
+
+            .field {
+                display: grid;
+                gap: 6px;
+            }
+
+            .field.span-2 {
+                grid-column: span 2;
+            }
+
+            .field label {
+                color: #41536f;
+                font-size: 12px;
+                font-weight: 800;
+            }
+
+            .field label em {
+                color: #c35908;
+                font-style: normal;
+            }
+
+            .hint {
+                margin: -1px 0 0;
+                color: #71809a;
+                font-size: 11px;
+                line-height: 1.45;
+            }
+
+            .editor-footer {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                justify-content: space-between;
+                padding: 16px 20px;
+                border-top: 1px solid #e2e9f4;
+                background: #fbfcff;
+            }
+
+            .editor-footer .danger {
+                border: 1px solid #e7b2b2;
+                background: #fff;
+                color: #b32e2e;
+            }
+
+            .editor-footer .danger:hover:not(:disabled) {
+                background: #fff0f0;
+            }
+
+            .status {
+                max-width: 1500px;
+                min-height: 46px;
+                padding: 0 36px 26px;
+                margin: 0 auto;
+            }
+
+            .status-message {
+                display: none;
+                padding: 12px 14px;
+                border: 1px solid #d5deeb;
+                border-radius: 10px;
+                background: #fff;
+                color: #41536f;
+                font-size: 13px;
+            }
+
+            .status-message.is-visible {
+                display: block;
+            }
+
+            .status-message[data-kind="success"] {
+                border-color: #a9d5b2;
+                background: #f1fbf3;
+                color: #216434;
+            }
+
+            .status-message[data-kind="error"] {
+                border-color: #f0b4b4;
+                background: #fff4f4;
+                color: #922d2d;
+            }
+
+            .status-message ul {
+                padding-left: 20px;
+                margin: 7px 0 0;
+            }
+
+            .dirty-indicator {
+                color: #b3530a;
+                font-weight: 800;
+            }
+
+            .support-warning {
+                padding: 14px 36px;
+                border-bottom: 1px solid #f0cf9d;
+                background: #fff5e5;
+                color: #804707;
+                font-size: 14px;
+            }
+
+            .support-warning[hidden] {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <header class="page-header">
+            <div>
+                <h1>视频教程 JSON 管理器</h1>
+                <p>仅本地使用：选择 <code>src/data/video-tutorials.json</code> 后进行增删改查，并原地保存。</p>
+            </div>
+            <div class="header-actions">
+                <button id="open-file" type="button">选择 JSON 文件</button>
+                <button id="save-file" type="button" class="secondary" disabled>保存到原文件</button>
+            </div>
+        </header>
+
+        <p id="support-warning" class="support-warning" hidden>
+            当前浏览器不支持本地文件原地保存。请在 Chrome/Chromium 中通过 localhost 打开本页。
+        </p>
+
+        <main class="app">
+            <section class="panel" aria-labelledby="video-list-title">
+                <div class="panel-heading">
+                    <h2 id="video-list-title">视频列表</h2>
+                    <span id="video-count">未加载目录</span>
+                </div>
+                <div id="catalog-meta" class="catalog-meta">请选择 JSON 文件开始管理。</div>
+                <div class="toolbar">
+                    <input id="search" type="search" placeholder="搜索标题、简介、标签" disabled />
+                    <select id="category-filter" disabled>
+                        <option value="">全部分类</option>
+                    </select>
+                    <button id="add-video" type="button" disabled>新增视频</button>
+                </div>
+                <div id="video-list" class="video-list" aria-live="polite"></div>
+            </section>
+
+            <section class="panel" aria-labelledby="editor-title">
+                <div class="panel-heading">
+                    <h2 id="editor-title">视频信息</h2>
+                    <span id="editor-state">尚未选择视频</span>
+                </div>
+                <div id="editor-empty" class="editor-empty">选择左侧视频，或新建一个视频条目。</div>
+                <form id="video-form" class="editor-body" hidden novalidate>
+                    <div class="form-grid">
+                        <div class="field span-2">
+                            <label for="field-id"><em>*</em> 唯一 ID</label>
+                            <input id="field-id" data-field="id" autocomplete="off" />
+                            <p class="hint">新增视频会自动生成；可手动修改。保存时必须保持全局唯一。</p>
+                        </div>
+                        <div class="field">
+                            <label for="field-category"><em>*</em> 分类</label>
+                            <select id="field-category" data-field="categoryId"></select>
+                        </div>
+                        <div class="field">
+                            <label for="field-platform"><em>*</em> 平台</label>
+                            <select id="field-platform" data-field="platform">
+                                <option value="bilibili">B 站</option>
+                                <option value="douyin">抖音</option>
+                            </select>
+                        </div>
+                        <div class="field span-2">
+                            <label for="field-title"><em>*</em> 标题</label>
+                            <input id="field-title" data-field="title" />
+                        </div>
+                        <div class="field span-2">
+                            <label for="field-description">简介</label>
+                            <textarea id="field-description" data-field="description"></textarea>
+                        </div>
+                        <div class="field span-2">
+                            <label for="field-tags">标签</label>
+                            <input id="field-tags" data-field="tags" placeholder="入门, 安装, Betaflight" />
+                            <p class="hint">使用中文或英文逗号分隔；保存时会转换为 JSON 字符串数组。</p>
+                        </div>
+                        <div class="field span-2">
+                            <label for="field-source-url"><em>*</em> 原视频链接</label>
+                            <input id="field-source-url" data-field="sourceUrl" type="url" placeholder="https://..." />
+                        </div>
+                        <div class="field span-2">
+                            <label for="field-embed-url">嵌入播放链接</label>
+                            <input id="field-embed-url" data-field="embedUrl" type="url" placeholder="https://..." />
+                        </div>
+                        <div class="field">
+                            <label for="field-thumbnail-url">封面链接</label>
+                            <input id="field-thumbnail-url" data-field="thumbnailUrl" type="url" placeholder="https://..." />
+                        </div>
+                        <div class="field">
+                            <label for="field-duration">时长</label>
+                            <input id="field-duration" data-field="duration" placeholder="例如 12:34" />
+                        </div>
+                    </div>
+                </form>
+                <div class="editor-footer">
+                    <span id="dirty-state">未保存的修改会标记在此处。</span>
+                    <button id="delete-video" type="button" class="danger" disabled>删除当前视频</button>
+                </div>
+            </section>
+        </main>
+
+        <div class="status"><div id="status-message" class="status-message" role="status" aria-live="polite"></div></div>
+
+        <script>
+            (() => {
+                const fixedCategories = [
+                    ["setup", "设置"],
+                    ["ports", "端口"],
+                    ["configuration", "配置"],
+                    ["power", "动力 & 电池"],
+                    ["failsafe", "失控保护"],
+                    ["presets", "预设"],
+                    ["pid-tuning", "PID 调校"],
+                    ["receiver", "接收机"],
+                    ["modes", "模式"],
+                    ["adjustments", "调整"],
+                    ["gps", "GPS"],
+                    ["motors", "电机"],
+                    ["osd", "OSD"],
+                    ["vtx", "视频发送"],
+                    ["led-strip", "LED 灯带"],
+                    ["sensors", "传感器"],
+                    ["logging", "线传日志"],
+                    ["blackbox", "黑盒子"],
+                    ["cli", "CLI"],
+                ];
+                const supportedPlatforms = new Map([
+                    ["bilibili", "B 站"],
+                    ["douyin", "抖音"],
+                ]);
+                const supportsFileSystemAccess = window.isSecureContext && "showOpenFilePicker" in window;
+                const state = {
+                    catalog: null,
+                    fileHandle: null,
+                    fileName: "",
+                    selectedVideo: null,
+                    autoIdVideo: null,
+                    dirty: false,
+                };
+
+                const elements = {
+                    openFile: document.querySelector("#open-file"),
+                    saveFile: document.querySelector("#save-file"),
+                    supportWarning: document.querySelector("#support-warning"),
+                    catalogMeta: document.querySelector("#catalog-meta"),
+                    videoCount: document.querySelector("#video-count"),
+                    search: document.querySelector("#search"),
+                    categoryFilter: document.querySelector("#category-filter"),
+                    addVideo: document.querySelector("#add-video"),
+                    videoList: document.querySelector("#video-list"),
+                    editorEmpty: document.querySelector("#editor-empty"),
+                    form: document.querySelector("#video-form"),
+                    editorState: document.querySelector("#editor-state"),
+                    deleteVideo: document.querySelector("#delete-video"),
+                    dirtyState: document.querySelector("#dirty-state"),
+                    status: document.querySelector("#status-message"),
+                    fields: Object.fromEntries(
+                        [...document.querySelectorAll("[data-field]")].map((field) => [field.dataset.field, field]),
+                    ),
+                };
+
+                function escapeHtml(value) {
+                    return String(value ?? "")
+                        .replaceAll("&", "&amp;")
+                        .replaceAll("<", "&lt;")
+                        .replaceAll(">", "&gt;")
+                        .replaceAll('"', "&quot;")
+                        .replaceAll("'", "&#039;");
+                }
+
+                function setStatus(message, kind = "info", details = []) {
+                    elements.status.className = "status-message is-visible";
+                    elements.status.dataset.kind = kind;
+                    elements.status.innerHTML = `${escapeHtml(message)}${
+                        details.length ? `<ul>${details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}</ul>` : ""
+                    }`;
+                }
+
+                function clearStatus() {
+                    elements.status.className = "status-message";
+                    elements.status.textContent = "";
+                    delete elements.status.dataset.kind;
+                }
+
+                function isHttpsUrl(value) {
+                    try {
+                        return new URL(value).protocol === "https:";
+                    } catch {
+                        return false;
+                    }
+                }
+
+                function normalizeOptionalText(value) {
+                    return String(value ?? "").trim();
+                }
+
+                function parseTags(value) {
+                    return [...new Set(String(value ?? "").split(/[，,]/).map((tag) => tag.trim()).filter(Boolean))];
+                }
+
+                function categoriesMatch(categories) {
+                    return (
+                        Array.isArray(categories) &&
+                        categories.length === fixedCategories.length &&
+                        categories.every((category, index) => {
+                            const [id, title] = fixedCategories[index];
+                            return category?.id === id && category?.title === title;
+                        })
+                    );
+                }
+
+                function validateVideo(video, index, seenIds) {
+                    const errors = [];
+                    const label = `第 ${index + 1} 条视频`;
+                    if (!video || typeof video !== "object" || Array.isArray(video)) {
+                        return [`${label} 不是有效对象。`];
+                    }
+                    if (!normalizeOptionalText(video.id)) {
+                        errors.push(`${label} 缺少唯一 ID。`);
+                    } else if (seenIds.has(video.id)) {
+                        errors.push(`${label} 的 ID “${video.id}”重复。`);
+                    } else {
+                        seenIds.add(video.id);
+                    }
+                    if (!fixedCategories.some(([id]) => id === video.categoryId)) {
+                        errors.push(`${label} 的分类无效。`);
+                    }
+                    if (!supportedPlatforms.has(video.platform)) {
+                        errors.push(`${label} 的平台必须是 B 站或抖音。`);
+                    }
+                    if (!normalizeOptionalText(video.title)) {
+                        errors.push(`${label} 缺少标题。`);
+                    }
+                    if (!isHttpsUrl(video.sourceUrl)) {
+                        errors.push(`${label} 的原视频链接必须是 HTTPS URL。`);
+                    }
+                    for (const [field, title] of [
+                        ["embedUrl", "嵌入播放链接"],
+                        ["thumbnailUrl", "封面链接"],
+                    ]) {
+                        if (video[field] && !isHttpsUrl(video[field])) {
+                            errors.push(`${label} 的${title}必须是 HTTPS URL。`);
+                        }
+                    }
+                    if (video.tags !== undefined && (!Array.isArray(video.tags) || video.tags.some((tag) => typeof tag !== "string"))) {
+                        errors.push(`${label} 的标签必须是字符串数组。`);
+                    }
+                    return errors;
+                }
+
+                function validateCatalog(catalog) {
+                    const errors = [];
+                    if (!catalog || typeof catalog !== "object" || Array.isArray(catalog)) {
+                        return ["JSON 根节点必须是对象。"];
+                    }
+                    if (!Number.isFinite(catalog.schemaVersion)) {
+                        errors.push("缺少有效的 schemaVersion。\n");
+                    }
+                    if (!categoriesMatch(catalog.categories)) {
+                        errors.push("分类必须与当前固定的 19 个教程分类及顺序完全一致。\n");
+                    }
+                    if (!Array.isArray(catalog.videos)) {
+                        errors.push("缺少 videos 数组。\n");
+                        return errors;
+                    }
+                    const seenIds = new Set();
+                    catalog.videos.forEach((video, index) => errors.push(...validateVideo(video, index, seenIds)));
+                    return errors;
+                }
+
+                function getCategoryTitle(categoryId) {
+                    return state.catalog?.categories.find((category) => category.id === categoryId)?.title ?? categoryId;
+                }
+
+                function getVisibleVideos() {
+                    if (!state.catalog) {
+                        return [];
+                    }
+                    const keyword = elements.search.value.trim().toLocaleLowerCase();
+                    const categoryId = elements.categoryFilter.value;
+                    return state.catalog.videos.filter((video) => {
+                        const searchable = [video.title, video.description, ...(video.tags ?? [])].join(" ").toLocaleLowerCase();
+                        return (!keyword || searchable.includes(keyword)) && (!categoryId || video.categoryId === categoryId);
+                    });
+                }
+
+                function renderCategoryOptions() {
+                    if (!state.catalog) {
+                        return;
+                    }
+                    const options = state.catalog.categories
+                        .map((category) => `<option value="${escapeHtml(category.id)}">${escapeHtml(category.title)}</option>`)
+                        .join("");
+                    const previousFilter = elements.categoryFilter.value;
+                    elements.categoryFilter.innerHTML = `<option value="">全部分类</option>${options}`;
+                    elements.fields.categoryId.innerHTML = options;
+                    elements.categoryFilter.value = previousFilter;
+                }
+
+                function renderVideoList() {
+                    const videos = getVisibleVideos();
+                    elements.videoCount.textContent = state.catalog ? `${state.catalog.videos.length} 个视频` : "未加载目录";
+                    if (!state.catalog) {
+                        elements.videoList.innerHTML = '<div class="empty">请选择 <code>video-tutorials.json</code> 文件。</div>';
+                        return;
+                    }
+                    if (!videos.length) {
+                        elements.videoList.innerHTML = '<div class="empty">没有找到匹配的视频。</div>';
+                        return;
+                    }
+                    elements.videoList.innerHTML = videos
+                        .map((video) => {
+                            const selected = video === state.selectedVideo ? " is-selected" : "";
+                            return `<button type="button" class="video-row${selected}" data-video-id="${escapeHtml(video.id)}">
+                                <strong>${escapeHtml(video.title || "未命名视频")}</strong>
+                                <small>${escapeHtml(getCategoryTitle(video.categoryId))} · ${escapeHtml(supportedPlatforms.get(video.platform) ?? video.platform)}</small>
+                                <span class="row-tags"><span class="badge platform-${escapeHtml(video.platform)}">${escapeHtml(
+                                    supportedPlatforms.get(video.platform) ?? video.platform,
+                                )}</span>${video.duration ? `<span class="badge">${escapeHtml(video.duration)}</span>` : ""}</span>
+                            </button>`;
+                        })
+                        .join("");
+                }
+
+                function renderEditor() {
+                    const video = state.selectedVideo;
+                    const enabled = Boolean(video);
+                    elements.editorEmpty.hidden = enabled;
+                    elements.form.hidden = !enabled;
+                    elements.deleteVideo.disabled = !enabled;
+                    elements.editorState.textContent = video ? (state.autoIdVideo === video ? "新增视频（ID 自动生成）" : "正在编辑") : "尚未选择视频";
+                    if (!video) {
+                        return;
+                    }
+                    elements.fields.id.value = video.id ?? "";
+                    elements.fields.categoryId.value = video.categoryId ?? "";
+                    elements.fields.platform.value = video.platform ?? "bilibili";
+                    elements.fields.title.value = video.title ?? "";
+                    elements.fields.description.value = video.description ?? "";
+                    elements.fields.tags.value = (video.tags ?? []).join(", ");
+                    elements.fields.sourceUrl.value = video.sourceUrl ?? "";
+                    elements.fields.embedUrl.value = video.embedUrl ?? "";
+                    elements.fields.thumbnailUrl.value = video.thumbnailUrl ?? "";
+                    elements.fields.duration.value = video.duration ?? "";
+                }
+
+                function renderMeta() {
+                    const loaded = Boolean(state.catalog);
+                    elements.search.disabled = !loaded;
+                    elements.categoryFilter.disabled = !loaded;
+                    elements.addVideo.disabled = !loaded;
+                    elements.saveFile.disabled = !loaded || !state.dirty;
+                    elements.catalogMeta.innerHTML = loaded
+                        ? `已打开：<strong>${escapeHtml(state.fileName)}</strong> · schemaVersion ${escapeHtml(state.catalog.schemaVersion)} · ${
+                              state.dirty ? '<span class="dirty-indicator">存在未保存修改</span>' : "已保存"
+                          }`
+                        : "请选择 JSON 文件开始管理。";
+                    elements.dirtyState.innerHTML = loaded
+                        ? state.dirty
+                            ? '<span class="dirty-indicator">存在未保存修改，请点击“保存到原文件”。</span>'
+                            : "当前内容已保存。"
+                        : "未选择目录文件。";
+                }
+
+                function render() {
+                    renderMeta();
+                    renderVideoList();
+                    renderEditor();
+                }
+
+                function markDirty() {
+                    state.dirty = true;
+                    renderMeta();
+                }
+
+                function slugPart(value) {
+                    const slug = String(value ?? "")
+                        .toLocaleLowerCase()
+                        .normalize("NFKD")
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/^-+|-+$/g, "");
+                    return slug || "video";
+                }
+
+                function makeUniqueId(platform, title, currentVideo = null) {
+                    const base = `${platform}-${slugPart(title)}`;
+                    let candidate = base;
+                    let suffix = 2;
+                    while (state.catalog.videos.some((video) => video !== currentVideo && video.id === candidate)) {
+                        candidate = `${base}-${suffix}`;
+                        suffix += 1;
+                    }
+                    return candidate;
+                }
+
+                function selectVideo(video) {
+                    state.selectedVideo = video;
+                    state.autoIdVideo = null;
+                    render();
+                }
+
+                function addVideo() {
+                    if (!state.catalog) {
+                        return;
+                    }
+                    const video = {
+                        id: makeUniqueId("bilibili", "新视频"),
+                        categoryId: state.catalog.categories[0].id,
+                        platform: "bilibili",
+                        title: "新视频",
+                        description: "",
+                        tags: [],
+                        sourceUrl: "",
+                    };
+                    state.catalog.videos.push(video);
+                    state.selectedVideo = video;
+                    state.autoIdVideo = video;
+                    markDirty();
+                    render();
+                    elements.fields.title.focus();
+                    elements.fields.title.select();
+                }
+
+                function deleteSelectedVideo() {
+                    const video = state.selectedVideo;
+                    if (!video || !state.catalog) {
+                        return;
+                    }
+                    if (!window.confirm(`确认删除“${video.title || video.id}”吗？此操作保存后才会写入文件。`)) {
+                        return;
+                    }
+                    state.catalog.videos.splice(state.catalog.videos.indexOf(video), 1);
+                    state.selectedVideo = null;
+                    state.autoIdVideo = null;
+                    markDirty();
+                    render();
+                    setStatus("已从当前目录中删除该视频；请点击“保存到原文件”写入磁盘。", "info");
+                }
+
+                function updateSelectedVideo(field, value) {
+                    const video = state.selectedVideo;
+                    if (!video) {
+                        return;
+                    }
+                    if (field === "tags") {
+                        video.tags = parseTags(value);
+                    } else if (["description", "embedUrl", "thumbnailUrl", "duration"].includes(field)) {
+                        const normalized = normalizeOptionalText(value);
+                        if (normalized) {
+                            video[field] = normalized;
+                        } else {
+                            delete video[field];
+                        }
+                    } else {
+                        video[field] = value;
+                    }
+                    if (field === "id") {
+                        state.autoIdVideo = null;
+                    } else if ((field === "title" || field === "platform") && state.autoIdVideo === video) {
+                        video.id = makeUniqueId(video.platform, video.title, video);
+                        elements.fields.id.value = video.id;
+                    }
+                    markDirty();
+                    renderVideoList();
+                }
+
+                async function ensureReadWritePermission(handle) {
+                    if (!handle.queryPermission || !handle.requestPermission) {
+                        return true;
+                    }
+                    const options = { mode: "readwrite" };
+                    let permission = await handle.queryPermission(options);
+                    if (permission !== "granted") {
+                        permission = await handle.requestPermission(options);
+                    }
+                    return permission === "granted";
+                }
+
+                async function openCatalog() {
+                    if (!supportsFileSystemAccess) {
+                        setStatus("当前浏览器不支持本地文件选择与原地保存。", "error");
+                        return;
+                    }
+                    if (state.dirty && !window.confirm("当前目录有未保存修改。选择新文件会放弃这些修改，是否继续？")) {
+                        return;
+                    }
+                    try {
+                        const [handle] = await window.showOpenFilePicker({
+                            multiple: false,
+                            types: [{ description: "JSON 文件", accept: { "application/json": [".json"] } }],
+                        });
+                        const file = await handle.getFile();
+                        const catalog = JSON.parse(await file.text());
+                        const errors = validateCatalog(catalog);
+                        if (errors.length) {
+                            setStatus("该文件不是可编辑的视频教程目录，原文件未被修改。", "error", errors);
+                            return;
+                        }
+                        state.catalog = catalog;
+                        state.fileHandle = handle;
+                        state.fileName = file.name;
+                        state.selectedVideo = null;
+                        state.autoIdVideo = null;
+                        state.dirty = false;
+                        elements.search.value = "";
+                        elements.categoryFilter.value = "";
+                        renderCategoryOptions();
+                        render();
+                        clearStatus();
+                        setStatus("已加载目录。编辑完成后点击“保存到原文件”。", "success");
+                    } catch (error) {
+                        if (error?.name !== "AbortError") {
+                            setStatus(`读取 JSON 失败：${error?.message ?? error}`, "error");
+                        }
+                    }
+                }
+
+                async function saveCatalog() {
+                    if (!state.catalog || !state.fileHandle) {
+                        return;
+                    }
+                    const errors = validateCatalog(state.catalog);
+                    if (errors.length) {
+                        setStatus("目录校验失败，未写入原文件。", "error", errors);
+                        return;
+                    }
+                    try {
+                        if (!(await ensureReadWritePermission(state.fileHandle))) {
+                            setStatus("没有获得该文件的写入权限，未写入原文件。", "error");
+                            return;
+                        }
+                        const writable = await state.fileHandle.createWritable();
+                        await writable.write(`${JSON.stringify(state.catalog, null, 4)}\n`);
+                        await writable.close();
+                        state.dirty = false;
+                        renderMeta();
+                        setStatus("已原地保存 video-tutorials.json。", "success");
+                    } catch (error) {
+                        setStatus(`保存失败，原文件可能未被修改：${error?.message ?? error}`, "error");
+                    }
+                }
+
+                elements.openFile.addEventListener("click", openCatalog);
+                elements.saveFile.addEventListener("click", saveCatalog);
+                elements.addVideo.addEventListener("click", addVideo);
+                elements.deleteVideo.addEventListener("click", deleteSelectedVideo);
+                elements.search.addEventListener("input", renderVideoList);
+                elements.categoryFilter.addEventListener("change", renderVideoList);
+                elements.videoList.addEventListener("click", (event) => {
+                    const button = event.target.closest("[data-video-id]");
+                    if (!button || !state.catalog) {
+                        return;
+                    }
+                    const video = state.catalog.videos.find((item) => item.id === button.dataset.videoId);
+                    if (video) {
+                        selectVideo(video);
+                    }
+                });
+                Object.entries(elements.fields).forEach(([field, element]) => {
+                    element.addEventListener("input", () => updateSelectedVideo(field, element.value));
+                    element.addEventListener("change", () => updateSelectedVideo(field, element.value));
+                });
+                window.addEventListener("beforeunload", (event) => {
+                    if (state.dirty) {
+                        event.preventDefault();
+                        event.returnValue = "";
+                    }
+                });
+
+                if (!supportsFileSystemAccess) {
+                    elements.supportWarning.hidden = false;
+                    elements.openFile.disabled = true;
+                }
+                render();
+            })();
+        </script>
+    </body>
+</html>
