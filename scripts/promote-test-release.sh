@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+RELEASE_BRANCH="${BFC_RELEASE_BRANCH:-feature/betaflight-2026.6.1}"
+CURRENT_BRANCH="$(git branch --show-current)"
+if [[ "$CURRENT_BRANCH" != "$RELEASE_BRANCH" ]]; then
+    echo "Refusing to promote from '$CURRENT_BRANCH'; expected release branch '$RELEASE_BRANCH'." >&2
+    exit 1
+fi
+
 if [[ $# -ne 1 ]]; then
     echo "Usage: BFC_PROMOTE_CONFIRM=bf.hs-fpv.com $0 <test-release-id>" >&2
     exit 1

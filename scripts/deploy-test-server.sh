@@ -4,6 +4,13 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+RELEASE_BRANCH="${BFC_RELEASE_BRANCH:-feature/betaflight-2026.6.1}"
+CURRENT_BRANCH="$(git branch --show-current)"
+if [[ "$CURRENT_BRANCH" != "$RELEASE_BRANCH" ]]; then
+    echo "Refusing to deploy from '$CURRENT_BRANCH'; expected release branch '$RELEASE_BRANCH'." >&2
+    exit 1
+fi
+
 SSH_HOST="${BFC_DEPLOY_SSH_HOST:-root@106.54.16.124}"
 SSH_KEY="${BFC_DEPLOY_SSH_KEY:-/Users/lihao/Downloads/ssh.pem}"
 SITE_URL="${BFC_TEST_SITE_URL:-https://betaflight.hs-fpv.com}"

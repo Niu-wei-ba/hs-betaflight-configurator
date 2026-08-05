@@ -7,6 +7,10 @@
 
 Both domains deliberately proxy same-origin `/api/`, `/healthz`, and `/presets/` requests to the same `bfc_firmware_api` listener at `127.0.0.1:4180`. The backend is host-neutral and must not be redeployed for a frontend-only test release.
 
+## Release branch
+
+The default branch for test and production releases is `feature/betaflight-2026.6.1`. Both release scripts reject another checked-out branch. When the designated release branch changes, use an explicit `BFC_RELEASE_BRANCH=<new-branch>` override for that release and update this policy before making it the new default.
+
 ## Deploy a test artifact
 
 Run this only from the worktree being tested:

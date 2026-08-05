@@ -421,19 +421,19 @@
         "description": "Navigation sidebar label for the Blackbox log viewer tab"
     },
     "autotuneImportTitle": {
-        "message": "黑匣子啁啾分析"
+        "message": "黑匣子扫频分析"
     },
     "autotuneImportButton": {
         "message": "导入黑匣子日志"
     },
     "autotuneImportDescription": {
-        "message": "导入一段带有 debug_mode = CHIRP 选项的黑匣子日志以分析频率响应并计算 PID 建议值。"
+        "message": "导入在 debug_mode = CHIRP 下录制的黑匣子日志，分析频率响应并生成 PID 建议。"
     },
     "autotuneSelectingFile": {
         "message": "正在选择文件……"
     },
     "autotuneAnalyzing": {
-        "message": "正在分析啁啾数据……"
+        "message": "正在分析扫频数据……"
     },
     "autotuneBandwidth": {
         "message": "带宽"
@@ -475,7 +475,7 @@
         "message": "在此文件中找不到有效的黑匣子日志。"
     },
     "autotuneNoChirpData": {
-        "message": "未找到啁啾数据。请确保用 debug_mode = CHIRP 录制日志，并激活啁啾模式。"
+        "message": "未找到扫频数据。请确保用 debug_mode = CHIRP 录制日志，并激活扫频模式。"
     },
     "autotuneSampleCount": {
         "message": "{{count}} 样本"
@@ -2965,7 +2965,7 @@
         "description": "Help text to CAMSTAB mode"
     },
     "auxiliaryHelpMode_CHIRP": {
-        "message": "启用「啁啾模式」",
+        "message": "启用「扫频模式」",
         "description": "Help text for CHIRP mode"
     },
     "auxiliaryHelpMode_FAILSAFE": {
@@ -3116,7 +3116,7 @@
     "auxiliaryModeName_CAMERACONTROL2": { "message": "相机控制 2" },
     "auxiliaryModeName_CAMERACONTROL3": { "message": "相机控制 3" },
     "auxiliaryModeName_CAMSTAB": { "message": "相机增稳" },
-    "auxiliaryModeName_CHIRP": { "message": "啁啾模式" },
+    "auxiliaryModeName_CHIRP": { "message": "扫频模式" },
     "auxiliaryModeName_FAILSAFE": { "message": "手动失控保护" },
     "auxiliaryModeName_FLIPOVERAFTERCRASH": { "message": "反乌龟模式" },
     "auxiliaryModeName_FPVANGLEMIX": { "message": "FPV 角度混控" },
