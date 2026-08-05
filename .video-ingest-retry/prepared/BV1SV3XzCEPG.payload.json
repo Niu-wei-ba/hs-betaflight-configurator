@@ -1,0 +1,201 @@
+{
+  "tutorialId": "bilibili-BV1SV3XzCEPG",
+  "video": {
+    "id": "bilibili-BV1SV3XzCEPG",
+    "bvid": "BV1SV3XzCEPG",
+    "title": "踏风 穿越机pid 个人经验分享（一）",
+    "description": "-",
+    "sourceUrl": "https://www.bilibili.com/video/BV1SV3XzCEPG/",
+    "embedUrl": "https://player.bilibili.com/player.html?isOutside=true&aid=114800113749103&bvid=BV1SV3XzCEPG&cid=30866672206&p=1&autoplay=0",
+    "durationSeconds": 62,
+    "thumbnailUrl": "https://i2.hdslb.com/bfs/archive/ccf03985d61148fbb6b5ae11d3418c495bf31d0e.jpg",
+    "authorName": "我有亿颗忘忧丹",
+    "authorAvatarUrl": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg",
+    "categories": [
+      "pid-tuning"
+    ],
+    "tags": [
+      "PID",
+      "P值",
+      "I值",
+      "D值",
+      "Betaflight"
+    ]
+  },
+  "subtitle": {
+    "raw": {
+      "source": "bilibili-video-info-mcp",
+      "language": "ai-zh",
+      "lines": [
+        {
+          "text": "好久没出教学分享了"
+        },
+        {
+          "text": "今天就说一说pad这三个字母啊"
+        },
+        {
+          "text": "就分享一期pad"
+        },
+        {
+          "text": "就我个人理解下的pad3个字母"
+        },
+        {
+          "text": "首先是I值是修正力度"
+        },
+        {
+          "text": "修正啊"
+        },
+        {
+          "text": "它主要是对飞行姿态进行一个修正"
+        },
+        {
+          "text": "低值呢是刹车的力度"
+        },
+        {
+          "text": "或者说是阻尼啊"
+        },
+        {
+          "text": "BF上面也写了是阻尼"
+        },
+        {
+          "text": "那么这个P值呢就比较有意思了"
+        },
+        {
+          "text": "它既是你的跟手程度"
+        },
+        {
+          "text": "也是响应力哎"
+        },
+        {
+          "text": "也是力度"
+        },
+        {
+          "text": "就是说你可以把它比作一个动力源啊"
+        },
+        {
+          "text": "动力有多猛"
+        },
+        {
+          "text": "P值就影响你的跟手程度"
+        },
+        {
+          "text": "然后I值就是飞控的自我修正力度"
+        },
+        {
+          "text": "然后D值就是这个阻尼"
+        },
+        {
+          "text": "比如说你这个飞机要右转"
+        },
+        {
+          "text": "要右横滚横滚到这里要停住"
+        },
+        {
+          "text": "那么低就提供了一个阻尼和刹车力度"
+        },
+        {
+          "text": "OK讲完"
+        }
+      ]
+    },
+    "calibrated": {
+      "language": "zh-CN",
+      "lines": [
+        {
+          "text": "好久没出教学分享了"
+        },
+        {
+          "text": "今天就说一说PID这三个字母啊"
+        },
+        {
+          "text": "就分享一期PID"
+        },
+        {
+          "text": "就我个人理解下的pad3个字母"
+        },
+        {
+          "text": "首先是I值是修正力度"
+        },
+        {
+          "text": "修正啊"
+        },
+        {
+          "text": "它主要是对飞行姿态进行一个修正"
+        },
+        {
+          "text": "低值呢是刹车的力度"
+        },
+        {
+          "text": "或者说是阻尼啊"
+        },
+        {
+          "text": "BF上面也写了是阻尼"
+        },
+        {
+          "text": "那么这个P值呢就比较有意思了"
+        },
+        {
+          "text": "它既是你的跟手程度"
+        },
+        {
+          "text": "也是响应力哎"
+        },
+        {
+          "text": "也是力度"
+        },
+        {
+          "text": "就是说你可以把它比作一个动力源啊"
+        },
+        {
+          "text": "动力有多猛"
+        },
+        {
+          "text": "P值就影响你的跟手程度"
+        },
+        {
+          "text": "然后I值就是飞控的自我修正力度"
+        },
+        {
+          "text": "然后D值就是这个阻尼"
+        },
+        {
+          "text": "比如说你这个飞机要右转"
+        },
+        {
+          "text": "要右横滚横滚到这里要停住"
+        },
+        {
+          "text": "那么低就提供了一个阻尼和刹车力度"
+        },
+        {
+          "text": "OK讲完"
+        }
+      ],
+      "version": 1
+    }
+  },
+  "segments": [],
+  "documentId": "bilibili-BV1SV3XzCEPG-document",
+  "document": {
+    "format": "markdown",
+    "title": "踏风 穿越机pid 个人经验分享（一）",
+    "markdown": "# 踏风 穿越机pid 个人经验分享（一）\n\n## 本教程讲什么\n用简短示例说明 P、I、D 三项在响应、姿态修正和阻尼中的基本作用。\n\n## 适用场景与前置条件\n- 已了解 PID 调整应通过安全试飞验证。\n\n## 操作步骤\n1. 理解 P 值与响应和跟手程度的关系。\n2. 理解 I 值用于持续姿态修正。\n3. 理解 D 值与阻尼及刹停力度的关系。\n4. 在后续实飞中按现象逐步验证这些判断。\n\n## Betaflight 参数与界面说明\n- 视频未提供通用固定 PID 数值。\n- 参数调整需要结合飞机实际表现。\n\n## 常见错误与注意事项\n- 仅理解概念不能替代试飞和温度检查。\n- 避免同时大幅修改多项 PID。\n\n## 术语表\n- P 值：比例控制项。\n- I 值：积分控制项。\n- D 值：微分控制项。\n\n## 视频章节\n### 操作与验证\n目标：按视频顺序完成设置或试飞验证。\n\n步骤：结合视频内容执行上述操作步骤。\n\n注意事项：没有可靠官方时间轴，本教程不提供猜测的章节时间。\n\n## 来源\n原视频：https://www.bilibili.com/video/BV1SV3XzCEPG/",
+    "version": 1,
+    "source": "calibrated-subtitle",
+    "chapters": []
+  },
+  "categories": [
+    "pid-tuning"
+  ],
+  "tags": [
+    "PID",
+    "P值",
+    "I值",
+    "D值",
+    "Betaflight"
+  ],
+  "classification": {
+    "needsReview": false,
+    "reviewReason": ""
+  }
+}

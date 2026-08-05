@@ -1,0 +1,74 @@
+[
+  {
+    "bvid": "BV17D4y1r7jL",
+    "categories": "setup,ports,configuration,power,failsafe,receiver,osd",
+    "tags": "Betaflight,初始设置,端口,电池,失控保护,PID",
+    "title": "【教程】BF地面站调参-使用-解答-教程"
+  },
+  {
+    "bvid": "BV1rPwyzLEEg",
+    "categories": "pid-tuning",
+    "tags": "Betaflight,PID,调参流程,试飞,电机温度",
+    "title": "踏风穿越机 pid 调参教程（三）基于 betaflight固件的穿越机 pid 调参一般流程"
+  },
+  {
+    "bvid": "BV1tf421o7hH",
+    "categories": "vtx,osd,presets",
+    "tags": "模拟图传,OSD,预设,Betaflight,视频发送",
+    "title": "【穿越机教程】模拟图传表预设使用"
+  },
+  {
+    "bvid": "BV1iZoVBgEJv",
+    "categories": "pid-tuning",
+    "tags": "PID,PID曲线,Betaflight,飞行表现,电机温度",
+    "title": "我的穿越机PID调参经验分享"
+  },
+  {
+    "bvid": "BV1gk4y1u7yv",
+    "categories": "gps,sensors,ports,configuration",
+    "tags": "罗盘,GPS,传感器,UART,Betaflight",
+    "title": "穿越机BF固件添加罗盘硬件"
+  },
+  {
+    "bvid": "BV17gopBPEkj",
+    "categories": "pid-tuning,blackbox",
+    "tags": "PID,室内试飞,黑盒子,电机温度,Betaflight",
+    "title": "踏风PID调参实操流程（二）室内版"
+  },
+  {
+    "bvid": "BV1Fuw2zDEy3",
+    "categories": "pid-tuning",
+    "tags": "PID,P值,I值,D值,Betaflight",
+    "title": "踏风穿越机 PID 教学（二）"
+  },
+  {
+    "bvid": "BV16K41127Bn",
+    "categories": "setup,configuration",
+    "tags": "Betaflight,固件升级,Configurator,初始调参",
+    "title": "BETAFLIGHT 10.9｜BF4.4固件调参教程"
+  },
+  {
+    "bvid": "BV1Mnw7zSEnF",
+    "categories": "pid-tuning",
+    "tags": "PID,Betaflight,调参基础,飞行手感",
+    "title": "踏风穿越机 pid 教学（一）"
+  },
+  {
+    "bvid": "BV1NKg4z8EqL",
+    "categories": "pid-tuning",
+    "tags": "PID,模拟器,P值,I值,D值,Dmax,前馈",
+    "title": "踏风 穿越机pid个人经验分享（四）"
+  },
+  {
+    "bvid": "BV1Tx31zpEnM",
+    "categories": "pid-tuning,osd",
+    "tags": "PID,OSD,遥控器,Betaflight",
+    "title": "踏风 穿越机pid个人经验分享（二）"
+  },
+  {
+    "bvid": "BV1SV3XzCEPG",
+    "categories": "pid-tuning",
+    "tags": "PID,P值,I值,D值,Betaflight",
+    "title": "踏风 穿越机pid 个人经验分享（一）"
+  }
+]

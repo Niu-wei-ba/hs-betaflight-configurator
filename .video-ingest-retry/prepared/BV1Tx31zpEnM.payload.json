@@ -1,0 +1,477 @@
+{
+  "tutorialId": "bilibili-BV1Tx31zpEnM",
+  "video": {
+    "id": "bilibili-BV1Tx31zpEnM",
+    "bvid": "BV1Tx31zpEnM",
+    "title": "踏风 穿越机pid个人经验分享（二）",
+    "description": "-",
+    "sourceUrl": "https://www.bilibili.com/video/BV1Tx31zpEnM/",
+    "embedUrl": "https://player.bilibili.com/player.html?isOutside=true&aid=114811086049047&bvid=BV1Tx31zpEnM&cid=30899899993&p=1&autoplay=0",
+    "durationSeconds": 158,
+    "thumbnailUrl": "https://i0.hdslb.com/bfs/archive/f78138a0fb94ad789b83b2967232d15d6a2ee02e.jpg",
+    "authorName": "我有亿颗忘忧丹",
+    "authorAvatarUrl": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg",
+    "categories": [
+      "pid-tuning",
+      "osd"
+    ],
+    "tags": [
+      "PID",
+      "OSD",
+      "遥控器",
+      "Betaflight"
+    ]
+  },
+  "subtitle": {
+    "raw": {
+      "source": "bilibili-video-info-mcp",
+      "language": "ai-zh",
+      "lines": [
+        {
+          "text": "好那么你想要学习我的PID经验的话"
+        },
+        {
+          "text": "你必须要会这一步进入OSD调参界面"
+        },
+        {
+          "text": "快速调节pad"
+        },
+        {
+          "text": "首先将油门摇杆往左边打"
+        },
+        {
+          "text": "俯仰摇杆向上面打"
+        },
+        {
+          "text": "这样子就进入了PIDE跳三页面"
+        },
+        {
+          "text": "再来一遍好"
+        },
+        {
+          "text": "咱们去看眼镜"
+        },
+        {
+          "text": "画面好的"
+        },
+        {
+          "text": "先把电池插上电"
+        },
+        {
+          "text": "飞机上上电"
+        },
+        {
+          "text": "不要学我啊"
+        },
+        {
+          "text": "嗯不要在家里带桨叶调船啊"
+        },
+        {
+          "text": "很危险"
+        },
+        {
+          "text": "咱们看一下画面有没有好的"
+        },
+        {
+          "text": "咱们进入这个pi d调参页面啊"
+        },
+        {
+          "text": "就选第一个啊"
+        },
+        {
+          "text": "向右摇杆啊"
+        },
+        {
+          "text": "俯仰轴摇杆向右啊"
+        },
+        {
+          "text": "然后选到第三个来"
+        },
+        {
+          "text": "咱们一个个说啊"
+        },
+        {
+          "text": "从这个低值开始"
+        },
+        {
+          "text": "这个是低值"
+        },
+        {
+          "text": "这个是pi增益"
+        },
+        {
+          "text": "这个是FF"
+        },
+        {
+          "text": "这个很明显是d max啊"
+        },
+        {
+          "text": "D max"
+        },
+        {
+          "text": "然后往下是I值"
+        },
+        {
+          "text": "一个I值"
+        },
+        {
+          "text": "这个是peach轴的两个参数啊"
+        },
+        {
+          "text": "PH轴肉轴低值PH轴"
+        },
+        {
+          "text": "肉轴pi增益FF啊"
+        },
+        {
+          "text": "然后最下面这个是组成数1.0啊"
+        },
+        {
+          "text": "咱们调好参数之后呢啊要保存的啊"
+        },
+        {
+          "text": "不保存它是不能够起作用的"
+        },
+        {
+          "text": "怎么保存呢"
+        },
+        {
+          "text": "呃这里有个break"
+        },
+        {
+          "text": "看到没有返回"
+        },
+        {
+          "text": "然后继续返回"
+        },
+        {
+          "text": "拉到最下面好有一个保存并退出"
+        },
+        {
+          "text": "看到没有"
+        },
+        {
+          "text": "最下面这里保存并退出啊"
+        },
+        {
+          "text": "不要选错了"
+        },
+        {
+          "text": "保存并退出"
+        },
+        {
+          "text": "OK咱们就完成了你的pad设置"
+        },
+        {
+          "text": "一般来说呢咱们先是设置啊"
+        },
+        {
+          "text": "你的P值"
+        },
+        {
+          "text": "先调好你整体的P值"
+        },
+        {
+          "text": "你找到你是你自己喜欢的响应速度"
+        },
+        {
+          "text": "你的跟手程度了"
+        },
+        {
+          "text": "你的那个力度感"
+        },
+        {
+          "text": "你自己找到了"
+        },
+        {
+          "text": "就以那个P值为一个大的基调进行调整啊"
+        },
+        {
+          "text": "你P值基本就不动了"
+        },
+        {
+          "text": "基本上就不动了啊"
+        },
+        {
+          "text": "然后就是调I值"
+        },
+        {
+          "text": "I值"
+        },
+        {
+          "text": "调完调低值I值"
+        },
+        {
+          "text": "你一般给个一点就够了"
+        },
+        {
+          "text": "I值不用太在意"
+        },
+        {
+          "text": "慢慢回调也可以的"
+        },
+        {
+          "text": "然后主要就是P值和P值"
+        },
+        {
+          "text": "你要找到一个pd平衡呃"
+        },
+        {
+          "text": "咱们下一期再具体说是怎么去去调啊"
+        },
+        {
+          "text": "Down down down"
+        },
+        {
+          "text": "Falling down"
+        },
+        {
+          "text": "Down down down"
+        },
+        {
+          "text": "But i feel only love world is falling down down down"
+        },
+        {
+          "text": "Falling down down down"
+        }
+      ]
+    },
+    "calibrated": {
+      "language": "zh-CN",
+      "lines": [
+        {
+          "text": "好那么你想要学习我的PID经验的话"
+        },
+        {
+          "text": "你必须要会这一步进入OSD调参界面"
+        },
+        {
+          "text": "快速调节PID"
+        },
+        {
+          "text": "首先将油门摇杆往左边打"
+        },
+        {
+          "text": "俯仰摇杆向上面打"
+        },
+        {
+          "text": "这样子就进入了PIDE跳三页面"
+        },
+        {
+          "text": "再来一遍好"
+        },
+        {
+          "text": "咱们去看眼镜"
+        },
+        {
+          "text": "画面好的"
+        },
+        {
+          "text": "先把电池插上电"
+        },
+        {
+          "text": "飞机上上电"
+        },
+        {
+          "text": "不要学我啊"
+        },
+        {
+          "text": "嗯不要在家里带桨叶调船啊"
+        },
+        {
+          "text": "很危险"
+        },
+        {
+          "text": "咱们看一下画面有没有好的"
+        },
+        {
+          "text": "咱们进入这个PID调参页面啊"
+        },
+        {
+          "text": "就选第一个啊"
+        },
+        {
+          "text": "向右摇杆啊"
+        },
+        {
+          "text": "俯仰轴摇杆向右啊"
+        },
+        {
+          "text": "然后选到第三个来"
+        },
+        {
+          "text": "咱们一个个说啊"
+        },
+        {
+          "text": "从这个低值开始"
+        },
+        {
+          "text": "这个是低值"
+        },
+        {
+          "text": "这个是pi增益"
+        },
+        {
+          "text": "这个是FF"
+        },
+        {
+          "text": "这个很明显是d max啊"
+        },
+        {
+          "text": "D max"
+        },
+        {
+          "text": "然后往下是I值"
+        },
+        {
+          "text": "一个I值"
+        },
+        {
+          "text": "这个是peach轴的两个参数啊"
+        },
+        {
+          "text": "PH轴肉轴低值PH轴"
+        },
+        {
+          "text": "肉轴pi增益FF啊"
+        },
+        {
+          "text": "然后最下面这个是组成数1.0啊"
+        },
+        {
+          "text": "咱们调好参数之后呢啊要保存的啊"
+        },
+        {
+          "text": "不保存它是不能够起作用的"
+        },
+        {
+          "text": "怎么保存呢"
+        },
+        {
+          "text": "呃这里有个break"
+        },
+        {
+          "text": "看到没有返回"
+        },
+        {
+          "text": "然后继续返回"
+        },
+        {
+          "text": "拉到最下面好有一个保存并退出"
+        },
+        {
+          "text": "看到没有"
+        },
+        {
+          "text": "最下面这里保存并退出啊"
+        },
+        {
+          "text": "不要选错了"
+        },
+        {
+          "text": "保存并退出"
+        },
+        {
+          "text": "OK咱们就完成了你的PID设置"
+        },
+        {
+          "text": "一般来说呢咱们先是设置啊"
+        },
+        {
+          "text": "你的P值"
+        },
+        {
+          "text": "先调好你整体的P值"
+        },
+        {
+          "text": "你找到你是你自己喜欢的响应速度"
+        },
+        {
+          "text": "你的跟手程度了"
+        },
+        {
+          "text": "你的那个力度感"
+        },
+        {
+          "text": "你自己找到了"
+        },
+        {
+          "text": "就以那个P值为一个大的基调进行调整啊"
+        },
+        {
+          "text": "你P值基本就不动了"
+        },
+        {
+          "text": "基本上就不动了啊"
+        },
+        {
+          "text": "然后就是调I值"
+        },
+        {
+          "text": "I值"
+        },
+        {
+          "text": "调完调低值I值"
+        },
+        {
+          "text": "你一般给个一点就够了"
+        },
+        {
+          "text": "I值不用太在意"
+        },
+        {
+          "text": "慢慢回调也可以的"
+        },
+        {
+          "text": "然后主要就是P值和P值"
+        },
+        {
+          "text": "你要找到一个pd平衡呃"
+        },
+        {
+          "text": "咱们下一期再具体说是怎么去去调啊"
+        },
+        {
+          "text": "Down down down"
+        },
+        {
+          "text": "Falling down"
+        },
+        {
+          "text": "Down down down"
+        },
+        {
+          "text": "But i feel only love world is falling down down down"
+        },
+        {
+          "text": "Falling down down down"
+        }
+      ],
+      "version": 1
+    }
+  },
+  "segments": [],
+  "documentId": "bilibili-BV1Tx31zpEnM-document",
+  "document": {
+    "format": "markdown",
+    "title": "踏风 穿越机pid个人经验分享（二）",
+    "markdown": "# 踏风 穿越机pid个人经验分享（二）\n\n## 本教程讲什么\n说明通过 OSD 调参页面进入 PID 设置、查看主要项目并保存退出的操作方法。\n\n## 适用场景与前置条件\n- OSD 已能在图传画面中显示。\n- 遥控器通道和摇杆方向已确认，操作时遵守断桨安全要求。\n\n## 操作步骤\n1. 按视频的摇杆组合进入 OSD PID 调参页面。\n2. 在菜单中查看 P、I、D、前馈和相关项目。\n3. 按视频说明完成所需调整。\n4. 返回菜单并选择保存退出，使设置生效。\n\n## Betaflight 参数与界面说明\n- 视频强调设置后必须执行保存退出。\n- 具体 PID 数值需要配合后续实飞教学判断。\n\n## 常见错误与注意事项\n- 带桨在室内上电和调参有风险，应按视频安全提醒操作。\n- 不要误选菜单项目或未保存就断电。\n\n## 术语表\n- OSD 菜单：通过图传画面显示的飞控菜单。\n- 前馈：与操纵输入响应相关的 PID 设置。\n\n## 视频章节\n### 操作与验证\n目标：按视频顺序完成设置或试飞验证。\n\n步骤：结合视频内容执行上述操作步骤。\n\n注意事项：没有可靠官方时间轴，本教程不提供猜测的章节时间。\n\n## 来源\n原视频：https://www.bilibili.com/video/BV1Tx31zpEnM/",
+    "version": 1,
+    "source": "calibrated-subtitle",
+    "chapters": []
+  },
+  "categories": [
+    "pid-tuning",
+    "osd"
+  ],
+  "tags": [
+    "PID",
+    "OSD",
+    "遥控器",
+    "Betaflight"
+  ],
+  "classification": {
+    "needsReview": false,
+    "reviewReason": ""
+  }
+}

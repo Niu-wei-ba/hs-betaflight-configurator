@@ -1,0 +1,1207 @@
+{
+  "bvid": "BV1SV3XzCEPG",
+  "aid": 114800113749103,
+  "videos": 1,
+  "tid": 21,
+  "tid_v2": 2104,
+  "tname": "",
+  "tname_v2": "",
+  "copyright": 1,
+  "pic": "http://i2.hdslb.com/bfs/archive/ccf03985d61148fbb6b5ae11d3418c495bf31d0e.jpg",
+  "title": "踏风 穿越机pid 个人经验分享（一）",
+  "pubdate": 1751710929,
+  "ctime": 1751710929,
+  "desc": "-",
+  "desc_v2": [
+    {
+      "raw_text": "-",
+      "type": 1,
+      "biz_id": 0
+    }
+  ],
+  "state": 0,
+  "duration": 62,
+  "rights": {
+    "bp": 0,
+    "elec": 0,
+    "download": 1,
+    "movie": 0,
+    "pay": 0,
+    "hd5": 1,
+    "no_reprint": 1,
+    "autoplay": 1,
+    "ugc_pay": 0,
+    "is_cooperation": 0,
+    "ugc_pay_preview": 0,
+    "no_background": 0,
+    "clean_mode": 0,
+    "is_stein_gate": 0,
+    "is_360": 0,
+    "no_share": 0,
+    "arc_pay": 0,
+    "free_watch": 0
+  },
+  "owner": {
+    "mid": 96176772,
+    "name": "我有亿颗忘忧丹",
+    "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+  },
+  "stat": {
+    "aid": 114800113749103,
+    "view": 1521,
+    "danmaku": 0,
+    "reply": 10,
+    "favorite": 100,
+    "coin": 13,
+    "share": 7,
+    "now_rank": 0,
+    "his_rank": 0,
+    "like": 54,
+    "dislike": 0,
+    "evaluation": "",
+    "vt": 0
+  },
+  "argue_info": {
+    "argue_msg": "",
+    "argue_type": 0,
+    "argue_link": ""
+  },
+  "dynamic": "",
+  "cid": 30866672206,
+  "dimension": {
+    "width": 1920,
+    "height": 1080,
+    "rotate": 0
+  },
+  "season_id": 7688601,
+  "premiere": null,
+  "teenage_mode": 0,
+  "is_chargeable_season": false,
+  "is_story": false,
+  "is_upower_exclusive": false,
+  "is_upower_play": false,
+  "is_upower_preview": false,
+  "enable_vt": 0,
+  "vt_display": "",
+  "is_upower_exclusive_with_qa": false,
+  "no_cache": false,
+  "pages": [
+    {
+      "cid": 30866672206,
+      "page": 1,
+      "from": "vupload",
+      "part": "studio_video_1751710535866.mp4",
+      "duration": 62,
+      "vid": "",
+      "weblink": "",
+      "dimension": {
+        "width": 1920,
+        "height": 1080,
+        "rotate": 0
+      },
+      "first_frame": "http://i1.hdslb.com/bfs/storyff/n250705sa3vn9yacrj3y1m26wh1rzuzx_firsti.jpg",
+      "ctime": 1751710929
+    }
+  ],
+  "subtitle": {
+    "allow_submit": false,
+    "list": []
+  },
+  "ugc_season": {
+    "id": 7688601,
+    "title": "踏风穿越机PID",
+    "cover": "https://s1.hdslb.com/bfs/templar/york-static/viedeo_material_default.png",
+    "mid": 96176772,
+    "intro": "非科班出身的我尝试用我自己的理解弄懂穿越机pid，你要一起吗？",
+    "sign_state": 0,
+    "attribute": 140,
+    "sections": [
+      {
+        "season_id": 7688601,
+        "id": 8535619,
+        "title": "正片",
+        "type": 1,
+        "episodes": [
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 182908959,
+            "aid": 114800113749103,
+            "cid": 30866672206,
+            "title": "踏风 穿越机pid 个人经验分享（一）",
+            "attribute": 0,
+            "arc": {
+              "aid": 114800113749103,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i2.hdslb.com/bfs/archive/ccf03985d61148fbb6b5ae11d3418c495bf31d0e.jpg",
+              "title": "踏风 穿越机pid 个人经验分享（一）",
+              "pubdate": 1751710929,
+              "ctime": 1751710929,
+              "desc": "",
+              "state": 0,
+              "duration": 62,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 114800113749103,
+                "view": 1521,
+                "danmaku": 0,
+                "reply": 10,
+                "fav": 100,
+                "coin": 13,
+                "share": 7,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 54,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1521
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 30866672206,
+              "page": 1,
+              "from": "vupload",
+              "part": "studio_video_1751710535866.mp4",
+              "duration": 62,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 1920,
+                "height": 1080,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1SV3XzCEPG",
+            "pages": [
+              {
+                "cid": 30866672206,
+                "page": 1,
+                "from": "vupload",
+                "part": "studio_video_1751710535866.mp4",
+                "duration": 62,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 1920,
+                  "height": 1080,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 182908958,
+            "aid": 114811086049047,
+            "cid": 30899899993,
+            "title": "踏风 穿越机pid个人经验分享（二）",
+            "attribute": 0,
+            "arc": {
+              "aid": 114811086049047,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i0.hdslb.com/bfs/archive/f78138a0fb94ad789b83b2967232d15d6a2ee02e.jpg",
+              "title": "踏风 穿越机pid个人经验分享（二）",
+              "pubdate": 1751878272,
+              "ctime": 1751878272,
+              "desc": "",
+              "state": 0,
+              "duration": 158,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 114811086049047,
+                "view": 1075,
+                "danmaku": 0,
+                "reply": 8,
+                "fav": 29,
+                "coin": 6,
+                "share": 1,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 23,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1075
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 30899899993,
+              "page": 1,
+              "from": "vupload",
+              "part": "studio_video_1751877746107.mp4",
+              "duration": 158,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 1920,
+                "height": 1080,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1Tx31zpEnM",
+            "pages": [
+              {
+                "cid": 30899899993,
+                "page": 1,
+                "from": "vupload",
+                "part": "studio_video_1751877746107.mp4",
+                "duration": 158,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 1920,
+                  "height": 1080,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 182908957,
+            "aid": 114848834783261,
+            "cid": 31024088022,
+            "title": "踏风穿越机pid个人经验分享（三）",
+            "attribute": 0,
+            "arc": {
+              "aid": 114848834783261,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i2.hdslb.com/bfs/archive/586a118edf4bd76f182f80ab796e79793170872c.jpg",
+              "title": "踏风穿越机pid个人经验分享（三）",
+              "pubdate": 1752454269,
+              "ctime": 1752454269,
+              "desc": "",
+              "state": 0,
+              "duration": 368,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 114848834783261,
+                "view": 1228,
+                "danmaku": 0,
+                "reply": 2,
+                "fav": 55,
+                "coin": 5,
+                "share": 4,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 39,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1228
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 31024088022,
+              "page": 1,
+              "from": "vupload",
+              "part": "studio_video_1752453853320.mp4",
+              "duration": 368,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 1080,
+                "height": 1920,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1hruezREGm",
+            "pages": [
+              {
+                "cid": 31024088022,
+                "page": 1,
+                "from": "vupload",
+                "part": "studio_video_1752453853320.mp4",
+                "duration": 368,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 1080,
+                  "height": 1920,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 182909880,
+            "aid": 114882322107464,
+            "cid": 31157257619,
+            "title": "踏风 穿越机pid个人经验分享（四）",
+            "attribute": 0,
+            "arc": {
+              "aid": 114882322107464,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i1.hdslb.com/bfs/archive/af29bad2bf5eed8b45e0861138825da19b3c3b9f.jpg",
+              "title": "踏风 穿越机pid个人经验分享（四）",
+              "pubdate": 1752965479,
+              "ctime": 1752965479,
+              "desc": "",
+              "state": 0,
+              "duration": 1456,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 114882322107464,
+                "view": 1380,
+                "danmaku": 0,
+                "reply": 4,
+                "fav": 73,
+                "coin": 9,
+                "share": 5,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 34,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1380
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 31157257619,
+              "page": 1,
+              "from": "vupload",
+              "part": "studio_video_1752964304056.mp4",
+              "duration": 1456,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 1920,
+                "height": 1080,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1NKg4z8EqL",
+            "pages": [
+              {
+                "cid": 31157257619,
+                "page": 1,
+                "from": "vupload",
+                "part": "studio_video_1752964304056.mp4",
+                "duration": 1456,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 1920,
+                  "height": 1080,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 182908812,
+            "aid": 116238508366675,
+            "cid": 36741515604,
+            "title": "踏风穿越机 pid 教学（一）",
+            "attribute": 0,
+            "arc": {
+              "aid": 116238508366675,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i0.hdslb.com/bfs/archive/c360b07fd5459ea3549dd52fe35a3204c73db814.jpg",
+              "title": "踏风穿越机 pid 教学（一）",
+              "pubdate": 1773659166,
+              "ctime": 1773659166,
+              "desc": "",
+              "state": 0,
+              "duration": 512,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 116238508366675,
+                "view": 1229,
+                "danmaku": 1,
+                "reply": 4,
+                "fav": 87,
+                "coin": 22,
+                "share": 1,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 41,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1229
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 36741515604,
+              "page": 1,
+              "from": "vupload",
+              "part": "踏风穿越机PID教学",
+              "duration": 512,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 2880,
+                "height": 2160,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1Mnw7zSEnF",
+            "pages": [
+              {
+                "cid": 36741515604,
+                "page": 1,
+                "from": "vupload",
+                "part": "踏风穿越机PID教学",
+                "duration": 512,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 2880,
+                  "height": 2160,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 182908811,
+            "aid": 116239582173050,
+            "cid": 36748462318,
+            "title": "踏风穿越机 PID 教学（二）",
+            "attribute": 0,
+            "arc": {
+              "aid": 116239582173050,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i1.hdslb.com/bfs/archive/7b4f685971d0a00ea3d013c5617bbc3ffb1095ae.jpg",
+              "title": "踏风穿越机 PID 教学（二）",
+              "pubdate": 1773675672,
+              "ctime": 1773675672,
+              "desc": "",
+              "state": 0,
+              "duration": 666,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 116239582173050,
+                "view": 648,
+                "danmaku": 0,
+                "reply": 5,
+                "fav": 29,
+                "coin": 6,
+                "share": 1,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 21,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 648
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 36748462318,
+              "page": 1,
+              "from": "vupload",
+              "part": "3月16日",
+              "duration": 666,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 2880,
+                "height": 2160,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1Fuw2zDEy3",
+            "pages": [
+              {
+                "cid": 36748462318,
+                "page": 1,
+                "from": "vupload",
+                "part": "3月16日",
+                "duration": 666,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 2880,
+                  "height": 2160,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 190629348,
+            "aid": 116447099490597,
+            "cid": 37714725142,
+            "title": "踏风PID调参实操流程（二）室内版",
+            "attribute": 0,
+            "arc": {
+              "aid": 116447099490597,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i0.hdslb.com/bfs/archive/1c10ed3180f5aac5f4586fbce384416bc29f481f.jpg",
+              "title": "踏风PID调参实操流程（二）室内版",
+              "pubdate": 1776842218,
+              "ctime": 1776842218,
+              "desc": "",
+              "state": 0,
+              "duration": 4343,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 116447099490597,
+                "view": 1259,
+                "danmaku": 1,
+                "reply": 11,
+                "fav": 97,
+                "coin": 14,
+                "share": 6,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 89,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1259
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 37714725142,
+              "page": 1,
+              "from": "vupload",
+              "part": "踏风PID调参实操流程（二）室内版",
+              "duration": 4343,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 1080,
+                "height": 1920,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV17gopBPEkj",
+            "pages": [
+              {
+                "cid": 37714725142,
+                "page": 1,
+                "from": "vupload",
+                "part": "踏风PID调参实操流程（二）室内版",
+                "duration": 4343,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 1080,
+                  "height": 1920,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 190629458,
+            "aid": 116397388600749,
+            "cid": 37476371538,
+            "title": "催更pid教学 先给大家伙道个歉",
+            "attribute": 0,
+            "arc": {
+              "aid": 116397388600749,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i1.hdslb.com/bfs/archive/58921fd277a2fa9db375d01fa48c0b5adf40db23.jpg",
+              "title": "催更pid教学 先给大家伙道个歉",
+              "pubdate": 1776083402,
+              "ctime": 1776083402,
+              "desc": "",
+              "state": 0,
+              "duration": 189,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 116397388600749,
+                "view": 1088,
+                "danmaku": 0,
+                "reply": 9,
+                "fav": 16,
+                "coin": 4,
+                "share": 0,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 40,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1088
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 37476371538,
+              "page": 1,
+              "from": "vupload",
+              "part": "lv_0_20260413102404",
+              "duration": 189,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 1080,
+                "height": 1920,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1oFQbBiE8S",
+            "pages": [
+              {
+                "cid": 37476371538,
+                "page": 1,
+                "from": "vupload",
+                "part": "lv_0_20260413102404",
+                "duration": 189,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 1080,
+                  "height": 1920,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 190629459,
+            "aid": 116255923114349,
+            "cid": 36817996067,
+            "title": "踏风穿越机 pid 调参教程（三）基于 betaflight固件的穿越机 pid 调参一般流程",
+            "attribute": 0,
+            "arc": {
+              "aid": 116255923114349,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i0.hdslb.com/bfs/archive/e839be4b1cbf7f7ca350b405d07296ffdc99b59a.jpg",
+              "title": "踏风穿越机 pid 调参教程（三）基于 betaflight固件的穿越机 pid 调参一般流程",
+              "pubdate": 1773924735,
+              "ctime": 1773924735,
+              "desc": "",
+              "state": 0,
+              "duration": 268,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 116255923114349,
+                "view": 1178,
+                "danmaku": 1,
+                "reply": 5,
+                "fav": 82,
+                "coin": 13,
+                "share": 6,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 36,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1178
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 36817996067,
+              "page": 1,
+              "from": "vupload",
+              "part": "lv_0_20260319202929",
+              "duration": 268,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 1920,
+                "height": 1080,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1rPwyzLEEg",
+            "pages": [
+              {
+                "cid": 36817996067,
+                "page": 1,
+                "from": "vupload",
+                "part": "lv_0_20260319202929",
+                "duration": 268,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 1920,
+                  "height": 1080,
+                  "rotate": 0
+                }
+              }
+            ]
+          },
+          {
+            "season_id": 7688601,
+            "section_id": 8535619,
+            "id": 191057422,
+            "aid": 116458927494167,
+            "cid": 37780327561,
+            "title": "我的穿越机PID调参经验分享",
+            "attribute": 0,
+            "arc": {
+              "aid": 116458927494167,
+              "videos": 0,
+              "type_id": 0,
+              "type_name": "",
+              "copyright": 0,
+              "pic": "http://i0.hdslb.com/bfs/archive/818bf7a6fa26f27d2beed9a99f7dd37c262eb4da.jpg",
+              "title": "我的穿越机PID调参经验分享",
+              "pubdate": 1777022561,
+              "ctime": 1777022561,
+              "desc": "",
+              "state": 0,
+              "duration": 581,
+              "rights": {
+                "bp": 0,
+                "elec": 0,
+                "download": 0,
+                "movie": 0,
+                "pay": 0,
+                "hd5": 0,
+                "no_reprint": 0,
+                "autoplay": 0,
+                "ugc_pay": 0,
+                "is_cooperation": 0,
+                "ugc_pay_preview": 0,
+                "arc_pay": 0,
+                "free_watch": 0
+              },
+              "author": {
+                "mid": 96176772,
+                "name": "我有亿颗忘忧丹",
+                "face": "https://i0.hdslb.com/bfs/face/362bdab26bbe28d05fa668c2a382ba94163db773.jpg"
+              },
+              "stat": {
+                "aid": 116458927494167,
+                "view": 1980,
+                "danmaku": 5,
+                "reply": 11,
+                "fav": 144,
+                "coin": 14,
+                "share": 8,
+                "now_rank": 0,
+                "his_rank": 0,
+                "like": 75,
+                "dislike": 0,
+                "evaluation": "",
+                "argue_msg": "",
+                "vt": 0,
+                "vv": 1980
+              },
+              "dynamic": "",
+              "dimension": {
+                "width": 0,
+                "height": 0,
+                "rotate": 0
+              },
+              "desc_v2": null,
+              "is_chargeable_season": false,
+              "is_blooper": false,
+              "enable_vt": 0,
+              "vt_display": "",
+              "type_id_v2": 0,
+              "type_name_v2": "",
+              "is_lesson_video": 0
+            },
+            "page": {
+              "cid": 37780327561,
+              "page": 1,
+              "from": "vupload",
+              "part": "我的穿越机PID调参经验分享",
+              "duration": 581,
+              "vid": "",
+              "weblink": "",
+              "dimension": {
+                "width": 1920,
+                "height": 1080,
+                "rotate": 0
+              }
+            },
+            "bvid": "BV1iZoVBgEJv",
+            "pages": [
+              {
+                "cid": 37780327561,
+                "page": 1,
+                "from": "vupload",
+                "part": "我的穿越机PID调参经验分享",
+                "duration": 581,
+                "vid": "",
+                "weblink": "",
+                "dimension": {
+                  "width": 1920,
+                  "height": 1080,
+                  "rotate": 0
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stat": {
+      "season_id": 7688601,
+      "view": 12586,
+      "danmaku": 8,
+      "reply": 69,
+      "fav": 712,
+      "coin": 106,
+      "share": 39,
+      "now_rank": 0,
+      "his_rank": 0,
+      "like": 452,
+      "vt": 0,
+      "vv": 0
+    },
+    "ep_count": 10,
+    "season_type": 1,
+    "is_pay_season": false,
+    "enable_vt": 0
+  },
+  "is_season_display": true,
+  "user_garb": {
+    "url_image_ani_cut": ""
+  },
+  "honor_reply": {},
+  "like_icon": "",
+  "need_jump_bv": false,
+  "disable_show_up_info": false,
+  "is_story_play": 1,
+  "is_view_self": false
+}
