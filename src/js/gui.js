@@ -22,6 +22,7 @@ class GuiControl {
 
         this.defaultAllowedTabsWhenDisconnected = [
             "landing",
+            "video_tutorials",
             "firmware_flasher",
             "preflight",
             "help",
@@ -51,6 +52,7 @@ class GuiControl {
             "receiver",
             "sensors",
             "blackbox_viewer",
+            "video_tutorials",
         ];
 
         this.defaultCloudBuildTabOptions = ["gps", "led_strip", "osd", "servos", "vtx", "flight_plan"];

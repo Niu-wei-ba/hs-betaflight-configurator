@@ -14,7 +14,10 @@
                     :aria-label="$t('openSidebarMenu')"
                     @click="isRevealed = !isRevealed"
                 />
-                <div class="mobile-topbar__logo" :title="logoTooltip" aria-hidden="true"></div>
+                <div class="mobile-topbar__logo" :title="logoTooltip">
+                    <img :src="hsLogoUrl" alt="" aria-hidden="true" />
+                    <span>花生FPV</span>
+                </div>
                 <div class="mobile-topbar__spacer" aria-hidden="true"></div>
             </div>
             <div id="tab-content-container">
@@ -37,6 +40,7 @@
                         ref="activeTabInstance"
                     />
                 </div>
+                <VideoTutorialSearchPanel />
             </div>
             <status-bar
                 :port-usage-down="PortUsage.port_usage_down"
@@ -49,6 +53,7 @@
                 :firmware-version="FC.CONFIG.flightControllerVersion"
                 :firmware-target="FC.CONFIG.hardwareName"
             ></status-bar>
+            <VideoTutorialFloatingPlayer />
             <div id="cache">
                 <div class="data-loading">
                     <p i18n="dataWaitingForData">Waiting for data ...</p>
@@ -65,6 +70,8 @@ import { useMediaQuery } from "@vueuse/core";
 import ConnectButton from "./components/device-picker/ConnectButton.vue";
 import GlobalDialogs from "./components/dialogs/GlobalDialogs.vue";
 import Sidebar from "./components/sidebar/Sidebar.vue";
+import VideoTutorialFloatingPlayer from "./components/VideoTutorialFloatingPlayer.vue";
+import VideoTutorialSearchPanel from "./components/VideoTutorialSearchPanel.vue";
 import FCModule from "./js/fc.js";
 import MSPModule from "./js/msp.js";
 import PortUsageModule from "./js/port_usage.js";
@@ -78,6 +85,7 @@ import {
     vueTabState,
 } from "./js/vue_tab_mounter.js";
 import { VueTabComponents } from "./js/vue_tab_registry.js";
+import hsLogoUrl from "./images/hs-logo.png";
 
 // Tests or unusual entry points may run without init.js; init.js overwrites this synchronously after its model exists.
 if (!window.vm) {
@@ -251,13 +259,18 @@ watch(
     flex: 1;
     min-width: 0;
     height: 2.5rem;
-    background-image: url(./images/bf_logo_white.svg);
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: auto 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 700;
 }
-.dark .mobile-topbar__logo {
-    background-image: url(./images/bf_logo_black.svg);
+.mobile-topbar__logo img {
+    width: 1.75rem;
+    height: 1.75rem;
+    object-fit: contain;
 }
 .mobile-topbar__spacer {
     width: 2.5rem;

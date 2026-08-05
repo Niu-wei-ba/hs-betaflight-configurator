@@ -428,6 +428,9 @@
     "tabLanding": {
         "message": "Welcome"
     },
+    "tabVideoTutorials": {
+        "message": "Video Tutorials"
+    },
     "tabPrivacyPolicy": {
         "message": "Privacy Policy"
     },

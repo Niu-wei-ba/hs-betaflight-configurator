@@ -3,7 +3,6 @@
         <div class="content_wrapper">
             <div class="tab_title">{{ $t("tabFirmwareFlasher") }}</div>
             <WikiButton docUrl="firmware_flasher" />
-            <SponsorTile ref="sponsorTile" sponsor-type="flash" />
 
             <!-- Sub-tab navigation -->
             <SubtabNav :items="subtabItems" v-model="activeFlasherStep" />
@@ -146,7 +145,6 @@ import { EventBus } from "../eventBus";
 import STM32 from "../../js/protocols/webstm32";
 import { ispConnected } from "../../js/utils/connection.js";
 import FC from "../../js/fc";
-import SponsorTile from "../sponsor/SponsorTile.vue";
 import FlasherBoardBuildTab from "./firmware-flasher/FlasherBoardBuildTab.vue";
 import FlasherFlashTab from "./firmware-flasher/FlasherFlashTab.vue";
 import SubtabNav from "../elements/SubtabNav.vue";
@@ -155,12 +153,37 @@ import { applyExpertMode } from "../../js/utils/applyExpertMode";
 // Module-scope ref so the active sub-tab persists across component remounts (tab switches).
 const activeFlasherStep = ref("board-build");
 
+const CHINESE_GENERAL_BUILD_OPTION_LABELS = {
+    USE_ACRO_TRAINER: "特技模式训练",
+    USE_AKK_SMARTAUDIO: "AKK SmartAudio 修复",
+    USE_ALTITUDE_HOLD: "高度保持",
+    USE_BATTERY_CONTINUE: "低电压继续飞行",
+    USE_CAMERA_CONTROL: "摄像头控制",
+    USE_CHIRP: "自动调参扫频",
+    USE_DASHBOARD: "仪表盘",
+    USE_EMFAT_TOOLS: "EMFAT 文件系统（自动运行、图标）",
+    USE_ESCSERIAL_SIMONK: "ESC 串行协议（SimonK，含四线接口）",
+    USE_FLIGHT_PLAN: "飞行计划",
+    USE_GPS: "GPS 定位",
+    USE_LED_STRIP: "LED 灯带",
+    USE_LED_STRIP_64: "64 灯 LED 灯带",
+    USE_MAG: "磁力计",
+    USE_OPTICALFLOW: "光流",
+    USE_PINIO: "引脚输入输出",
+    USE_POSITION_HOLD: "定点保持",
+    USE_RACE_PRO: "竞速模式",
+    USE_RANGEFINDER: "测距仪",
+    USE_SOFTSERIAL: "软串口",
+    USE_SERVOS: "舵机",
+    USE_VTX: "图传",
+    USE_WING: "固定翼",
+};
+
 export default defineComponent({
     name: "FirmwareFlasherTab",
     components: {
         BaseTab,
         WikiButton,
-        SponsorTile,
         FlasherBoardBuildTab,
         FlasherFlashTab,
         SubtabNav,
@@ -254,9 +277,6 @@ export default defineComponent({
             restoreCompleted: false,
         });
 
-        // Sponsor component ref
-        const sponsorTile = ref(null);
-
         // Verify board dialog refs
         const verifyBoardOpen = ref(false);
         const verifyBoardContentHtml = ref("");
@@ -298,18 +318,10 @@ export default defineComponent({
 
         const enableLoadRemoteFileButton = (enabled) => {
             state.loadRemoteButtonDisabled = !enabled;
-            // Resume sponsor when load buttons are re-enabled
-            if (enabled) {
-                sponsorTile.value?.resume();
-            }
         };
 
         const enableLoadFileButton = (enabled) => {
             state.loadFileButtonDisabled = !enabled;
-            // Resume sponsor when load buttons are re-enabled
-            if (enabled) {
-                sponsorTile.value?.resume();
-            }
         };
 
         const enableDfuExitButton = (enabled) => {
@@ -398,8 +410,6 @@ export default defineComponent({
             } else {
                 flashingMessage($t("firmwareFlasherFirmwareNotLoaded"), FLASH_MESSAGE_TYPES.NEUTRAL);
             }
-
-            sponsorTile.value?.resume();
         };
 
         const preservePreFlashingState = () => {
@@ -561,6 +571,15 @@ export default defineComponent({
 
         const normalizeSelectValue = (value) => (value === "" ? null : value);
 
+        const formatGeneralBuildOptionLabel = (option) => {
+            if (i18n.getCurrentLocale() !== "zh_CN") {
+                return option.name;
+            }
+
+            const label = CHINESE_GENERAL_BUILD_OPTION_LABELS[option.value];
+            return label ? `${option.name}（${label}）` : option.name;
+        };
+
         const buildOptionsList = (optionKey, options) => {
             // Updated for Vue-based selects - just update state
             if (optionKey === "radioProtocols") {
@@ -584,7 +603,7 @@ export default defineComponent({
             } else if (optionKey === "options") {
                 state.optionsListOptions = options.map((option) => ({
                     ...option,
-                    label: option.name,
+                    label: formatGeneralBuildOptionLabel(option),
                 }));
             } else if (optionKey === "motorProtocols") {
                 state.motorProtocolOptions = options.map((option) => ({
@@ -1109,9 +1128,6 @@ export default defineComponent({
         // Flashing methods
         const startFlashing = async () => {
             const selectedBoardTarget = boardSelection.state.selectedBoard;
-
-            // Pause sponsor during flashing
-            sponsorTile.value?.pause();
 
             await firmwareFlashing.startFlashing({
                 config: state.config,
@@ -1867,8 +1883,6 @@ export default defineComponent({
             cloudBuild,
             boardSelection,
             FLASH_MESSAGE_TYPES,
-            // Template refs
-            sponsorTile,
             verifyBoardOpen,
             verifyBoardContentHtml,
             unstableFirmwareOpen,

@@ -4,6 +4,7 @@ import { Tile, Vector as LayerVector } from "ol/layer";
 import { OSM, XYZ, Vector as SourceVector } from "ol/source";
 import { Icon, Style } from "ol/style";
 import { Point } from "ol/geom";
+import { resolveBuildApiBaseUrl } from "../BuildApi";
 
 const DEFAULT_ZOOM = 17;
 const DEFAULT_LON = 0;
@@ -11,6 +12,21 @@ const DEFAULT_LAT = 0;
 const ICON_IMAGE_GPS = "/images/icons/cf_icon_position.png";
 const ICON_IMAGE_MAG = "/images/icons/cf_icon_position_mag.png";
 const ICON_IMAGE_NOFIX = "/images/icons/cf_icon_position_nofix.png";
+const OFFICIAL_GOOGLE_TILE_BASE_URL = "https://mt1.google.com/vt";
+
+/**
+ * Keep Google map tiles on the same gateway as the firmware API for published web builds.
+ * Desktop shells and unconfigured local development still load the official tile endpoint.
+ */
+export function resolveGoogleTileUrl(layer, { baseUrl = resolveBuildApiBaseUrl() } = {}) {
+    const query = `lyrs=${encodeURIComponent(layer)}&x={x}&y={y}&z={z}`;
+
+    if (baseUrl === "https://build.betaflight.com") {
+        return `${OFFICIAL_GOOGLE_TILE_BASE_URL}?${query}`;
+    }
+
+    return `${String(baseUrl).replace(/\/+$/, "")}/api/external/maps/google?${query}`;
+}
 
 /**
  * Create and configure an OpenLayers map instance for the GPS tab.
@@ -43,14 +59,14 @@ export function initMap(options = {}) {
         }),
         satellite: new Tile({
             source: new XYZ({
-                url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                url: resolveGoogleTileUrl("s"),
                 tilePixelRatio: devicePixelRatio,
             }),
             visible: defaultLayer === "satellite",
         }),
         hybrid: new Tile({
             source: new XYZ({
-                url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+                url: resolveGoogleTileUrl("y"),
                 tilePixelRatio: devicePixelRatio,
             }),
             visible: defaultLayer === "hybrid",

@@ -3,10 +3,63 @@ import { i18n } from "./localization";
 import { get as getStorage, set as setStorage } from "./SessionStorage";
 import CONFIGURATOR from "./data_storage.js";
 import LoginApi from "./LoginApi";
+import { Capacitor } from "@capacitor/core";
+
+const OFFICIAL_BUILD_API_BASE_URL = "https://build.betaflight.com";
+
+function trimTrailingSlash(value) {
+    return String(value || "").replace(/\/+$/, "");
+}
+
+function hasHttpOrigin(location) {
+    return Boolean(location?.origin) && (location.protocol === "http:" || location.protocol === "https:");
+}
+
+function isNativeShell() {
+    return Capacitor?.isNativePlatform?.() === true || "__TAURI_INTERNALS__" in globalThis;
+}
+
+/**
+ * Select the Build API host without changing the official desktop/local-development default.
+ *
+ * Published web and PWA builds use their own origin so the mirror can proxy all firmware
+ * requests through its same-origin `/api` gateway. Set VITE_BUILD_API_BASE_URL to override
+ * this in any runtime; `/` explicitly selects the current browser origin.
+ */
+export function resolveBuildApiBaseUrl({
+    env = import.meta.env,
+    location = globalThis.window?.location,
+    nativeShell = isNativeShell(),
+} = {}) {
+    const configuredBaseUrl = String(env?.VITE_BUILD_API_BASE_URL || "").trim();
+
+    if (configuredBaseUrl) {
+        if (configuredBaseUrl === "/") {
+            return hasHttpOrigin(location) ? trimTrailingSlash(location.origin) : OFFICIAL_BUILD_API_BASE_URL;
+        }
+
+        return trimTrailingSlash(configuredBaseUrl);
+    }
+
+    if (env?.PROD === true && !nativeShell && hasHttpOrigin(location)) {
+        return trimTrailingSlash(location.origin);
+    }
+
+    return OFFICIAL_BUILD_API_BASE_URL;
+}
+
+export function resolveBuildApiUrl(path, baseUrl = resolveBuildApiBaseUrl()) {
+    const value = String(path || "");
+    if (/^https?:\/\//i.test(value)) {
+        return value;
+    }
+
+    return `${trimTrailingSlash(baseUrl)}${value.startsWith("/") ? value : `/${value}`}`;
+}
 
 export default class BuildApi {
-    constructor(loginApi = new LoginApi()) {
-        this._url = "https://build.betaflight.com";
+    constructor(loginApi = new LoginApi(), baseUrl = resolveBuildApiBaseUrl()) {
+        this._url = trimTrailingSlash(baseUrl);
         this._cacheExpirationPeriod = 3600 * 1000;
         this._loginApi = loginApi;
     }
@@ -143,7 +196,7 @@ export default class BuildApi {
     }
 
     async loadTargetFirmware(path) {
-        const url = `${this._url}${path}`;
+        const url = resolveBuildApiUrl(path, this._url);
         return await this.fetchBytes(url);
     }
 

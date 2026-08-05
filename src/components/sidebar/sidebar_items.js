@@ -1,5 +1,6 @@
 export const sidebarItems = [
     { key: "landing", mode: "disconnected", i18n: "tabLanding", icon: "i-lucide-home" },
+    { key: "video_tutorials", mode: "shared", i18n: "tabVideoTutorials", icon: "i-lucide-video" },
     { key: "firmware_flasher", mode: "disconnected", i18n: "tabFirmwareFlasher", icon: "i-lucide-zap" },
     { key: "help", mode: "disconnected", i18n: "tabHelp", icon: "i-lucide-help-circle" },
     { key: "preflight", mode: "disconnected", i18n: "tabPreflight", icon: "i-lucide-clipboard-check" },

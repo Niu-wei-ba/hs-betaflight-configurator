@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { sidebarItems, isItemVisible } from "../../src/components/sidebar/sidebar_items.js";
 
 describe("sidebarItems ordering", () => {
-    it("places firmware_flasher at index 1 (immediately after landing)", () => {
+    it("places video tutorials after landing and before firmware flasher", () => {
         const keys = sidebarItems.map((item) => item.key);
         expect(keys[0]).toBe("landing");
-        expect(keys[1]).toBe("firmware_flasher");
+        expect(keys[1]).toBe("video_tutorials");
+        expect(keys[2]).toBe("firmware_flasher");
     });
 
     it("lists all required disconnected tabs in the correct relative order", () => {

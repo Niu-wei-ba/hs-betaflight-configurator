@@ -27,6 +27,7 @@ import VtxTab from "../components/tabs/VtxTab.vue";
 import PresetsTab from "../components/tabs/PresetsTab.vue";
 import AutotuneTab from "../components/tabs/AutotuneTab.vue";
 import BlackboxViewerTab from "../components/tabs/BlackboxViewerTab.vue";
+import VideoTutorialsTab from "../components/tabs/VideoTutorialsTab.vue";
 
 export const VueTabComponents = {
     help: HelpTab,
@@ -58,4 +59,5 @@ export const VueTabComponents = {
     presets: PresetsTab,
     autotune: AutotuneTab,
     blackbox_viewer: BlackboxViewerTab,
+    video_tutorials: VideoTutorialsTab,
 };

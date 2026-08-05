@@ -22,14 +22,15 @@
                             class="flex flex-row md:flex-col bg-elevated min-h-full p-3 rounded-md md:rounded-r-none items-center relative gap-2"
                             :class="stateUi.solid"
                         >
-                            <HelpIcon class="absolute top-2.5 right-2.5" :text="$t(mode.helpKey)" />
+                            <HelpIcon v-if="mode.hasHelp" class="absolute top-2.5 right-2.5" :text="$t(mode.helpKey)" />
 
                             <!-- Negative margin for mobile where the minWidthStyle is computed a little too wide -->
                             <div
-                                class="text-xs font-bold md:w-full pr-4 md:text-center -mr-10 md:mr-0"
+                                class="flex flex-col text-xs font-bold md:w-full pr-4 md:text-center -mr-10 md:mr-0"
                                 :style="infoMinWidthStyle"
                             >
-                                {{ mode.displayName }}
+                                <span>{{ mode.displayName }}</span>
+                                <span v-if="mode.hasTranslatedName">{{ $t(mode.translatedNameKey) }}</span>
                             </div>
                             <div class="text-xs font-bold" v-if="state === 'disabled'">
                                 {{ $t("auxiliaryDisabled") }}
@@ -66,6 +67,11 @@
                             </div>
                         </div>
                         <div class="w-full">
+                            <p
+                                v-if="mode.hasHelp"
+                                class="p-3 pb-0 text-sm leading-6 text-default"
+                                v-html="$t(mode.helpKey)"
+                            ></p>
                             <template v-if="mode.entries.length">
                                 <template v-for="(entry, entryIndex) in mode.entries" :key="entry.uid">
                                     <div
@@ -464,12 +470,16 @@ export default defineComponent({
                 const rawName = fcStore.auxConfig[index];
                 const adjustedName = adjustBoxNameIfPeripheralWithModeID(modeId, rawName);
                 const helpKey = `auxiliaryHelpMode_${inflection.camelize(rawName.replaceAll(/\s+/g, ""))}`;
+                const translatedNameKey = `auxiliaryModeName_${inflection.camelize(rawName.replaceAll(/\s+/g, ""))}`;
                 modeMap.set(modeId, {
                     id: modeId,
                     index,
                     name: rawName,
                     displayName: adjustedName,
                     helpKey,
+                    hasHelp: i18n.existsMessage(helpKey),
+                    translatedNameKey,
+                    hasTranslatedName: i18n.existsMessage(translatedNameKey),
                     entries: [],
                 });
             }

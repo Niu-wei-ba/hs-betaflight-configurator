@@ -23,6 +23,8 @@ const keyPath = "./local.betaflight.com-key.pem";
 const tauriDev = process.env.TAURI_DEV === "1";
 const certsExist = !tauriDev && existsSync(certPath) && existsSync(keyPath);
 const serverPort = certsExist ? 8443 : 8080;
+const devProxyTarget = process.env.VITE_DEV_PROXY_TARGET;
+const devProxyChangeOrigin = process.env.VITE_DEV_PROXY_CHANGE_ORIGIN === "true";
 
 if (tauriDev) {
     console.log("⚙ TAURI_DEV=1 — forcing HTTP mode for the Tauri shell");
@@ -165,6 +167,8 @@ export default defineConfig({
                 globPatterns: ["**/*.{js,css,html,ico,png,svg,json,mcm,gltf}"],
                 // 5MB
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+                // API calls must reach the firmware gateway instead of receiving the PWA app shell.
+                navigateFallbackDenylist: [/^\/api(?:\/|$)/, /^\/healthz$/],
             },
             includeAssets: ["favicon.ico", "apple-touch-icon.png"],
             manifest: {
@@ -208,6 +212,18 @@ export default defineConfig({
         }),
         host: "0.0.0.0", // Listen on all network interfaces for Android device access
         allowedHosts: certsExist ? [devHostname] : ["localhost"],
+        ...(devProxyTarget && {
+            proxy: {
+                "/api": {
+                    target: devProxyTarget,
+                    changeOrigin: devProxyChangeOrigin,
+                },
+                "/healthz": {
+                    target: devProxyTarget,
+                    changeOrigin: devProxyChangeOrigin,
+                },
+            },
+        }),
     },
     preview: {
         port: serverPort,
