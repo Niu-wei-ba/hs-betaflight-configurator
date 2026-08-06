@@ -1739,6 +1739,9 @@
     "boardAlignmentWizard-HintFlat": {
         "message": "把无人机平放，摄像头远离您(朝着屏幕)。"
     },
+    "boardAlignmentWizard-HintPitchDown": {
+        "message": "将机头向下倾斜约45°，使摄像头朝向地面。"
+    },
     "boardAlignmentWizard-HintPitchUp": {
         "message": "将机头抬起约45°。"
     },
