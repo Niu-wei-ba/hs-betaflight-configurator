@@ -51,7 +51,6 @@ import "./main";
 
 import GUI from "./gui";
 import { registerSW } from "virtual:pwa-register";
-import "./versionPicker.js";
 
 const updateSW = registerSW({
     onNeedRefresh() {
