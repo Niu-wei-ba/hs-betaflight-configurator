@@ -10,6 +10,7 @@ import Model from "../model";
 import RateCurve from "../RateCurve";
 import MSPCodes from "../msp/MSPCodes";
 import windowWatcherUtil from "../utils/window_watchers";
+import { runtimeAssetUrl } from "../utils/runtimeAssetUrl";
 import CONFIGURATOR, { API_VERSION_1_45, API_VERSION_1_46, API_VERSION_1_47 } from "../data_storage";
 import DarkTheme from "../DarkTheme";
 import { gui_log } from "../gui_log";
@@ -605,7 +606,7 @@ receiver.initialize = function (callback) {
             };
 
             const createdWindow = open(
-                "/receiver_msp/receiver_msp.html",
+                runtimeAssetUrl("receiver_msp/receiver_msp.html"),
                 "receiver_msp",
                 `location=no,width=${windowWidth},height=${
                     windowHeight + (window.screen.height - window.screen.availHeight)

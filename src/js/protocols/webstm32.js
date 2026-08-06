@@ -21,6 +21,7 @@ import { read_serial } from "../serial_backend";
 import NotificationManager from "../utils/notifications";
 import { get as getConfig } from "../ConfigStorage";
 import { appConfig } from "../AppConfig";
+import { runtimeAssetUrl } from "../utils/runtimeAssetUrl";
 
 function readSerialAdapter(event) {
     read_serial(event.detail.buffer);
@@ -914,7 +915,7 @@ class STM32Protocol {
                             if (getConfig("showNotifications").showNotifications) {
                                 NotificationManager.showNotification(appConfig.appName, {
                                     body: i18n.getMessage("programmingSuccessfulNotification"),
-                                    icon: "/images/pwa/favicon.ico",
+                                    icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                                 });
                             }
 
@@ -932,7 +933,7 @@ class STM32Protocol {
                             if (getConfig("showNotifications").showNotifications) {
                                 NotificationManager.showNotification(appConfig.appName, {
                                     body: i18n.getMessage("programmingFailedNotification"),
-                                    icon: "/images/pwa/favicon.ico",
+                                    icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                                 });
                             }
 

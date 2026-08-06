@@ -20,6 +20,7 @@ import { usbDevices } from "./devices";
 import NotificationManager from "../utils/notifications";
 import { get as getConfig } from "../ConfigStorage";
 import { appConfig } from "../AppConfig";
+import { runtimeAssetUrl } from "../utils/runtimeAssetUrl";
 
 class WEBUSBDFU_protocol extends EventTarget {
     constructor() {
@@ -1214,7 +1215,7 @@ class WEBUSBDFU_protocol extends EventTarget {
                                 if (getConfig("showNotifications").showNotifications) {
                                     NotificationManager.showNotification(appConfig.appName, {
                                         body: i18n.getMessage("programmingSuccessfulNotification"),
-                                        icon: "/images/pwa/favicon.ico",
+                                        icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                                     });
                                 }
 
@@ -1232,7 +1233,7 @@ class WEBUSBDFU_protocol extends EventTarget {
                                 if (getConfig("showNotifications").showNotifications) {
                                     NotificationManager.showNotification(appConfig.appName, {
                                         body: i18n.getMessage("programmingFailedNotification"),
-                                        icon: "/images/pwa/favicon.ico",
+                                        icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                                     });
                                 }
 

@@ -5,13 +5,14 @@ import { OSM, XYZ, Vector as SourceVector } from "ol/source";
 import { Icon, Style } from "ol/style";
 import { Point } from "ol/geom";
 import { buildGoogleTileProxyUrl, buildOsmTileProxyUrl } from "../AppConfig";
+import { runtimeAssetUrl } from "../utils/runtimeAssetUrl";
 
 const DEFAULT_ZOOM = 17,
     DEFAULT_LON = 0,
     DEFAULT_LAT = 0,
-    ICON_IMAGE_GPS = "/images/icons/cf_icon_position.png",
-    ICON_IMAGE_MAG = "/images/icons/cf_icon_position_mag.png",
-    ICON_IMAGE_NOFIX = "/images/icons/cf_icon_position_nofix.png";
+    ICON_IMAGE_GPS = runtimeAssetUrl("images/icons/cf_icon_position.png"),
+    ICON_IMAGE_MAG = runtimeAssetUrl("images/icons/cf_icon_position_mag.png"),
+    ICON_IMAGE_NOFIX = runtimeAssetUrl("images/icons/cf_icon_position_nofix.png");
 
 export function initMap() {
     const lonLat = fromLonLat([DEFAULT_LON, DEFAULT_LAT]);

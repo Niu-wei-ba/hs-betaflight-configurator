@@ -18,6 +18,7 @@ import { get as getConfig } from "../ConfigStorage";
 import { sensorTypes } from "../sensor_types";
 import { appConfig } from "../AppConfig";
 import { tracking } from "../Analytics";
+import { runtimeAssetUrl } from "../utils/runtimeAssetUrl";
 
 let sdcardTimer;
 
@@ -473,7 +474,7 @@ onboard_logging.initialize = function (callback) {
         if (getConfig("showNotifications").showNotifications) {
             NotificationManager.showNotification(appConfig.appName, {
                 body: i18n.getMessage("flashDownloadDoneNotification"),
-                icon: "/images/pwa/favicon.ico",
+                icon: runtimeAssetUrl("images/pwa/favicon.ico"),
             });
         }
     }
@@ -619,7 +620,7 @@ onboard_logging.initialize = function (callback) {
                     if (getConfig("showNotifications").showNotifications) {
                         NotificationManager.showNotification(appConfig.appName, {
                             body: i18n.getMessage("flashEraseDoneNotification"),
-                            icon: "/images/pwa/favicon.ico",
+                            icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                         });
                     }
                 } else {
