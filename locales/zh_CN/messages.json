@@ -1721,6 +1721,9 @@
     "configurationBoardAlignmentHelp": {
         "message": "可输入任意旋转角度以允许用侧立、反转、偏转等方式安装飞控板。如果使用了外部传感器，使用「传感器朝向」（陀螺仪、加速度计、磁力计）来设定不同于飞控板朝向的传感器位置。 "
     },
+    "boardAlignmentWizard-Launch": {
+        "message": "自动检测飞控板朝向"
+    },
     "boardAlignmentWizard-DialogTitle": {
         "message": "飞控方向设置向导"
     },
