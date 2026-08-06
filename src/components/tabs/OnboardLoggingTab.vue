@@ -317,6 +317,7 @@ import { bit_check, bit_set } from "../../js/bit";
 import { useSaving } from "../../composables/useSaving";
 import { useReboot } from "../../composables/useReboot";
 import { runTabLoad } from "../../composables/useTabLoad";
+import { runtimeAssetUrl } from "../../js/utils/runtimeAssetUrl";
 
 const BLOCK_SIZE = 4096;
 
@@ -683,7 +684,7 @@ export default defineComponent({
                 if (getConfig("showNotifications").showNotifications) {
                     NotificationManager.showNotification("Betaflight App", {
                         body: i18n.getMessage("flashEraseDoneNotification"),
-                        icon: "/images/pwa/favicon.ico",
+                        icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                     });
                 }
             } else {
@@ -729,7 +730,7 @@ export default defineComponent({
             if (getConfig("showNotifications").showNotifications) {
                 NotificationManager.showNotification("Betaflight App", {
                     body: i18n.getMessage("flashDownloadDoneNotification"),
-                    icon: "/images/pwa/favicon.ico",
+                    icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                 });
             }
         }

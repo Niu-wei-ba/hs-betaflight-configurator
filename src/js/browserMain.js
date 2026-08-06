@@ -13,6 +13,7 @@ import { pinia } from "./pinia_instance";
 import { useDialogStore } from "../stores/dialog";
 import { registerSW } from "virtual:pwa-register";
 import { isPwaContext } from "./utils/checkCompatibility.js";
+import "./versionPicker.js";
 
 if (isPwaContext()) {
     const dialogStore = useDialogStore(pinia);

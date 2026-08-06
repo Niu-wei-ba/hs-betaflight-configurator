@@ -25,6 +25,22 @@ const certsExist = !tauriDev && existsSync(certPath) && existsSync(keyPath);
 const serverPort = certsExist ? 8443 : 8080;
 const devProxyTarget = process.env.VITE_DEV_PROXY_TARGET;
 const devProxyChangeOrigin = process.env.VITE_DEV_PROXY_CHANGE_ORIGIN === "true";
+const webBasePath = resolveWebBasePath(process.env.VITE_WEB_BASE_PATH);
+const pwaCacheId = `betaflight-configurator-${webBasePath.replace(/[^A-Za-z0-9]+/g, "-")}`;
+
+function resolveWebBasePath(value) {
+    const normalized = String(value || "").trim();
+    if (!normalized) {
+        // Native shells need relative assets inside their bundled webview.
+        return "./";
+    }
+
+    if (!/^\/(?:[A-Za-z0-9._-]+\/)*$/.test(normalized)) {
+        throw new Error("VITE_WEB_BASE_PATH must be an absolute, trailing-slash path such as /v/2026.6.1/");
+    }
+
+    return normalized;
+}
 
 if (tauriDev) {
     console.log("⚙ TAURI_DEV=1 — forcing HTTP mode for the Tauri shell");
@@ -121,7 +137,8 @@ function serveLocalesPlugin() {
 }
 
 export default defineConfig({
-    base: "./", // Important for production APK asset paths
+    // Native builds keep relative assets; hosted version channels set /v/<version>/.
+    base: webBasePath,
     define: {
         __APP_VERSION__: JSON.stringify(pkg.version),
         __APP_PRODUCTNAME__: JSON.stringify(pkg.productName),
@@ -164,6 +181,8 @@ export default defineConfig({
         VitePWA({
             registerType: "prompt",
             workbox: {
+                // Version channels share an origin, so they must not share a Workbox precache.
+                cacheId: pwaCacheId,
                 globPatterns: ["**/*.{js,css,html,ico,png,svg,json,mcm,gltf}"],
                 // 5MB
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
@@ -176,14 +195,17 @@ export default defineConfig({
                 short_name: pkg.productName,
                 description: pkg.description,
                 theme_color: "#ffffff",
+                // Resolve from each generated manifest so version channels never share a PWA scope.
+                start_url: "./",
+                scope: "./",
                 icons: [
                     {
-                        src: "/images/pwa/pwa-192-192.png",
+                        src: "images/pwa/pwa-192-192.png",
                         sizes: "192x192",
                         type: "image/png",
                     },
                     {
-                        src: "/images/pwa/pwa-512-512.png",
+                        src: "images/pwa/pwa-512-512.png",
                         sizes: "512x512",
                         type: "image/png",
                     },

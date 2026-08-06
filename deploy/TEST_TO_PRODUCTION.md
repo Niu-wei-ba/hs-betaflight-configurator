@@ -1,32 +1,61 @@
-# Test-to-production frontend release
+# Dual-version Configurator release
 
-`betaflight.hs-fpv.com` and `bf.hs-fpv.com` have independent static release roots:
+`bf.hs-fpv.com` opens the latest compatible Configurator by default and keeps two independent channels:
 
-- Test: `/www/wwwroot/betaflight.hs-fpv.com`
-- Production: `/www/wwwroot/bf.hs-fpv.com`
+- `/` — compatibility gate, then redirects to the selected channel (latest by default)
+- `/?version-picker=1` — standalone version-selection dialog
+- `/v/2025.12.2/` — maintenance channel
+- `/v/2026.6.1/` — latest channel
 
-Both domains deliberately proxy same-origin `/api/`, `/healthz`, and `/presets/` requests to the same `bfc_firmware_api` listener at `127.0.0.1:4180`. The backend is host-neutral and must not be redeployed for a frontend-only test release.
+Selecting a channel from the welcome-page switch button or version dialog stores `bf-configurator-version` in the current origin's `localStorage`. A later visit to `/` opens that selected channel; without a recorded choice it opens 2026.6.1. If the static gate detects that the browser cannot run the latest channel, it shows a browser-update warning and automatically redirects to `/v/2025.12.2/` after about two seconds. Checking “以后不再提示” stores `bf-configurator-hide-compatibility-warning=1`; future incompatible visits still fall back to 12.2 without showing the warning. Compatibility fallbacks do not overwrite an explicitly selected version, so after the browser is upgraded the saved selection still applies.
 
-## Release branch
+The test domain has the identical route layout. Both domains keep the existing same-origin `/api/`, `/healthz`, and `/presets/` proxy to `bfc_firmware_api` at `127.0.0.1:4180`; a frontend release does not restart or redeploy that API.
 
-The default branch for test and production releases is `feature/betaflight-2026.6.1`. Both release scripts reject another checked-out branch. When the designated release branch changes, use an explicit `BFC_RELEASE_BRANCH=<new-branch>` override for that release and update this policy before making it the new default.
+## Server layout
 
-## Deploy a test artifact
-
-Run this only from the worktree being tested:
-
-```bash
-scripts/deploy-test-server.sh
+```text
+/www/wwwroot/<host>/
+  portal/releases/<release-id>/
+  portal/current -> releases/<release-id>
+  apps/2025.12.2/releases/<release-id>/
+  apps/2025.12.2/current -> releases/<release-id>
+  apps/2026.6.1/releases/<release-id>/
+  apps/2026.6.1/current -> releases/<release-id>
 ```
 
-The script builds the current worktree, uploads a timestamped `test-<sha>-<timestamp>` release to the test root, and atomically switches only the test `current` symlink. It does not modify `bf.hs-fpv.com`.
+Before the first release, install the matching vhost template from `deploy/nginx/` on the server. Back up the existing BaoTa vhost, then run `nginx -t` and reload Nginx. Do not replace the API locations.
 
-## Promote the tested artifact
+## Publish to test
 
-First copy the release id printed by `deploy-test-server.sh`. Promotion never rebuilds the frontend: it copies the currently active test artifact on the server into a new production release directory, then atomically switches only the production `current` symlink.
+Run the following commands from `/Users/lihao/Documents/betaflight-configurator-2026.6.1`, which is the release-control worktree. Run the portal once when its content changes:
 
 ```bash
-BFC_PROMOTE_CONFIRM=bf.hs-fpv.com scripts/promote-test-release.sh <test-release-id>
+scripts/deploy-version-portal-test.sh
 ```
 
-The confirmation value and the requirement that the selected artifact is the active test release prevent accidental direct production deploys. The script keeps the five newest production releases and verifies the production homepage plus read-only API endpoints.
+Build and publish each Configurator channel from its own worktree:
+
+```bash
+scripts/deploy-versioned-test-release.sh 2025.12.2
+scripts/deploy-versioned-test-release.sh 2026.6.1
+```
+
+The commands validate the expected branch, use the appropriate Node release, build with `VITE_WEB_BASE_PATH=/v/<version>/`, upload an immutable artifact, and atomically move only that channel's test `current` symlink. `scripts/deploy-test-server.sh` remains a compatibility shortcut for 2026.6.1.
+
+Verify the root page, both version URLs, PWA installation/update, `/healthz`, and `/api/targets`. Test both channels in separate browser tabs to ensure their Service Workers are scoped to their own `/v/<version>/` path.
+
+## Promote to production
+
+Only a test artifact that is active for the same channel may be promoted:
+
+```bash
+BFC_PROMOTE_CONFIRM=bf.hs-fpv.com scripts/promote-versioned-release.sh 2025.12.2 <test-release-id>
+BFC_PROMOTE_CONFIRM=bf.hs-fpv.com scripts/promote-versioned-release.sh 2026.6.1 <test-release-id>
+BFC_PROMOTE_CONFIRM=bf.hs-fpv.com scripts/promote-version-portal.sh <test-portal-release-id>
+```
+
+Promotion copies the tested static files to the corresponding production channel and atomically changes only that channel's `current` symlink. A failure or rollback of one version must never switch the other version or restart `bfc_firmware_api`.
+
+## Rollback
+
+On the server, point `apps/<version>/current` to a previous release for only the affected version. Point `portal/current` to a previous portal release only when the version-selection page itself must be rolled back.

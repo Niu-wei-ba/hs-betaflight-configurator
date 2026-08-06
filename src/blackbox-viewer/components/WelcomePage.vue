@@ -1,7 +1,12 @@
 <template>
     <div v-if="!logStore.hasLog" class="welcome-page">
         <!-- Dimmed "as though a log were loaded" graph backdrop -->
-        <img class="welcome-backdrop" src="/images/blackbox-default-backdrop.png" alt="" aria-hidden="true" />
+        <img
+            class="welcome-backdrop"
+            :src="runtimeAssetUrl('images/blackbox-default-backdrop.png')"
+            alt=""
+            aria-hidden="true"
+        />
 
         <!-- Centred open / download dialog -->
         <UCard class="welcome-dialog">
@@ -54,6 +59,7 @@ import { computed, inject } from "vue";
 import { useLogStore } from "../stores/log.js";
 import { useAppStore } from "../stores/app.js";
 import LogFileInput from "./LogFileInput.vue";
+import { runtimeAssetUrl } from "../../js/utils/runtimeAssetUrl";
 
 defineEmits(["files-selected"]);
 const logStore = useLogStore();

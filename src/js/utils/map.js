@@ -5,13 +5,14 @@ import { OSM, XYZ, Vector as SourceVector } from "ol/source";
 import { Icon, Style } from "ol/style";
 import { Point } from "ol/geom";
 import { resolveBuildApiBaseUrl } from "../BuildApi";
+import { runtimeAssetUrl } from "./runtimeAssetUrl";
 
 const DEFAULT_ZOOM = 17;
 const DEFAULT_LON = 0;
 const DEFAULT_LAT = 0;
-const ICON_IMAGE_GPS = "/images/icons/cf_icon_position.png";
-const ICON_IMAGE_MAG = "/images/icons/cf_icon_position_mag.png";
-const ICON_IMAGE_NOFIX = "/images/icons/cf_icon_position_nofix.png";
+const ICON_IMAGE_GPS = runtimeAssetUrl("images/icons/cf_icon_position.png");
+const ICON_IMAGE_MAG = runtimeAssetUrl("images/icons/cf_icon_position_mag.png");
+const ICON_IMAGE_NOFIX = runtimeAssetUrl("images/icons/cf_icon_position_nofix.png");
 const OFFICIAL_GOOGLE_TILE_BASE_URL = "https://mt1.google.com/vt";
 
 /**

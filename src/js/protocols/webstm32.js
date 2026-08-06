@@ -24,6 +24,7 @@ import { DFU_AUTH_REQUIRED } from "../protocols/usbdfu";
 import DeviceHandler from "../device_handler";
 import NotificationManager from "../utils/notifications";
 import { get as getConfig } from "../ConfigStorage";
+import { runtimeAssetUrl } from "../utils/runtimeAssetUrl";
 
 function readSerialAdapter(event) {
     // Flashing bytes are always MSP — feed MSP directly (no serial_backend dependency).
@@ -977,7 +978,7 @@ class STM32Protocol {
                             if (getConfig("showNotifications").showNotifications) {
                                 NotificationManager.showNotification("Betaflight App", {
                                     body: i18n.getMessage("programmingSuccessfulNotification"),
-                                    icon: "/images/pwa/favicon.ico",
+                                    icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                                 });
                             }
 
@@ -995,7 +996,7 @@ class STM32Protocol {
                             if (getConfig("showNotifications").showNotifications) {
                                 NotificationManager.showNotification("Betaflight App", {
                                     body: i18n.getMessage("programmingFailedNotification"),
-                                    icon: "/images/pwa/favicon.ico",
+                                    icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                                 });
                             }
 

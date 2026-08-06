@@ -2,6 +2,26 @@
     <BaseTab tab-name="landing">
         <main class="content_wrapper landing-page" aria-labelledby="landing-title">
             <section class="landing-shell">
+                <a
+                    class="version-switch-link"
+                    href="/v/2025.12.2/"
+                    aria-label="切换至地面站 2025.12.2版本"
+                    @click="rememberVersion('2025.12.2')"
+                >
+                    <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M3 12a9 9 0 1 0 3-6.7"></path>
+                        <path d="M3 4v5h5"></path>
+                    </svg>
+                    <span>切换 2025.12.2版本</span>
+                </a>
                 <aside class="landing-sponsor" aria-label="赞助商 BUCK">
                     <p>赞助支持</p>
                     <img :src="buckLogoUrl" alt="BUCK" />
@@ -270,6 +290,14 @@ export default defineComponent({
             }
         }
 
+        function rememberVersion(version) {
+            try {
+                window.localStorage.setItem("bf-configurator-version", version);
+            } catch (error) {
+                // Storage can be unavailable in private browser contexts.
+            }
+        }
+
         onMounted(() => GUI.content_ready());
 
         return {
@@ -279,6 +307,7 @@ export default defineComponent({
             communityBenefits,
             openVideoTutorials,
             qqQrUrl,
+            rememberVersion,
             resourceCards,
             selectedLanguage,
             tutorialCards,
@@ -311,6 +340,45 @@ export default defineComponent({
     box-sizing: border-box;
     margin: 0 auto;
     padding: 30px 38px 22px;
+}
+.version-switch-link {
+    position: absolute;
+    top: 28px;
+    left: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 13px;
+    border: 1px solid #dce1e8;
+    border-radius: 8px;
+    background: rgb(255 255 255 / 92%);
+    box-shadow: 0 7px 16px rgb(16 24 39 / 6%);
+    color: #3b4658;
+    font-size: 14px;
+    font-weight: 750;
+    line-height: 1;
+    text-decoration: none;
+    transition:
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s ease;
+}
+.version-switch-link svg {
+    width: 18px;
+    height: 18px;
+    color: var(--amber-deep);
+}
+.version-switch-link:hover {
+    border-color: #ffd979;
+    box-shadow: 0 10px 20px rgb(16 24 39 / 10%);
+    color: var(--amber-deep);
+    transform: translateY(-1px);
+}
+.version-switch-link:focus-visible {
+    outline: 3px solid rgb(255 179 0 / 55%);
+    outline-offset: 3px;
 }
 .landing-sponsor {
     box-shadow: rgba(16, 36, 79, 0.08) 0px 28px 64px 0px;
@@ -759,6 +827,11 @@ export default defineComponent({
     .landing-shell {
         padding: 24px 18px 20px;
     }
+    .version-switch-link {
+        position: static;
+        width: fit-content;
+        margin: 0 0 14px;
+    }
     .landing-sponsor {
         position: static;
         justify-content: center;
@@ -784,6 +857,11 @@ export default defineComponent({
     }
     .landing-sponsor {
         margin-bottom: 14px;
+    }
+    .version-switch-link {
+        min-height: 40px;
+        margin-bottom: 12px;
+        font-size: 13px;
     }
     .landing-sponsor img {
         width: 102px;

@@ -172,6 +172,7 @@ import TabLoadingState from "../elements/TabLoadingState.vue";
 import { useDialog } from "@/composables/useDialog";
 import loginManager from "../../js/LoginManager";
 import { gui_log } from "../../js/gui_log";
+import { runtimeAssetUrl } from "../../js/utils/runtimeAssetUrl";
 
 const { t } = useTranslation();
 const dialog = useDialog();
@@ -208,7 +209,7 @@ const profilePhoto = computed(() => {
     if (profile.value?.avatar) {
         return profile.value.avatar;
     }
-    return "/images/default-user-avatar-loggedin.png";
+    return runtimeAssetUrl("images/default-user-avatar-loggedin.png");
 });
 
 async function loadProfile() {

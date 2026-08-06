@@ -24,6 +24,7 @@ import NotificationManager from "../utils/notifications";
 import { get as getConfig } from "../ConfigStorage";
 import { getOS } from "../utils/checkCompatibility";
 import WebUsbDfuTransport from "./WebUsbDfuTransport";
+import { runtimeAssetUrl } from "../utils/runtimeAssetUrl";
 
 // Error constant used when an already-authorized DFU device isn't found
 export const DFU_AUTH_REQUIRED = "DFU_AUTH_REQUIRED";
@@ -1273,7 +1274,7 @@ export class UsbDfuProtocol extends EventTarget {
                                 if (getConfig("showNotifications").showNotifications) {
                                     NotificationManager.showNotification("Betaflight App", {
                                         body: i18n.getMessage("programmingSuccessfulNotification"),
-                                        icon: "/images/pwa/favicon.ico",
+                                        icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                                     });
                                 }
 
@@ -1291,7 +1292,7 @@ export class UsbDfuProtocol extends EventTarget {
                                 if (getConfig("showNotifications").showNotifications) {
                                     NotificationManager.showNotification("Betaflight App", {
                                         body: i18n.getMessage("programmingFailedNotification"),
-                                        icon: "/images/pwa/favicon.ico",
+                                        icon: runtimeAssetUrl("images/pwa/favicon.ico"),
                                     });
                                 }
 

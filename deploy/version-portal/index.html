@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#ffb300" />
+        <title>HS FPV · 地面站</title>
+        <style>
+            :root {
+                color-scheme: light;
+                font-family: "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+                --ink: #101827;
+                --copy: #5e6878;
+                --muted: #8791a0;
+                --paper: #ffffff;
+                --surface: #f5f6f8;
+                --line: #e5e8ed;
+                --accent: #ffb300;
+                --accent-deep: #ed9800;
+                --accent-wash: #fff6dc;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                min-height: 100vh;
+                margin: 0;
+                color: var(--ink);
+                background-color: var(--surface);
+                background-image:
+                    radial-gradient(circle at 50% -18%, rgb(255 198 45 / 22%), transparent 36%),
+                    linear-gradient(rgb(16 24 39 / 3%) 1px, transparent 1px),
+                    linear-gradient(90deg, rgb(16 24 39 / 3%) 1px, transparent 1px);
+                background-size:
+                    auto,
+                    28px 28px,
+                    28px 28px;
+            }
+
+            .launch-state {
+                display: grid;
+                min-height: 100vh;
+                place-items: center;
+                color: var(--copy);
+                font-size: 13px;
+                letter-spacing: 0.08em;
+            }
+
+            .launch-state span {
+                border-bottom: 2px solid var(--accent);
+                padding-bottom: 8px;
+            }
+            .dialog-backdrop {
+                display: grid;
+                min-height: 100vh;
+                place-items: center;
+                padding: 24px;
+            }
+            .dialog {
+                width: min(100%, 640px);
+                overflow: hidden;
+                border: 1px solid var(--line);
+                border-top: 4px solid var(--accent);
+                border-radius: 12px;
+                background: var(--paper);
+                box-shadow: 0 26px 70px rgb(16 24 39 / 14%);
+            }
+
+            .dialog__header {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 20px;
+                padding: 28px 30px 22px;
+                border-bottom: 1px solid var(--line);
+                background: linear-gradient(110deg, #ffffff 0%, #ffffff 68%, #fff8e7 100%);
+            }
+            .eyebrow {
+                margin: 0 0 8px;
+                color: var(--accent-deep);
+                font-size: 11px;
+                font-weight: 800;
+                letter-spacing: 0.15em;
+                text-transform: uppercase;
+            }
+            h1 {
+                margin: 0;
+                font-size: 26px;
+                font-weight: 800;
+                letter-spacing: -0.02em;
+                line-height: 1.2;
+            }
+            .dialog__subtitle {
+                margin: 8px 0 0;
+                color: var(--copy);
+                font-size: 13px;
+                line-height: 1.55;
+            }
+            .close {
+                width: 32px;
+                height: 32px;
+                flex: 0 0 32px;
+                border: 1px solid var(--line);
+                border-radius: 7px;
+                color: var(--copy);
+                background: rgb(255 255 255 / 74%);
+                cursor: pointer;
+                font-size: 22px;
+                line-height: 1;
+            }
+            .close:hover,
+            .close:focus-visible {
+                border-color: #ffd979;
+                color: var(--accent-deep);
+                background: var(--accent-wash);
+                outline: none;
+            }
+            .dialog__body {
+                padding: 22px 30px 26px;
+            }
+            .compatibility {
+                display: none;
+                margin: 0 0 18px;
+                padding: 14px 15px;
+                border: 1px solid #f5d98e;
+                border-left: 4px solid var(--accent);
+                border-radius: 8px;
+                color: #665022;
+                background: #fff9e9;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+            .compatibility.is-visible {
+                display: block;
+            }
+            .compatibility__controls {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                margin-top: 14px;
+            }
+            .compatibility__checkbox {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                color: var(--copy);
+                cursor: pointer;
+                font-size: 12px;
+            }
+            .compatibility__checkbox input {
+                width: 15px;
+                height: 15px;
+                accent-color: var(--accent);
+            }
+            .fallback-action {
+                display: inline-flex;
+                align-items: center;
+                min-height: 36px;
+                padding: 0 14px;
+                border: 1px solid var(--accent);
+                border-radius: 7px;
+                color: #ffffff;
+                background: var(--accent);
+                font-size: 12px;
+                font-weight: 800;
+                text-decoration: none;
+                box-shadow: 0 5px 12px rgb(200 132 0 / 18%);
+            }
+            .fallback-action:hover,
+            .fallback-action:focus-visible {
+                border-color: #ffc533;
+                background: #ffc533;
+                outline: none;
+            }
+            .fallback-countdown {
+                margin: 12px 0 0;
+                color: var(--muted);
+                font-size: 11px;
+            }
+            .versions {
+                display: grid;
+                gap: 12px;
+            }
+            .version {
+                position: relative;
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 9px 16px;
+                min-height: 112px;
+                padding: 18px 19px;
+                border: 1px solid var(--line);
+                border-radius: 9px;
+                color: inherit;
+                background: #ffffff;
+                box-shadow: 0 4px 12px rgb(16 24 39 / 4%);
+                text-decoration: none;
+                transition:
+                    border-color 0.16s ease,
+                    box-shadow 0.16s ease,
+                    transform 0.16s ease;
+            }
+            .version:hover,
+            .version:focus-visible {
+                border-color: #f4cb60;
+                box-shadow: 0 10px 22px rgb(16 24 39 / 10%);
+                outline: none;
+                transform: translateY(-2px);
+            }
+            .version--latest {
+                border-color: #f5d98e;
+                background: linear-gradient(110deg, #fff9e9, #ffffff 68%);
+            }
+            .version.is-current {
+                border-color: var(--accent);
+                background: linear-gradient(110deg, #fff3c9, #ffffff 72%);
+                box-shadow: 0 10px 22px rgb(200 132 0 / 14%);
+            }
+            .version__tag {
+                grid-column: 1 / -1;
+                color: var(--muted);
+                font-size: 11px;
+                font-weight: 800;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+            }
+            .version--latest .version__tag {
+                color: var(--accent-deep);
+            }
+            .version__name {
+                align-self: end;
+                font-family: "DIN Alternate", "Arial Narrow", "PingFang SC", sans-serif;
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: 0.01em;
+            }
+            .version__action {
+                align-self: end;
+                padding: 8px 11px;
+                border-radius: 999px;
+                color: #ffffff;
+                background: var(--accent);
+                font-size: 12px;
+                font-weight: 800;
+            }
+            .version:not(.version--latest) .version__action {
+                color: var(--accent-deep);
+                background: var(--accent-wash);
+            }
+            .version.is-current .version__tag,
+            .version.is-current .version__action {
+                color: #ffffff;
+                background: var(--accent);
+            }
+            .dialog__footer {
+                display: flex;
+                justify-content: space-between;
+                gap: 16px;
+                margin-top: 22px;
+                padding-top: 18px;
+                border-top: 1px solid var(--line);
+                color: var(--muted);
+                font-size: 12px;
+                line-height: 1.5;
+            }
+            .dialog__footer strong {
+                color: var(--ink);
+                font-weight: 800;
+            }
+
+            body.is-launching .dialog-backdrop {
+                display: none;
+            }
+            body.is-picker .launch-state,
+            body.is-incompatible .launch-state {
+                display: none;
+            }
+            body.is-incompatible .close {
+                display: none;
+            }
+            body.is-incompatible .version--latest {
+                display: none;
+            }
+            body.is-incompatible .versions {
+                display: block;
+            }
+            body.is-incompatible .version:not(.version--latest) {
+                display: none;
+            }
+
+            @media (max-width: 520px) {
+                .dialog-backdrop {
+                    padding: 14px;
+                }
+                .dialog__header,
+                .dialog__body {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                }
+                h1 {
+                    font-size: 22px;
+                }
+                .compatibility__controls {
+                    align-items: flex-start;
+                    flex-direction: column;
+                }
+                .dialog__footer {
+                    display: block;
+                }
+                .dialog__footer span {
+                    display: block;
+                    margin-top: 5px;
+                }
+            }
+        </style>
+    </head>
+    <body class="is-picker">
+        <div class="launch-state" aria-live="polite"><span>正在启动地面站 2026.6.1</span></div>
+        <main class="dialog-backdrop" aria-labelledby="dialog-title">
+            <section class="dialog" role="dialog" aria-modal="true">
+                <header class="dialog__header">
+                    <div>
+                        <p class="eyebrow">HS FPV / 地面站</p>
+                        <h1 id="dialog-title">切换地面站版本</h1>
+                        <p class="dialog__subtitle" id="dialog-description">
+                            选择适合你的地面站版本，切换不会修改飞控数据。
+                        </p>
+                    </div>
+                    <button class="close" id="close" type="button" aria-label="继续使用 2026.6.1">×</button>
+                </header>
+                <div class="dialog__body">
+                    <div class="compatibility" id="compatibility" role="status">
+                        当前浏览器版本不支持最新地面站 2026.6.1，请更新浏览器后再使用最新版。
+                        <div class="compatibility__controls">
+                            <label class="compatibility__checkbox"
+                                ><input id="dont-show-again" type="checkbox" />以后不再提示</label
+                            >
+                            <a class="fallback-action" id="fallback-action" href="/v/2025.12.2/">立即进入 12.2</a>
+                        </div>
+                        <p class="fallback-countdown" id="fallback-countdown">即将自动进入 12.2…</p>
+                    </div>
+                    <nav class="versions" aria-label="地面站版本">
+                        <a class="version version--latest" href="/v/2026.6.1/" data-version="2026.6.1">
+                            <span class="version__tag">推荐 · 最新版本</span>
+                            <span class="version__name">2026.6.1</span>
+                            <span class="version__action">进入最新版</span>
+                        </a>
+                        <a class="version" href="/v/2025.12.2/" data-version="2025.12.2">
+                            <span class="version__tag">稳定版本</span>
+                            <span class="version__name">2025.12.2</span>
+                            <span class="version__action">进入稳定版</span>
+                        </a>
+                    </nav>
+                    <footer class="dialog__footer">
+                        <strong>HS FPV 镜像站</strong>
+                        <span>切换不会修改飞控数据</span>
+                    </footer>
+                </div>
+            </section>
+        </main>
+        <script>
+            (function () {
+                "use strict";
+
+                var latestUrl = "/v/2026.6.1/";
+                var fallbackUrl = "/v/2025.12.2/";
+                var warningKey = "bf-configurator-hide-compatibility-warning";
+                var versionKey = "bf-configurator-version";
+                var pickerRequested =
+                    /(?:[?&])version-picker=1(?:&|$)/.test(window.location.search) ||
+                    window.location.hash === "#versions";
+                var body = document.body;
+                var compatibility = document.getElementById("compatibility");
+                var dialogTitle = document.getElementById("dialog-title");
+                var dialogDescription = document.getElementById("dialog-description");
+                var dontShowAgain = document.getElementById("dont-show-again");
+                var fallbackAction = document.getElementById("fallback-action");
+                var fallbackCountdown = document.getElementById("fallback-countdown");
+                var fallbackTimer = null;
+
+                function getStorageValue(key) {
+                    try {
+                        return window.localStorage.getItem(key);
+                    } catch (error) {
+                        return null;
+                    }
+                }
+
+                function storeWarningPreference(shouldHide) {
+                    try {
+                        if (shouldHide) {
+                            window.localStorage.setItem(warningKey, "1");
+                        } else {
+                            window.localStorage.removeItem(warningKey);
+                        }
+                    } catch (error) {
+                        // Storage can be unavailable in private or legacy browser contexts.
+                    }
+                }
+
+                function supportsLatestConfigurator() {
+                    var script = document.createElement("script");
+                    try {
+                        return Boolean(
+                            "noModule" in script &&
+                            window.Promise &&
+                            window.Proxy &&
+                            window.Map &&
+                            window.Set &&
+                            window.Symbol &&
+                            window.URL &&
+                            window.URLSearchParams &&
+                            window.AbortController &&
+                            window.fetch &&
+                            window.CSS &&
+                            window.CSS.supports &&
+                            window.CSS.supports("display", "grid") &&
+                            new Function("return import('data:text/javascript,export default 1');"),
+                        );
+                    } catch (error) {
+                        return false;
+                    }
+                }
+
+                function storeVersion(version) {
+                    try {
+                        window.localStorage.setItem(versionKey, version);
+                    } catch (error) {
+                        // Storage can be unavailable in private or legacy browser contexts.
+                    }
+                }
+
+                function getStoredVersion() {
+                    var storedVersion = getStorageValue(versionKey);
+
+                    return storedVersion === "2025.12.2" || storedVersion === "2026.6.1" ? storedVersion : null;
+                }
+
+                function openLatest(shouldRemember) {
+                    if (shouldRemember) {
+                        storeVersion("2026.6.1");
+                    }
+                    window.location.replace(latestUrl);
+                }
+
+                function openFallback(shouldRemember) {
+                    if (fallbackTimer !== null) {
+                        window.clearTimeout(fallbackTimer);
+                        fallbackTimer = null;
+                    }
+                    if (shouldRemember) {
+                        storeVersion("2025.12.2");
+                    }
+                    window.location.replace(fallbackUrl);
+                }
+
+                function getSourceVersion() {
+                    var matchedVersion = /(?:[?&])from=(2025\.12\.2|2026\.6\.1)(?:&|$)/.exec(window.location.search);
+                    var storedVersion = getStoredVersion();
+
+                    if (matchedVersion) {
+                        return matchedVersion[1];
+                    }
+
+                    return storedVersion || "2026.6.1";
+                }
+
+                function markCurrentVersion(version) {
+                    var selectedLink;
+
+                    if (!document.querySelector) {
+                        return;
+                    }
+
+                    selectedLink = document.querySelector('[data-version="' + version + '"]');
+                    if (!selectedLink) {
+                        return;
+                    }
+
+                    selectedLink.className += " is-current";
+                    selectedLink.setAttribute("aria-current", "true");
+                    selectedLink.getElementsByClassName("version__tag")[0].textContent = "当前使用中";
+                    selectedLink.getElementsByClassName("version__action")[0].textContent = "当前版本";
+                }
+
+                var compatible = supportsLatestConfigurator();
+                var links = document.querySelectorAll ? document.querySelectorAll("[data-version]") : [];
+                var index;
+
+                markCurrentVersion(getSourceVersion());
+
+                for (index = 0; index < links.length; index += 1) {
+                    links[index].onclick = function () {
+                        storeVersion(this.getAttribute("data-version"));
+                    };
+                }
+
+                document.getElementById("close").onclick = function () {
+                    openLatest(false);
+                };
+                dontShowAgain.onchange = function () {
+                    storeWarningPreference(dontShowAgain.checked);
+                };
+                fallbackAction.onclick = function () {
+                    openFallback(true);
+                    return false;
+                };
+
+                if (!compatible) {
+                    body.className = "is-incompatible";
+                    compatibility.className = "compatibility is-visible";
+                    dialogTitle.textContent = "浏览器需要更新";
+                    dialogDescription.textContent = "已为你准备兼容的稳定版本 2025.12.2。";
+                    dontShowAgain.checked = getStorageValue(warningKey) === "1";
+                    if (dontShowAgain.checked) {
+                        openFallback(false);
+                        return;
+                    }
+                    fallbackTimer = window.setTimeout(function () {
+                        openFallback(false);
+                    }, 2000);
+                    return;
+                }
+
+                if (pickerRequested) {
+                    body.className = "is-picker";
+                    return;
+                }
+
+                body.className = "is-launching";
+                if (getStoredVersion() === "2025.12.2") {
+                    openFallback(false);
+                } else {
+                    openLatest(false);
+                }
+            })();
+        </script>
+    </body>
+</html>

@@ -533,6 +533,7 @@ import { updateTabList } from "@/js/utils/updateTabList";
 import { gui_log } from "@/js/gui_log";
 import DarkTheme from "@/js/DarkTheme";
 import windowWatcherUtil from "@/js/utils/window_watchers";
+import { runtimeAssetUrl } from "@/js/utils/runtimeAssetUrl";
 import { API_VERSION_1_45, API_VERSION_1_47 } from "@/js/data_storage";
 import CryptoES from "crypto-es";
 import semver from "semver";
@@ -980,7 +981,7 @@ function openSticksWindow() {
     };
 
     const createdWindow = globalThis.open(
-        "/components/tabs/receiver-msp/receiver_msp.html",
+        runtimeAssetUrl("components/tabs/receiver-msp/receiver_msp.html"),
         "receiver_msp",
         `location=no,width=${windowWidth},height=${windowHeight + (screen.height - screen.availHeight)}`,
     );
