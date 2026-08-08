@@ -299,6 +299,7 @@ import { mspHelper } from "../../js/msp/MSPHelper";
 import MSP from "../../js/msp";
 import Model from "../../js/model";
 import MSPCodes from "../../js/msp/MSPCodes";
+import { isMspCancelled } from "@/js/msp/mspErrors";
 import CONFIGURATOR, {
     API_VERSION_1_45,
     API_VERSION_1_46,
@@ -535,7 +536,12 @@ async function initialize() {
         await MSP.promise(MSPCodes.MSP_SENSOR_ALIGNMENT, false);
         await MSP.promise(MSPCodes.MSP_ADVANCED_CONFIG, false);
     } catch (e) {
-        // preserve behavior but at least log unexpected errors
+        // Switching away mid-sequence clears the MSP queue and cancels these requests. The tab
+        // is being torn down, so there is nothing left to render and nothing to report — going
+        // on to process_html() would only warn that the canvas it wants is already gone.
+        if (isMspCancelled(e)) {
+            return;
+        }
         console.warn("Error during Setup initialize sequence:", e);
     }
 
