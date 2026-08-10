@@ -339,7 +339,7 @@
                             >
                             <a class="fallback-action" id="fallback-action" href="/v/2025.12.2/">立即进入 12.2</a>
                         </div>
-                        <p class="fallback-countdown" id="fallback-countdown">即将自动进入 12.2…</p>
+                        <p class="fallback-countdown" id="fallback-countdown">将在 10 秒后自动跳转至 2025.12.2 版本。</p>
                     </div>
                     <nav class="versions" aria-label="地面站版本">
                         <a class="version version--latest" href="/v/2026.6.1/" data-version="2026.6.1">
@@ -368,6 +368,7 @@
                 var fallbackUrl = "/v/2025.12.2/";
                 var warningKey = "bf-configurator-hide-compatibility-warning";
                 var versionKey = "bf-configurator-version";
+                var fallbackDelaySeconds = 10;
                 var pickerRequested =
                     /(?:[?&])version-picker=1(?:&|$)/.test(window.location.search) ||
                     window.location.hash === "#versions";
@@ -379,6 +380,7 @@
                 var fallbackAction = document.getElementById("fallback-action");
                 var fallbackCountdown = document.getElementById("fallback-countdown");
                 var fallbackTimer = null;
+                var fallbackCountdownTimer = null;
 
                 function getStorageValue(key) {
                     try {
@@ -445,15 +447,42 @@
                     window.location.replace(latestUrl);
                 }
 
-                function openFallback(shouldRemember) {
+                function clearFallbackTimers() {
                     if (fallbackTimer !== null) {
                         window.clearTimeout(fallbackTimer);
                         fallbackTimer = null;
                     }
+                    if (fallbackCountdownTimer !== null) {
+                        window.clearInterval(fallbackCountdownTimer);
+                        fallbackCountdownTimer = null;
+                    }
+                }
+
+                function openFallback(shouldRemember) {
+                    clearFallbackTimers();
                     if (shouldRemember) {
                         storeVersion("2025.12.2");
                     }
                     window.location.replace(fallbackUrl);
+                }
+
+                function updateFallbackCountdown(secondsRemaining) {
+                    fallbackCountdown.textContent = "将在 " + secondsRemaining + " 秒后自动跳转至 2025.12.2 版本。";
+                }
+
+                function startFallbackCountdown() {
+                    var secondsRemaining = fallbackDelaySeconds;
+
+                    updateFallbackCountdown(secondsRemaining);
+                    fallbackCountdownTimer = window.setInterval(function () {
+                        secondsRemaining -= 1;
+                        if (secondsRemaining > 0) {
+                            updateFallbackCountdown(secondsRemaining);
+                        }
+                    }, 1000);
+                    fallbackTimer = window.setTimeout(function () {
+                        openFallback(false);
+                    }, fallbackDelaySeconds * 1000);
                 }
 
                 function getSourceVersion() {
@@ -518,9 +547,7 @@
                         openFallback(false);
                         return;
                     }
-                    fallbackTimer = window.setTimeout(function () {
-                        openFallback(false);
-                    }, 2000);
+                    startFallbackCountdown();
                     return;
                 }
 

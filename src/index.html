@@ -4,6 +4,11 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
 
+        <!-- Must stay a classic ES5 script and run before every module. It is
+             intentionally served from Vite's public directory so an old PC
+             browser can show an upgrade message even if it cannot parse the
+             application bundle. -->
+        <script src="%BASE_URL%browser-compatibility.js"></script>
         <script type="module" src="/src/js/utils/common.js"></script>
         <script type="module" src="/src/js/browserMain.js"></script>
         <script defer src="https://umami.hs-fpv.cn/script.js" data-website-id="1bb91f47-0a44-4918-a32b-fedcc1087e23"></script>
@@ -18,6 +23,7 @@
         <meta name="theme-color" content="#eea600" />
     </head>
     <body>
+        <div id="browser-compatibility-message" hidden role="alert" aria-live="assertive"></div>
         <div id="main-wrapper">
         <app />
         <dialog

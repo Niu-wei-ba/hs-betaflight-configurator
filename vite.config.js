@@ -145,6 +145,10 @@ export default defineConfig({
         __APP_REVISION__: JSON.stringify(commitHash),
     },
     build: {
+        // Keep the web bundle parseable by the oldest PC browser we support.
+        // The startup guard in browser-compatibility.js gives anything older a
+        // useful upgrade message before it can fail on a modern module chunk.
+        target: ["chrome80", "edge80", "firefox78", "safari13"],
         rollupOptions: {
             input: {
                 main: resolve(__dirname, "src/index.html"),
