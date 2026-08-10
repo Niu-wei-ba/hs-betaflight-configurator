@@ -20,6 +20,8 @@ import { loadDeviceFilters } from "./protocols/devices.js";
 import { pinia } from "./pinia_instance.js";
 import { useNavigationStore } from "../stores/navigation.js";
 import { MspCancelledError } from "./msp/mspErrors.js";
+import { isAndroidNative } from "./AndroidAppUpdate.js";
+import { checkAndPromptAndroidAppUpdate } from "./AndroidAppUpdateUi.js";
 
 window.addEventListener("unhandledrejection", (event) => {
     if (event.reason instanceof MspCancelledError) {
@@ -101,6 +103,14 @@ function appReady() {
         });
 
         initializeSerialBackend();
+
+        // APK updates are only checked by the Android native shell. Browser/PWA
+        // builds never request update metadata or display this dialog.
+        if (isAndroidNative()) {
+            setTimeout(() => {
+                void checkAndPromptAndroidAppUpdate();
+            }, 2_000);
+        }
 
         // Open OptionsDialog on first launch so new users can set language / theme
         const firstRunCfg = getConfig("firstRun") ?? {};

@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "betaflight.app"
+    namespace = "com.hsfpv.betaflight"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "betaflight.app"
+        applicationId "com.hsfpv.betaflight"
         minSdk = rootProject.ext.minSdkVersion
         targetSdk = rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 7
+        versionName "2026.6.1-hs.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

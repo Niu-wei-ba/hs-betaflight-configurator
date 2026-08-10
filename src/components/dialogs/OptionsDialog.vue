@@ -140,13 +140,21 @@
                         <USwitch v-model="settings.showPresetsWarningBackup" size="sm" />
                     </SettingRow>
                 </UiBox>
+
+                <UiBox v-if="isAndroidApp" :title="$t('androidAppUpdateTitle')">
+                    <SettingRow :label="$t('androidAppUpdateCheckDescription')">
+                        <UButton size="sm" :loading="checkingAppUpdate" @click="checkForAppUpdate">
+                            {{ $t("androidAppUpdateCheck") }}
+                        </UButton>
+                    </SettingRow>
+                </UiBox>
             </div>
         </template>
     </UModal>
 </template>
 
 <script setup>
-import { computed, onUnmounted, reactive, watch } from "vue";
+import { computed, onUnmounted, reactive, ref, watch } from "vue";
 import { useDialog } from "@/composables/useDialog";
 import { get as getConfig, set as setConfig } from "../../js/ConfigStorage";
 import { applyUiScale, sanitizeUiScale, DEFAULT_UI_SCALE, MIN_UI_SCALE, MAX_UI_SCALE } from "../../js/UiScale";
@@ -161,6 +169,8 @@ import { DEFAULT_DEVELOPMENT_OPTIONS, resetDevelopmentOptions } from "../../js/u
 import { applyExpertMode } from "../../js/utils/applyExpertMode";
 import UiBox from "../elements/UiBox.vue";
 import SettingRow from "../elements/SettingRow.vue";
+import { isAndroidNative } from "../../js/AndroidAppUpdate";
+import { checkAndPromptAndroidAppUpdate } from "../../js/AndroidAppUpdateUi";
 
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -168,6 +178,17 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const dialog = useDialog();
+const isAndroidApp = isAndroidNative();
+const checkingAppUpdate = ref(false);
+
+async function checkForAppUpdate() {
+    checkingAppUpdate.value = true;
+    try {
+        await checkAndPromptAndroidAppUpdate({ notifyUpToDate: true });
+    } finally {
+        checkingAppUpdate.value = false;
+    }
+}
 
 const open = computed({
     get: () => props.modelValue,

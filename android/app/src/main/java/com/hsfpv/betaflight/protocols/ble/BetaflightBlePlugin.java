@@ -1,4 +1,4 @@
-package betaflight.app.protocols.ble;
+package com.hsfpv.betaflight.protocols.ble;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;

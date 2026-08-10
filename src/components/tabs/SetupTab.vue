@@ -304,6 +304,7 @@ import { gui_log } from "../../js/gui_log";
 import { ispConnected } from "../../js/utils/connection";
 import { addArrayElementsAfter, replaceArrayElement } from "../../js/utils/array";
 import { flightIndicator } from "../../../libraries/flightIndicators";
+import { resolveBuildApiUrl } from "../../js/BuildApi";
 
 const { t } = useTranslation();
 
@@ -548,7 +549,7 @@ function process_html() {
     };
 
     const getBuildRootBaseUri = function () {
-        return `https://build.betaflight.com/api/builds/${fcStore.config.buildKey}`;
+        return resolveBuildApiUrl(`/api/builds/${fcStore.config.buildKey}`);
     };
 
     const showBuildInfo = function () {

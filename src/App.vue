@@ -122,7 +122,6 @@ const PortUsage = computed(() => currentVm()?.PortUsage ?? PortUsageModule);
 const CONNECTION = computed(() => currentVm()?.CONNECTION ?? connectionFallback);
 
 const activeTabInstance = ref(null);
-
 const isRevealed = ref(false);
 const sidebarNarrow = useMediaQuery("(max-width: 1055px)");
 const isCompactBreakpoint = useMediaQuery(

@@ -1,4 +1,4 @@
-package betaflight.app.protocols.dfu;
+package com.hsfpv.betaflight.protocols.dfu;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

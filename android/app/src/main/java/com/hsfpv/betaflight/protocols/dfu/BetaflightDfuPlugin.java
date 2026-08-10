@@ -1,4 +1,4 @@
-package betaflight.app.protocols.dfu;
+package com.hsfpv.betaflight.protocols.dfu;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;

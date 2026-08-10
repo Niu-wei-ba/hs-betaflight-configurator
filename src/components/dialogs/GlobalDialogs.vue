@@ -15,6 +15,7 @@ import { ref, watch, nextTick } from "vue";
 import YesNoDialog from "./YesNoDialog.vue";
 import InformationDialog from "./InformationDialog.vue";
 import WaitDialog from "./WaitDialog.vue";
+import AndroidAppUpdateProgressDialog from "./AndroidAppUpdateProgressDialog.vue";
 import RebootDialog from "./RebootDialog.vue";
 import EscDshotDirectionDialog from "./EscDshotDirectionDialog.vue";
 import MotorOutputReorderingDialog from "./MotorOutputReorderingDialog.vue";
@@ -32,6 +33,7 @@ const dialogComponents = {
     YesNoDialog,
     InformationDialog,
     WaitDialog,
+    AndroidAppUpdateProgressDialog,
     RebootDialog,
     EscDshotDirectionDialog,
     MotorOutputReorderingDialog,

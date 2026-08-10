@@ -156,6 +156,60 @@
     "update": {
         "message": "更新"
     },
+    "androidAppUpdateTitle": {
+        "message": "应用更新"
+    },
+    "androidAppUpdateConfirm": {
+        "message": "确定"
+    },
+    "androidAppUpdateCheck": {
+        "message": "检查应用更新"
+    },
+    "androidAppUpdateCheckDescription": {
+        "message": "检查并下载安装最新的 Android 应用版本。"
+    },
+    "androidAppUpdateAvailable": {
+        "message": "发现新版本 Betaflight App（$1）。"
+    },
+    "androidAppUpdateDownload": {
+        "message": "下载并安装"
+    },
+    "androidAppUpdateLater": {
+        "message": "稍后"
+    },
+    "androidAppUpdateDownloading": {
+        "message": "正在下载更新包…"
+    },
+    "androidAppUpdatePreparing": {
+        "message": "正在准备下载更新包…"
+    },
+    "androidAppUpdateProgress": {
+        "message": "已下载 $1 / $2（$3）"
+    },
+    "androidAppUpdateProgressUnknown": {
+        "message": "正在下载更新包…"
+    },
+    "androidAppUpdateVerifying": {
+        "message": "正在校验更新包…"
+    },
+    "androidAppUpdateDownloaded": {
+        "message": "更新包下载完成"
+    },
+    "androidAppUpdateStartingInstaller": {
+        "message": "正在打开 Android 安装程序…"
+    },
+    "androidAppUpdateUpToDate": {
+        "message": "当前已是最新版本。"
+    },
+    "androidAppUpdateCheckFailed": {
+        "message": "暂时无法检查应用更新，请稍后重试。"
+    },
+    "androidAppUpdateDownloadFailed": {
+        "message": "下载或校验更新包失败，请稍后重试。"
+    },
+    "androidAppUpdateInstallPermission": {
+        "message": "请在 Android 设置中允许来自此应用的安装，然后返回应用再次检查更新。"
+    },
     "save": {
         "message": "保存"
     },

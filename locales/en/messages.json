@@ -171,6 +171,60 @@
     "update": {
         "message": "Update"
     },
+    "androidAppUpdateTitle": {
+        "message": "App update"
+    },
+    "androidAppUpdateConfirm": {
+        "message": "OK"
+    },
+    "androidAppUpdateCheck": {
+        "message": "Check for app updates"
+    },
+    "androidAppUpdateCheckDescription": {
+        "message": "Download and install the latest Android app version."
+    },
+    "androidAppUpdateAvailable": {
+        "message": "A new Betaflight App version ($1) is available."
+    },
+    "androidAppUpdateDownload": {
+        "message": "Download and install"
+    },
+    "androidAppUpdateLater": {
+        "message": "Later"
+    },
+    "androidAppUpdateDownloading": {
+        "message": "Downloading update…"
+    },
+    "androidAppUpdatePreparing": {
+        "message": "Preparing update download…"
+    },
+    "androidAppUpdateProgress": {
+        "message": "Downloaded $1 / $2 ($3)"
+    },
+    "androidAppUpdateProgressUnknown": {
+        "message": "Downloading update package…"
+    },
+    "androidAppUpdateVerifying": {
+        "message": "Verifying update package…"
+    },
+    "androidAppUpdateDownloaded": {
+        "message": "Update package downloaded"
+    },
+    "androidAppUpdateStartingInstaller": {
+        "message": "Opening Android installer…"
+    },
+    "androidAppUpdateUpToDate": {
+        "message": "You are using the latest app version."
+    },
+    "androidAppUpdateCheckFailed": {
+        "message": "Unable to check for app updates. Please try again later."
+    },
+    "androidAppUpdateDownloadFailed": {
+        "message": "Unable to download or verify the app update."
+    },
+    "androidAppUpdateInstallPermission": {
+        "message": "Allow installs from this app in Android settings, then return and check for updates again."
+    },
     "save": {
         "message": "Save"
     },

@@ -1,4 +1,4 @@
-package betaflight.app.protocols.tcp;
+package com.hsfpv.betaflight.protocols.tcp;
 
 import android.util.Base64;
 import android.util.Log;

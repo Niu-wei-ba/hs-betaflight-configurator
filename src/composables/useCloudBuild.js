@@ -1,4 +1,5 @@
 import { reactive, onScopeDispose } from "vue";
+import { resolveBuildApiUrl } from "../js/BuildApi";
 
 /**
  * A composable for handling cloud build requests and polling.
@@ -114,7 +115,7 @@ export function useCloudBuild(params) {
             return;
         }
 
-        const logUrl = `https://build.betaflight.com/api/builds/${response.key}/log`;
+        const logUrl = resolveBuildApiUrl(`/api/builds/${response.key}/log`);
         state.cloudTargetLogText = $t(`firmwareFlasherCloudBuildLogUrl`);
         state.cloudTargetLogUrl = logUrl;
         state.cloudTargetStatusText = $t(`firmwareFlasherCloudBuildSuccess${suffix}`);
@@ -247,7 +248,7 @@ export function useCloudBuild(params) {
             suffix = "Cancel";
         }
 
-        const logUrl = `https://build.betaflight.com/api/builds/${response.key}/log`;
+        const logUrl = resolveBuildApiUrl(`/api/builds/${response.key}/log`);
         setCloudBuildLogLink($t(`firmwareFlasherCloudBuildLogUrl`), logUrl);
         updateCloudBuildStatus($t(`firmwareFlasherCloudBuildFail${suffix}`), 0);
         enableLoadRemoteFileButton(true);

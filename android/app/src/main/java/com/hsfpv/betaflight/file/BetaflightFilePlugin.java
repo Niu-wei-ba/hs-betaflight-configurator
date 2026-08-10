@@ -1,4 +1,4 @@
-package betaflight.app.file;
+package com.hsfpv.betaflight.file;
 
 import android.app.Activity;
 import android.content.ContentResolver;

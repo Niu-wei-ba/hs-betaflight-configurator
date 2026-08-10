@@ -3,6 +3,7 @@
         <main class="content_wrapper landing-page" aria-labelledby="landing-title">
             <section class="landing-shell">
                 <a
+                    v-if="!isAndroidApp"
                     class="version-switch-link"
                     href="/v/2025.12.2/"
                     aria-label="切换至地面站 2025.12.2版本"
@@ -22,10 +23,6 @@
                     </svg>
                     <span>切换 2025.12.2版本</span>
                 </a>
-                <aside class="landing-sponsor" aria-label="赞助商 BUCK">
-                    <p>赞助支持</p>
-                    <img :src="buckLogoUrl" alt="BUCK" />
-                </aside>
                 <header class="landing-hero">
                     <p class="hero-kicker">
                         <svg
@@ -44,6 +41,11 @@
                     <h1 id="landing-title">Betaflight <em>中国镜像站</em></h1>
                     <p class="hero-subtitle">为穿越机玩家提供更稳定、更快速的资源与交流平台</p>
                 </header>
+
+                <aside class="landing-sponsor" aria-label="赞助商 BUCK">
+                    <p>赞助支持</p>
+                    <img :src="buckLogoUrl" alt="BUCK" />
+                </aside>
 
                 <section class="resource-grid" aria-label="快捷入口">
                     <component
@@ -231,6 +233,7 @@ import { defineComponent, onMounted, ref } from "vue";
 import BaseTab from "./BaseTab.vue";
 import GUI from "../../js/gui";
 import { i18n } from "../../js/localization";
+import { isAndroidNative } from "../../js/AndroidAppUpdate.js";
 import { openVideoTutorials } from "../../js/video_tutorials";
 import qqQrUrl from "../../images/hs-qq-qr.png";
 import flightViewUrl from "../../images/osd-bg-1.jpg";
@@ -275,11 +278,13 @@ const tutorialCards = [
 ];
 
 const communityBenefits = ["大佬答疑", "AI机器人", "新固件通知", "活动与福利"];
+const ANDROID_DEFAULT_VERSION = "2026.6.1";
 
 export default defineComponent({
     name: "LandingTab",
     components: { BaseTab },
     setup() {
+        const isAndroidApp = isAndroidNative();
         const availableLanguages = ref(["DEFAULT", ...i18n.getLanguagesAvailables()]);
         const selectedLanguage = ref(i18n.selectedLanguage);
 
@@ -298,13 +303,20 @@ export default defineComponent({
             }
         }
 
-        onMounted(() => GUI.content_ready());
+        onMounted(() => {
+            if (isAndroidApp) {
+                rememberVersion(ANDROID_DEFAULT_VERSION);
+            }
+
+            GUI.content_ready();
+        });
 
         return {
             availableLanguages,
             buckLogoUrl,
             changeLanguage,
             communityBenefits,
+            isAndroidApp,
             openVideoTutorials,
             qqQrUrl,
             rememberVersion,
@@ -836,6 +848,9 @@ export default defineComponent({
         position: static;
         justify-content: center;
         margin: 0 0 18px;
+    }
+    .landing-sponsor p {
+        font-size: 12px;
     }
     .landing-hero h1 {
         font-size: 40px;

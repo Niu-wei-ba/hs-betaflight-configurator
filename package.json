@@ -20,6 +20,7 @@
     "android:run": "vite build && node capacitor.config.generator.mjs && npx cap run android",
     "android:sync": "vite build && node capacitor.config.generator.mjs && npx cap sync android",
     "android:release": "vite build && node capacitor.config.generator.mjs && npx cap build android --release",
+    "android:release:local": "/opt/homebrew/opt/node@24/bin/node scripts/build-local-android-release.mjs",
     "tauri": "tauri",
     "tauri:dev": "node scripts/check-tauri-prereqs.mjs && cross-env TAURI_DEV=1 tauri dev",
     "tauri:build": "node scripts/check-tauri-prereqs.mjs && tauri build",

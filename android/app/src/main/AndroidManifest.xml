@@ -44,7 +44,7 @@
 
         <!-- Explicit receiver to handle USB permission PendingIntent on Android 14+ -->
         <receiver
-            android:name="betaflight.app.protocols.serial.UsbPermissionReceiver"
+            android:name="com.hsfpv.betaflight.protocols.serial.UsbPermissionReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.betaflight.USB_PERMISSION" />
@@ -53,7 +53,7 @@
 
         <!-- Explicit receiver for DFU USB permission on Android 14+ -->
         <receiver
-            android:name="betaflight.app.protocols.dfu.DfuUsbPermissionReceiver"
+            android:name="com.hsfpv.betaflight.protocols.dfu.DfuUsbPermissionReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.betaflight.DFU_USB_PERMISSION" />
@@ -64,6 +64,7 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />

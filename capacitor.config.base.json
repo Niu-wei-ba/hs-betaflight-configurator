@@ -1,5 +1,10 @@
 {
-  "appId": "betaflight.app",
+  "appId": "com.hsfpv.betaflight",
   "appName": "Betaflight App",
-  "webDir": "src/dist"
+  "webDir": "src/dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }

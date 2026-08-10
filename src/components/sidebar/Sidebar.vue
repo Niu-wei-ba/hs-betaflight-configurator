@@ -57,6 +57,12 @@
             />
         </UTooltip>
         <UserSession :is-compact="isCompact" />
+        <div v-if="!isCompact" class="sidebar-version" :title="sidebarVersionFull">
+            {{ sidebarVersion }}
+        </div>
+        <div v-if="isAndroidApp && nativeAppVersion" class="sidebar-version sidebar-version--native">
+            {{ nativeAppVersion }}
+        </div>
     </div>
     <OptionsDialog v-model="optionsOpen" />
     <LogDialog v-model="logOpen" />
@@ -79,6 +85,8 @@ import { get as getConfig, set as setConfig } from "@/js/ConfigStorage.js";
 import { applyExpertMode } from "@/js/utils/applyExpertMode.js";
 import { isExpertModeEnabled } from "@/js/utils/isExpertModeEnabled.js";
 import { EventBus } from "@/components/eventBus.js";
+import CONFIGURATOR from "@/js/data_storage.js";
+import { BetaflightAppUpdate, isAndroidNative } from "@/js/AndroidAppUpdate.js";
 import OptionsDialog from "@/components/dialogs/OptionsDialog.vue";
 import LogDialog from "@/components/dialogs/LogDialog.vue";
 
@@ -95,6 +103,35 @@ const navMenuUi = computed(() => {
     };
 });
 const betaflightModel = inject("betaflightModel", null);
+const isAndroidApp = isAndroidNative();
+const nativeAppVersion = ref("");
+
+const sidebarVersionFull = computed(() => {
+    const model = betaflightModel ?? globalThis.vm;
+    const configurator = model?.CONFIGURATOR ?? CONFIGURATOR;
+    return configurator.getDisplayVersion();
+});
+
+const sidebarVersion = computed(() => {
+    const match = sidebarVersionFull.value.match(/^(.+?)\s*\(([^)]+)\)$/);
+    return match ? `v${match[1]} · ${match[2]}` : `v${sidebarVersionFull.value}`;
+});
+
+onMounted(async () => {
+    if (!isAndroidApp) {
+        return;
+    }
+
+    try {
+        const appInfo = await BetaflightAppUpdate.getAppInfo();
+        const versionCode = Number(appInfo?.versionCode);
+        if (Number.isSafeInteger(versionCode) && versionCode > 0) {
+            nativeAppVersion.value = `V${versionCode}`;
+        }
+    } catch {
+        // Keep the sidebar clean when native version information is unavailable.
+    }
+});
 
 const isModeVisible = (mode) => {
     switch (mode) {
@@ -227,5 +264,19 @@ onUnmounted(() => {
 .sidebar-footer--compact {
     flex-direction: column;
     align-items: center;
+}
+
+.sidebar-version {
+    flex-basis: 100%;
+    padding: 2px 6px 0;
+    color: var(--ui-text-muted);
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.sidebar-version--native {
+    font-weight: 700;
 }
 </style>

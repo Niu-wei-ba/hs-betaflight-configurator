@@ -1,4 +1,4 @@
-package betaflight.app.protocols.serial;
+package com.hsfpv.betaflight.protocols.serial;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;

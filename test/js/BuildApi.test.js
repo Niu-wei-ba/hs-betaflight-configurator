@@ -54,7 +54,7 @@ describe("BuildApi gateway routing", () => {
         );
     });
 
-    it("routes API and relative firmware URLs through the selected gateway while retaining absolute URLs", async () => {
+    it("routes API and relative firmware URLs through the selected gateway while retaining external URLs", async () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValueOnce(new Response(JSON.stringify([{ target: "TEST" }]), { status: 200 }))
@@ -75,5 +75,14 @@ describe("BuildApi gateway routing", () => {
         expect(resolveBuildApiUrl("api/targets", "https://mirror.example.com/")).toBe(
             "https://mirror.example.com/api/targets",
         );
+    });
+
+    it("rewrites official absolute firmware URLs through the selected gateway", () => {
+        expect(
+            resolveBuildApiUrl(
+                "https://build.betaflight.com/api/builds/task/firmware.hex?download=1",
+                "https://mirror.example.com/",
+            ),
+        ).toBe("https://mirror.example.com/api/builds/task/firmware.hex?download=1");
     });
 });

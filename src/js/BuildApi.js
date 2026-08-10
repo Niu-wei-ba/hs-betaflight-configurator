@@ -51,6 +51,15 @@ export function resolveBuildApiBaseUrl({
 export function resolveBuildApiUrl(path, baseUrl = resolveBuildApiBaseUrl()) {
     const value = String(path || "");
     if (/^https?:\/\//i.test(value)) {
+        try {
+            const parsed = new URL(value);
+            const official = new URL(OFFICIAL_BUILD_API_BASE_URL);
+            if (parsed.origin === official.origin) {
+                return `${trimTrailingSlash(baseUrl)}${parsed.pathname}${parsed.search}${parsed.hash}`;
+            }
+        } catch (_error) {
+            // Preserve malformed or non-URL values for the existing fetch error path.
+        }
         return value;
     }
 
