@@ -315,6 +315,7 @@ import { get as getConfig } from "../../js/ConfigStorage";
 import { sensorTypes } from "../../js/sensor_types";
 import { MspCancelledError } from "../../js/msp/mspErrors";
 import { bit_check, bit_set } from "../../js/bit";
+import { useDirtyState } from "../../composables/useDirtyState";
 import { useSaving } from "../../composables/useSaving";
 import { useReboot } from "../../composables/useReboot";
 import { runTabLoad } from "../../composables/useTabLoad";
@@ -551,9 +552,7 @@ export default defineComponent({
             );
         });
 
-        /** Baseline after MSP load or successful save; same pattern as Power / Auxiliary */
-        const onboardLoggingBaseline = ref("");
-
+        /** @returns {string} serialized tab state for dirty comparison */
         const serializeOnboardLoggingState = () =>
             JSON.stringify({
                 blackboxDevice: blackboxDevice.value,
@@ -562,12 +561,7 @@ export default defineComponent({
                 debugFieldsEnabled: [...debugFieldsEnabled.value],
             });
 
-        const dirty = computed(() => {
-            if (!onboardLoggingBaseline.value) {
-                return false;
-            }
-            return onboardLoggingBaseline.value !== serializeOnboardLoggingState();
-        });
+        const { dirty, markClean, takeSnapshot } = useDirtyState(serializeOnboardLoggingState);
 
         function updateDebugField(index, value) {
             // Use splice to ensure Vue 3 reactivity
@@ -581,6 +575,8 @@ export default defineComponent({
 
             return runSave(
                 async () => {
+                    const savedSnapshot = takeSnapshot();
+
                     fcStore.blackbox.blackboxSampleRate = blackboxRate.value;
                     fcStore.blackbox.blackboxPDenom = blackboxRate.value;
                     fcStore.blackbox.blackboxDevice = blackboxDevice.value;
@@ -607,8 +603,7 @@ export default defineComponent({
 
                     await saveAndReboot();
 
-                    // Only after a successful persist: refresh the dirty baseline.
-                    onboardLoggingBaseline.value = serializeOnboardLoggingState();
+                    markClean(savedSnapshot);
                 },
                 { onError: (e) => console.error("Failed to save onboard logging settings", e) },
             );
@@ -979,7 +974,7 @@ export default defineComponent({
                         }
 
                         updateVirtualGyro();
-                        onboardLoggingBaseline.value = serializeOnboardLoggingState();
+                        markClean();
                         updateHtml();
                     },
                     (error) => console.error("Failed to load onboard logging data", error),

@@ -513,6 +513,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useFlightControllerStore } from "@/stores/fc";
 import { useConnectionStore } from "@/stores/connection";
+import { useDirtyState } from "@/composables/useDirtyState";
 import { useReboot } from "@/composables/useReboot";
 import { useSaving } from "@/composables/useSaving";
 import { runTabLoad } from "@/composables/useTabLoad";
@@ -628,9 +629,8 @@ const rcDeadbandConfig = computed(() => fcStore.rcDeadbandConfig);
 const failsafeActive = computed(() => fcStore.failsafeActive);
 
 // Dirty state tracking
-const savedSnapshot = ref("");
-
-function takeSnapshot() {
+/** @returns {string} serialized receiver state for dirty comparison */
+function serializeReceiverState() {
     return JSON.stringify({
         channelMap: channelMapString.value,
         rxMode: selectedRxMode.value,
@@ -659,9 +659,7 @@ function takeSnapshot() {
     });
 }
 
-const dirty = computed(() => {
-    return savedSnapshot.value !== "" && takeSnapshot() !== savedSnapshot.value;
-});
+const { dirty, markClean, takeSnapshot } = useDirtyState(serializeReceiverState);
 
 const saveMenuItems = computed(() => [
     [
@@ -1062,7 +1060,7 @@ async function loadConfig() {
             }
 
             needReboot.value = false;
-            savedSnapshot.value = takeSnapshot();
+            markClean();
         },
         (e) => console.error("Failed to load Receiver configuration", e),
     );
@@ -1072,6 +1070,8 @@ async function loadConfig() {
 const saveConfig = (withReboot = false) =>
     runSave(
         async () => {
+            const savedSnapshot = takeSnapshot();
+
             // Update RC_MAP from channel map string
             validateChannelMap();
 
@@ -1109,8 +1109,9 @@ const saveConfig = (withReboot = false) =>
             } else {
                 await saveToEeprom();
                 gui_log(t("receiverConfigSaved") || "Configuration saved");
-                savedSnapshot.value = takeSnapshot();
             }
+
+            markClean(savedSnapshot);
 
             needReboot.value = false;
         },
