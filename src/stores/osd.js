@@ -10,6 +10,7 @@ import { useFlightControllerStore } from "./fc";
 import CONFIGURATOR, { API_VERSION_1_45, API_VERSION_1_46, API_VERSION_1_47 } from "../js/data_storage";
 import { bit_set } from "../js/bit";
 import { hasSupportSnapshotResponse } from "../js/support/SnapshotSession";
+import { useDirtyState } from "../composables/useDirtyState";
 
 function encodeStatisticsPayload(statItem, isVirtualMode, virtualMode) {
     if (isVirtualMode && virtualMode) {
@@ -113,9 +114,8 @@ export const useOsdStore = defineStore("osd", () => {
     const selectedPreviewProfile = ref(0);
 
     // Dirty state tracking
-    const savedSnapshot = ref("");
-
-    function takeSnapshot() {
+    /** @returns {string} serialized OSD state for dirty comparison */
+    function serializeOsdState() {
         return JSON.stringify({
             videoSystem: videoSystem.value,
             unitMode: unitMode.value,
@@ -143,13 +143,7 @@ export const useOsdStore = defineStore("osd", () => {
         });
     }
 
-    function captureSnapshot() {
-        savedSnapshot.value = takeSnapshot();
-    }
-
-    const dirty = computed(() => {
-        return savedSnapshot.value !== "" && takeSnapshot() !== savedSnapshot.value;
-    });
+    const { dirty, markClean: captureSnapshot, takeSnapshot } = useDirtyState(serializeOsdState);
 
     // Getters
     const numberOfProfiles = computed(() => osdProfiles.value.number || 1);
@@ -368,27 +362,9 @@ export const useOsdStore = defineStore("osd", () => {
         return buffer;
     }
 
-    // New Actions
-    const saveDisplayItem = async (item) => {
-        return MSP.promise(MSPCodes.MSP_SET_OSD_CONFIG, encodeLayout(item));
-    };
-
-    const saveOtherConfig = async () => {
-        return MSP.promise(MSPCodes.MSP_SET_OSD_CONFIG, encodeOther());
-    };
-
-    const saveTimerConfig = async (timer) => {
-        return MSP.promise(MSPCodes.MSP_SET_OSD_CONFIG, encodeTimer(timer));
-    };
-
-    const saveStatisticItem = async (stat) => {
-        return MSP.promise(
-            MSPCodes.MSP_SET_OSD_CONFIG,
-            encodeStatisticsPayload(stat, CONFIGURATOR.virtualMode, OSD.virtualMode),
-        );
-    };
-
     const saveAllConfig = async () => {
+        const savedSnapshot = takeSnapshot();
+
         await MSP.promise(MSPCodes.MSP_SET_OSD_CONFIG, encodeOther());
 
         for (const item of displayItems.value) {
@@ -407,7 +383,7 @@ export const useOsdStore = defineStore("osd", () => {
         }
 
         await MSP.promise(MSPCodes.MSP_EEPROM_WRITE);
-        captureSnapshot();
+        captureSnapshot(savedSnapshot);
     };
 
     return {
@@ -438,10 +414,6 @@ export const useOsdStore = defineStore("osd", () => {
         updateDisplayItemVisibility,
         syncToLegacy,
         fetchOsdConfig,
-        saveDisplayItem,
-        saveOtherConfig,
-        saveTimerConfig,
-        saveStatisticItem,
         saveAllConfig,
     };
 });
