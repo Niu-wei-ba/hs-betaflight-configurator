@@ -8,6 +8,9 @@
              intentionally served from Vite's public directory so an old PC
              browser can show an upgrade message even if it cannot parse the
              application bundle. -->
+        <script>
+            window.__BF_SKIP_BROWSER_COMPATIBILITY__ = document.documentElement.dataset.bfNativeApp === "true";
+        </script>
         <script src="%BASE_URL%browser-compatibility.js"></script>
         <script type="module" src="/src/js/utils/common.js"></script>
         <script type="module" src="/src/js/browserMain.js"></script>

@@ -136,6 +136,21 @@ function serveLocalesPlugin() {
     };
 }
 
+function nativeAppBuildPlugin() {
+    const isNativeAppBuild = process.env.VITE_NATIVE_APP === "1";
+
+    return {
+        name: "native-app-build",
+        transformIndexHtml(html) {
+            if (!isNativeAppBuild) {
+                return html;
+            }
+
+            return html.replace('<html lang="zh-CN">', '<html lang="zh-CN" data-bf-native-app="true">');
+        },
+    };
+}
+
 export default defineConfig({
     // Native builds keep relative assets; hosted version channels set /v/<version>/.
     base: webBasePath,
@@ -166,6 +181,7 @@ export default defineConfig({
         },
     },
     plugins: [
+        nativeAppBuildPlugin(),
         vue(),
         ui(nuxtUiViteOptions),
         serveLocalesPlugin(),

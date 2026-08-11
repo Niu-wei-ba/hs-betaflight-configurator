@@ -52,6 +52,7 @@ const gradleEnv = {
 };
 const viteEnv = {
     ...process.env,
+    VITE_NATIVE_APP: "1",
     // Capacitor runs the bundled app on a local origin. Pin the native release
     // to the public gateway so its /api routes reach the proxy backend.
     VITE_BUILD_API_BASE_URL: androidReleaseGateway,

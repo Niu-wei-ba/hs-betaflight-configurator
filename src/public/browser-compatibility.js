@@ -302,6 +302,16 @@
         startFallbackCountdown();
     }
 
+    if (window.__BF_SKIP_BROWSER_COMPATIBILITY__) {
+        addPolyfills();
+        window.__BF_BROWSER_COMPATIBILITY__ = {
+            supported: true,
+            skipped: true,
+            source: "native-app",
+        };
+        return;
+    }
+
     var result = getCompatibility(window.navigator && window.navigator.userAgent);
     window.__BF_BROWSER_COMPATIBILITY__ = result;
 

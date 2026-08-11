@@ -4,7 +4,7 @@ import { JSDOM, VirtualConsole } from "jsdom";
 
 const source = readFileSync("src/public/browser-compatibility.js", "utf8");
 
-function evaluateCompatibility(userAgent, { localStorage = {} } = {}) {
+function evaluateCompatibility(userAgent, { localStorage = {}, skipCompatibility = false } = {}) {
     const virtualConsole = new VirtualConsole();
     const timers = {
         intervals: [],
@@ -17,6 +17,7 @@ function evaluateCompatibility(userAgent, { localStorage = {} } = {}) {
         { runScripts: "outside-only", url: "https://bf.hs-fpv.com/v/2026.6.1/", virtualConsole },
     );
     Object.defineProperty(dom.window.navigator, "userAgent", { configurable: true, value: userAgent });
+    dom.window.__BF_SKIP_BROWSER_COMPATIBILITY__ = skipCompatibility;
     Object.entries(localStorage).forEach(([key, value]) => dom.window.localStorage.setItem(key, value));
     dom.window.setInterval = (callback, delay) => {
         const id = timers.intervals.length + 1;
@@ -36,6 +37,23 @@ function evaluateCompatibility(userAgent, { localStorage = {} } = {}) {
 }
 
 describe("browser startup compatibility guard", () => {
+    it("does not detect or redirect when the native app build opts out", () => {
+        const { dom, timers } = evaluateCompatibility(
+            "Mozilla/5.0 (Linux; Android 9; ONEPLUS A6000) AppleWebKit/537.36 Chrome/81.0.4044.138 Mobile Safari/537.36",
+            { skipCompatibility: true },
+        );
+
+        expect(dom.window.__BF_BROWSER_COMPATIBILITY__).toEqual({
+            supported: true,
+            skipped: true,
+            source: "native-app",
+        });
+        expect(dom.window.document.getElementById("browser-compatibility-message").hidden).toBe(true);
+        expect(dom.window.document.getElementById("main-wrapper").style.display).toBe("");
+        expect(timers.intervals).toHaveLength(0);
+        expect(timers.timeouts).toHaveLength(0);
+    });
+
     it("shows an actionable page before the app modules for unsupported Chromium", () => {
         const { dom, timers } = evaluateCompatibility(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/79.0.3945.130 Safari/537.36",
