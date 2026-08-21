@@ -1,4 +1,5 @@
 import HelpTab from "../components/tabs/HelpTab.vue";
+import DownloadCenterTab from "../components/tabs/DownloadCenterTab.vue";
 import LandingTab from "../components/tabs/LandingTab.vue";
 import PortsTab from "../components/tabs/PortsTab.vue";
 import ServosTab from "../components/tabs/ServosTab.vue";
@@ -31,6 +32,7 @@ import VideoTutorialsTab from "../components/tabs/VideoTutorialsTab.vue";
 
 export const VueTabComponents = {
     help: HelpTab,
+    download_center: DownloadCenterTab,
     landing: LandingTab,
     ports: PortsTab,
     servos: ServosTab,

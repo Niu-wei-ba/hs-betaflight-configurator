@@ -24,6 +24,7 @@ class GuiControl {
             "landing",
             "video_tutorials",
             "firmware_flasher",
+            "download_center",
             "preflight",
             "help",
             "user_profile",

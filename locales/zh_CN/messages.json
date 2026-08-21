@@ -380,6 +380,9 @@
     "tabFirmwareFlasher": {
         "message": "固件烧写工具"
     },
+    "tabDownloadCenter": {
+        "message": "下载中心"
+    },
     "tabLanding": {
         "message": "欢迎"
     },

@@ -479,6 +479,9 @@
     "tabFirmwareFlasher": {
         "message": "Firmware Flasher"
     },
+    "tabDownloadCenter": {
+        "message": "Download Center"
+    },
     "tabLanding": {
         "message": "Welcome"
     },
