@@ -94,9 +94,13 @@ export default defineComponent({
         const isConnected = computed(() => connectionStore.connectionValid);
         const connecting = computed(() => Boolean(connectionStore.connectingTo));
         const isVirtualMode = computed(() => connectionStore.virtualMode);
+        const isSupportSnapshotMode = computed(() => connectionStore.supportSnapshotMode);
         const connectedTo = computed(() => connectionStore.connectedTo);
 
         const disconnectLabel = computed(() => {
+            if (isSupportSnapshotMode.value) {
+                return i18n.getMessage("disconnectSupportSnapshot");
+            }
             if (isVirtualMode.value) {
                 return i18n.getMessage("disconnectVirtual");
             }

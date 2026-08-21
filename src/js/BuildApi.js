@@ -7,6 +7,10 @@ import LoginApi from "./LoginApi";
 export default class BuildApi {
     constructor(loginApi = new LoginApi()) {
         this._url = "https://build.betaflight.com";
+        this._supportUrl = (import.meta.env.VITE_SUPPORT_API_URL || globalThis.BF_SUPPORT_API_URL || this._url).replace(
+            /\/$/,
+            "",
+        );
         this._cacheExpirationPeriod = 3600 * 1000;
         this._loginApi = loginApi;
     }
@@ -170,6 +174,39 @@ export default class BuildApi {
             return await response.text();
         }
 
+        gui_log(i18n.getMessage("buildServerFailure", [url, `HTTP ${response.status}`]));
+        return null;
+    }
+
+    async submitSupportSnapshot(snapshot) {
+        const url = `${this._supportUrl}/api/support/snapshots`;
+        const authHeaders = await this._authHeaders();
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CFG-VER": `${CONFIGURATOR.version}`,
+                ...authHeaders,
+            },
+            body: JSON.stringify(snapshot),
+        });
+        if (response.status === 201) return await response.json();
+        gui_log(i18n.getMessage("buildServerFailure", [url, `HTTP ${response.status}`]));
+        return null;
+    }
+
+    async loadSupportSnapshot(supportId) {
+        const url = `${this._supportUrl}/api/support/snapshots/${encodeURIComponent(supportId)}`;
+        return await this.fetchSupportJson(url);
+    }
+
+    async fetchSupportJson(url) {
+        const authHeaders = await this._authHeaders();
+        const response = await fetch(url, {
+            method: "GET",
+            headers: { "X-CFG-VER": `${CONFIGURATOR.version}`, ...authHeaders },
+        });
+        if (this.isSuccessCode(response.status)) return await response.json();
         gui_log(i18n.getMessage("buildServerFailure", [url, `HTTP ${response.status}`]));
         return null;
     }

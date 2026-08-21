@@ -414,6 +414,12 @@
     "tabFirmwareFlasher": {
         "message": "Firmware Flasher"
     },
+    "tabDownloadCenter": {
+        "message": "Download Center"
+    },
+    "tabSupportSnapshot": {
+        "message": "Support Snapshot"
+    },
     "tabLanding": {
         "message": "Welcome"
     },
@@ -581,6 +587,39 @@
     },
     "tabCLI": {
         "message": "CLI"
+    },
+    "supportSnapshotTitle": {
+        "message": "Remote Support Snapshot"
+    },
+    "supportSnapshotLoadTitle": {
+        "message": "Load Support ID"
+    },
+    "supportSnapshotIdPlaceholder": {
+        "message": "SUP-XXXXXXXXXXXXXXXX"
+    },
+    "supportSnapshotLoadAction": {
+        "message": "Load"
+    },
+    "supportSnapshotActiveTitle": {
+        "message": "Current Support Snapshot"
+    },
+    "supportSnapshotIdLabel": {
+        "message": "Support ID"
+    },
+    "supportSnapshotFirmwareLabel": {
+        "message": "Firmware"
+    },
+    "supportSnapshotTargetLabel": {
+        "message": "Target"
+    },
+    "supportSnapshotExpiresLabel": {
+        "message": "Expires"
+    },
+    "disconnectSupportSnapshot": {
+        "message": "Close Support Snapshot"
+    },
+    "supportSnapshotReadOnlyBanner": {
+        "message": "Support snapshot read-only mode: configuration writes and flight-controller commands are disabled."
     },
     "tabLogging": {
         "message": "Tethered Logging"

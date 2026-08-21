@@ -1,6 +1,7 @@
 import GUI from "./gui.js";
 import CONFIGURATOR from "./data_storage.js";
 import { serial } from "./serial.js";
+import { createSupportSnapshotRequestKey, getSupportSnapshotResponse } from "./support/SnapshotSession";
 
 const MSP = {
     symbols: {
@@ -61,6 +62,7 @@ const MSP = {
 
     last_received_timestamp: null,
     listeners: [],
+    responseListeners: [],
 
     cli_buffer: [], // buffer for CLI character output
     cli_output: [],
@@ -289,6 +291,14 @@ const MSP = {
             this.crcError = true;
             this.dataView = new DataView(new ArrayBuffer(0));
         }
+        if (!this.crcError) {
+            const payload = new Uint8Array(this.message_buffer).slice();
+            const requestKeys = this.callbacks
+                .filter((callback) => callback.code === this.code)
+                .map((callback) => callback.requestKey)
+                .filter(Boolean);
+            this.responseListeners.forEach((listener) => listener({ code: this.code, payload, requestKeys }));
+        }
         this.notify();
         // Reset variables
         this.message_length_received = 0;
@@ -304,6 +314,12 @@ const MSP = {
         if (this.listeners.indexOf(listener) === -1) {
             this.listeners.push(listener);
         }
+    },
+    addResponseListener(listener) {
+        this.responseListeners.push(listener);
+        return () => {
+            this.responseListeners = this.responseListeners.filter((entry) => entry !== listener);
+        };
     },
     clearListeners() {
         this.listeners = [];
@@ -489,6 +505,23 @@ const MSP = {
         }
     },
     send_message(code, data, callback_sent, callback_msp) {
+        if (CONFIGURATOR.supportSnapshotMode) {
+            const payload = getSupportSnapshotResponse(code, data);
+            if (!payload) {
+                queueMicrotask(() => callback_msp?.({ command: code, data: null, length: 0, snapshotMissing: true }));
+                return false;
+            }
+
+            this.callbacks.push({
+                code,
+                callback: callback_msp,
+                requestKey: createSupportSnapshotRequestKey(code, data),
+            });
+            queueMicrotask(() => this.replay_message(code, payload));
+            callback_sent?.({ bytesSent: 0, supportSnapshot: true });
+            return true;
+        }
+
         if (code === undefined || !serial.connected || CONFIGURATOR.virtualMode) {
             if (callback_msp) {
                 callback_msp();
@@ -509,6 +542,7 @@ const MSP = {
         const obj = {
             code,
             requestBuffer: bufferOut,
+            requestKey: createSupportSnapshotRequestKey(code, data),
             callback: callback_msp,
             start: performance.now(),
         };
@@ -545,6 +579,15 @@ const MSP = {
         }
 
         return true;
+    },
+    replay_message(code, payload) {
+        const bytes = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
+        this.code = code;
+        this.dataView = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        this.message_length_expected = bytes.byteLength;
+        this.crcError = false;
+        this.unsupported = 0;
+        this.notify();
     },
     /**
      * resolves: {command: code, data: data, length: message_length}

@@ -32,6 +32,8 @@ class GuiControl {
         this.defaultAllowedTabsWhenDisconnected = [
             "landing",
             "firmware_flasher",
+            "download_center",
+            "support_snapshot",
             "preflight",
             "help",
             "user_profile",
@@ -58,6 +60,7 @@ class GuiControl {
             "ports",
             "receiver",
             "sensors",
+            "support_snapshot",
         ];
 
         this.defaultCloudBuildTabOptions = ["gps", "led_strip", "osd", "servos", "vtx", "flight_plan"];
@@ -392,6 +395,12 @@ class GuiControl {
         // Emit via EventBus so gui.js doesn't have to import serial_backend
         // (which already imports gui.js — this would create a module cycle).
         const emitToggle = () => EventBus.$emit("connection:toggle");
+
+        if (CONFIGURATOR.supportSnapshotMode) {
+            this.reboot_timestamp = Date.now();
+            emitToggle();
+            return;
+        }
 
         if (CONFIGURATOR.virtualMode) {
             this.reboot_timestamp = Date.now();

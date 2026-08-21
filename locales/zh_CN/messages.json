@@ -311,6 +311,12 @@
     "tabFirmwareFlasher": {
         "message": "固件烧写工具"
     },
+    "tabDownloadCenter": {
+        "message": "下载中心"
+    },
+    "tabSupportSnapshot": {
+        "message": "支持快照"
+    },
     "tabLanding": {
         "message": "欢迎"
     },
@@ -574,6 +580,39 @@
     },
     "tabCLI": {
         "message": "CLI"
+    },
+    "supportSnapshotTitle": {
+        "message": "远程支持快照"
+    },
+    "supportSnapshotLoadTitle": {
+        "message": "加载 Support ID"
+    },
+    "supportSnapshotIdPlaceholder": {
+        "message": "SUP-XXXXXXXXXXXXXXXX"
+    },
+    "supportSnapshotLoadAction": {
+        "message": "加载"
+    },
+    "supportSnapshotActiveTitle": {
+        "message": "当前支持快照"
+    },
+    "supportSnapshotIdLabel": {
+        "message": "Support ID"
+    },
+    "supportSnapshotFirmwareLabel": {
+        "message": "固件"
+    },
+    "supportSnapshotTargetLabel": {
+        "message": "目标板"
+    },
+    "supportSnapshotExpiresLabel": {
+        "message": "过期时间"
+    },
+    "disconnectSupportSnapshot": {
+        "message": "关闭支持快照"
+    },
+    "supportSnapshotReadOnlyBanner": {
+        "message": "支持快照只读模式：所有修改和飞控控制命令均已禁用。"
     },
     "tabLogging": {
         "message": "线传日志"
