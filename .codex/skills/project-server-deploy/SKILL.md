@@ -38,6 +38,14 @@ Never copy or write the private key contents into the repo. It is enough to refe
 - Firmware artifact base URL: `https://bfc-firmware-1322839452.cos.ap-guangzhou.myqcloud.com`
 - COS on-demand upload is enabled only when `/www/wwwroot/bf.hs-fpv.com/api/firmware-api.env` exists and contains `TENCENT_COS_BUCKET`, `TENCENT_COS_REGION`, `TENCENT_COS_SECRET_ID`, and `TENCENT_COS_SECRET_KEY`
 
+## Release Branch Policy
+
+- The frontend release and deployment branch is `feature/betaflight-2026.6.1`.
+- Do not deploy the frontend from `feat/custom-betaflight-2026.06.3` or another feature branch.
+- The remote support snapshot frontend is part of the `feature/betaflight-2026.6.1` history; deploy the checked-out commit from that branch.
+- The companion firmware API is maintained in `/Users/lihao/Documents/hs-betaflight-firmware-api` on `feature/cos-private-read` unless an explicit backend branch transition is requested.
+- The active hosted dev URL is `https://betaflight.hs-fpv.com/v/2026.6.1/`; preserve the portal at `/` and the `/v/2026.6.1/` versioned release layout.
+
 ## Deploy Steps
 
 Preferred deploy command:
