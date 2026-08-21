@@ -482,6 +482,9 @@
     "tabDownloadCenter": {
         "message": "Download Center"
     },
+    "tabSupportSnapshot": {
+        "message": "Support Snapshot"
+    },
     "tabLanding": {
         "message": "Welcome"
     },

@@ -33,6 +33,9 @@
                     <div class="clear-both"></div>
                 </div>
                 <div id="content" @scroll.passive="onContentScroll">
+                    <div v-if="CONFIGURATOR.supportSnapshotMode" class="support-snapshot-banner">
+                        {{ $t("supportSnapshotReadOnlyBanner") }}
+                    </div>
                     <component
                         :is="activeTabComponent"
                         v-if="activeTabComponent"
@@ -208,6 +211,16 @@ watch(
     { flush: "post" },
 );
 </script>
+
+<style scoped>
+.support-snapshot-banner {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ui-warning);
+    background: color-mix(in srgb, var(--ui-warning) 12%, var(--ui-bg));
+    color: var(--ui-text);
+    font-weight: 600;
+}
+</style>
 
 <style scoped>
 @keyframes spin {

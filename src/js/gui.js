@@ -25,6 +25,7 @@ class GuiControl {
             "video_tutorials",
             "firmware_flasher",
             "download_center",
+            "support_snapshot",
             "preflight",
             "help",
             "user_profile",
@@ -54,6 +55,7 @@ class GuiControl {
             "sensors",
             "blackbox_viewer",
             "video_tutorials",
+            "support_snapshot",
         ];
 
         this.defaultCloudBuildTabOptions = ["gps", "led_strip", "osd", "servos", "vtx", "flight_plan"];

@@ -383,6 +383,9 @@
     "tabDownloadCenter": {
         "message": "下载中心"
     },
+    "tabSupportSnapshot": {
+        "message": "支持快照"
+    },
     "tabLanding": {
         "message": "欢迎"
     },

@@ -15,6 +15,7 @@ import { get as getConfig } from "../js/ConfigStorage";
 import { useCliAutocomplete } from "./useCliAutocomplete";
 import { highlightCliLine } from "../js/CliSyntaxHighlight";
 import { escapeHtml } from "../js/utils/common";
+import { supportSnapshotRecorder } from "../js/support/SnapshotRecorder";
 
 const backspaceCode = 8;
 const lineFeedCode = 10;
@@ -108,11 +109,13 @@ async function submitSupportData(
             clearInterval(delay);
             trackPollInterval?.(null);
             const text = getOutputHistory();
-            let key = await api.submitSupportData(text);
-            if (!key) {
+            await supportSnapshotRecorder.waitForStaticCapture();
+            const submitted = await api.submitSupportSnapshot(supportSnapshotRecorder.createPayload(text));
+            if (!submitted?.supportId) {
                 writeToOutput(i18n.getMessage("buildServerSupportRequestSubmission", ["** error **"]));
                 return;
             }
+            const key = submitted.supportId;
             state.lastSupportId = key;
             writeToOutput(i18n.getMessage("buildServerSupportRequestSubmission", [key]));
         }

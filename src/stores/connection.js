@@ -31,6 +31,11 @@ export const useConnectionStore = defineStore("connection", () => {
         set: (val) => (CONFIGURATOR.virtualMode = val),
     });
 
+    const supportSnapshotMode = computed({
+        get: () => CONFIGURATOR.supportSnapshotMode,
+        set: (val) => (CONFIGURATOR.supportSnapshotMode = val),
+    });
+
     const cliActive = computed({
         get: () => CONFIGURATOR.cliActive,
         set: (val) => (CONFIGURATOR.cliActive = val),
@@ -75,6 +80,7 @@ export const useConnectionStore = defineStore("connection", () => {
         connectLock,
         connectionValid,
         virtualMode,
+        supportSnapshotMode,
         cliActive,
         cliValid,
         clearMspQueue,

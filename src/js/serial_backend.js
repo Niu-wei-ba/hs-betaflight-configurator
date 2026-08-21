@@ -32,6 +32,8 @@ import { switchTab } from "./tab_switch";
 import { useConnectionStore } from "../stores/connection";
 import { useDialogStore } from "../stores/dialog";
 import { isMspCancelled } from "./msp/mspErrors.js";
+import { activateSupportSnapshot, clearSupportSnapshot, supportSnapshotSession } from "./support/SnapshotSession";
+import { supportSnapshotRecorder } from "./support/SnapshotRecorder";
 
 const logHead = "[SERIAL-BACKEND]";
 
@@ -382,6 +384,10 @@ function softResetForReboot() {
 // "connect" if `isConnected` has already been toggled off (e.g. when the UI
 // state still shows "connected" but the internal flag just changed).
 export function disconnect() {
+    if (CONFIGURATOR.supportSnapshotMode) {
+        closeSupportSnapshotSession();
+        return;
+    }
     if (GUI.connect_lock || !isConnected()) {
         return;
     }
@@ -489,7 +495,9 @@ export function connectDisconnect() {
     // GUI control overrides the user control
     GUI.configuration_loaded = false;
 
-    if (isConnected()) {
+    if (CONFIGURATOR.supportSnapshotMode) {
+        closeSupportSnapshotSession();
+    } else if (isConnected()) {
         beginDisconnect();
     } else {
         const selectedDevice = DeviceHandler.devicePicker.selectedDevice;
@@ -693,6 +701,7 @@ function setConnectionTimeout() {
 
 function resetConnection() {
     clearLiveDataRefreshTimer();
+    supportSnapshotRecorder.stop();
 
     // Safety net: any normal teardown clears a lingering FLASHING state, so the
     // hard-block above can never strand a post-flash reconnect even if a flasher
@@ -718,9 +727,74 @@ function resetConnection() {
     CONFIGURATOR.connectionValid = false;
     CONFIGURATOR.cliValid = false;
     CONFIGURATOR.cliActive = false;
+    CONFIGURATOR.supportSnapshotMode = false;
 
     // unlock port select & baud
     DeviceHandler.devicePickerDisabled = false;
+}
+
+export async function openSupportSnapshotSession(snapshotRecord) {
+    if (isConnected() || CONFIGURATOR.connectionValid || CONFIGURATOR.supportSnapshotMode) {
+        throw new Error("请先断开当前飞控连接，再加载支持快照。");
+    }
+
+    activateSupportSnapshot(snapshotRecord);
+    CONFIGURATOR.virtualMode = false;
+    CONFIGURATOR.supportSnapshotMode = true;
+    GUI.connected_to = `Support ${supportSnapshotSession.supportId}`;
+    GUI.connecting_to = false;
+    DeviceHandler.devicePickerDisabled = true;
+
+    FC.resetState();
+    MSP.clearListeners();
+    MSP.disconnect_cleanup();
+    mspHelper = new MspHelper();
+    MSP.listen(mspHelper.process_data.bind(mspHelper));
+
+    try {
+        await MSP.promise(MSPCodes.MSP_API_VERSION);
+        await MSP.promise(MSPCodes.MSP_FC_VARIANT);
+        await MSP.promise(MSPCodes.MSP_FC_VERSION);
+        await MSP.promise(MSPCodes.MSP_BUILD_INFO);
+        await MSP.promise(MSPCodes.MSP_BOARD_INFO);
+        await MSP.promise(MSPCodes.MSP_STATUS);
+        await MSP.promise(MSPCodes.MSP_UID);
+
+        if (
+            !FC.CONFIG.apiVersion ||
+            FC.CONFIG.apiVersion === "0.0.0" ||
+            FC.CONFIG.flightControllerIdentifier !== "BTFL"
+        ) {
+            throw new Error("该支持快照不包含可用的 Betaflight 身份信息。");
+        }
+
+        if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_45)) {
+            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.BUILD_KEY));
+            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.CRAFT_NAME));
+            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.PILOT_NAME));
+        } else {
+            await MSP.promise(MSPCodes.MSP_NAME);
+        }
+
+        getConnectionState().setLinkOpen(true);
+        connectionTimestamp = Date.now();
+        if (globalThis.vm?.CONNECTION) globalThis.vm.CONNECTION.timestamp = connectionTimestamp;
+        finishOpen();
+    } catch (error) {
+        closeSupportSnapshotSession();
+        throw error;
+    }
+}
+
+export function closeSupportSnapshotSession() {
+    if (!CONFIGURATOR.supportSnapshotMode && !supportSnapshotSession.active) return;
+
+    clearSupportSnapshot();
+    getConnectionState().setLinkOpen(false);
+    connectionTimestamp = null;
+    if (globalThis.vm?.CONNECTION) globalThis.vm.CONNECTION.timestamp = null;
+    resetConnection();
+    teardownConnectionUi();
 }
 
 function abortConnection(messageKey) {
@@ -827,6 +901,8 @@ function read_serial_adapter(event) {
 function onOpen(openInfo) {
     if (openInfo) {
         CONFIGURATOR.virtualMode = false;
+        CONFIGURATOR.supportSnapshotMode = false;
+        clearSupportSnapshot();
 
         GUI.timeout_remove("connectAttempt"); // port opened — pre-open watchdog no longer needed
 
@@ -855,6 +931,7 @@ function onOpen(openInfo) {
         setConnectionTimeout();
         FC.resetState();
         mspHelper = new MspHelper();
+        supportSnapshotRecorder.start();
         MSP.listen(mspHelper.process_data.bind(mspHelper));
         MSP.onTimeout = handleConnectionTimeout;
 
@@ -914,7 +991,10 @@ function onOpenVirtual() {
 
     CONFIGURATOR.connectionValid = true;
     CONFIGURATOR.virtualMode = true;
+    CONFIGURATOR.supportSnapshotMode = false;
     CONFIGURATOR.virtualApiVersion = DeviceHandler.devicePicker.virtualMspVersion;
+    clearSupportSnapshot();
+    supportSnapshotRecorder.stop();
 
     getConnectionState().setLinkOpen(true);
 
@@ -1138,6 +1218,10 @@ function finishOpen() {
     getConnectionState().setPhase(ConnPhase.CONNECTED);
 
     GUI.selectDefaultTabWhenConnected();
+
+    if (!CONFIGURATOR.supportSnapshotMode) {
+        void supportSnapshotRecorder.captureStaticConfiguration();
+    }
 }
 
 function connectCli() {
@@ -1211,7 +1295,7 @@ function initFeaturesOnConnect() {
         MSP.send_message(MSPCodes.MSP_DATAFLASH_SUMMARY, false, false);
         MSP.send_message(MSPCodes.MSP_SDCARD_SUMMARY, false, false);
 
-        if (FC.CONFIG.boardType === 0 || FC.CONFIG.boardType === 2) {
+        if (!CONFIGURATOR.supportSnapshotMode && (FC.CONFIG.boardType === 0 || FC.CONFIG.boardType === 2)) {
             startLiveDataRefreshTimer();
         }
     }
@@ -1416,6 +1500,11 @@ export function reinitializeConnection(suppressDialog = false) {
     // lifecycle: start time, duration, phase). Virtual toggles settle immediately below.
     getConnectionState().requestReboot(rebootConnectWindowMs());
     const rebootTimestamp = getConnectionState().rebootWindowStartedAt;
+
+    if (CONFIGURATOR.supportSnapshotMode) {
+        closeSupportSnapshotSession();
+        return rebootTimestamp;
+    }
 
     if (CONFIGURATOR.virtualMode) {
         connectDisconnect();
