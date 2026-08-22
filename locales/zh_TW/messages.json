@@ -151,6 +151,42 @@
     "tabFirmwareFlasher": {
         "message": "固件燒寫工具"
     },
+    "tabSupportSnapshot": {
+        "message": "支援快照"
+    },
+    "supportSnapshotTitle": {
+        "message": "支援快照"
+    },
+    "supportSnapshotLoadTitle": {
+        "message": "載入支援快照"
+    },
+    "supportSnapshotIdPlaceholder": {
+        "message": "請輸入 Support ID"
+    },
+    "supportSnapshotLoadAction": {
+        "message": "載入快照"
+    },
+    "supportSnapshotActiveTitle": {
+        "message": "已載入支援快照"
+    },
+    "supportSnapshotIdLabel": {
+        "message": "Support ID"
+    },
+    "supportSnapshotFirmwareLabel": {
+        "message": "韌體版本"
+    },
+    "supportSnapshotTargetLabel": {
+        "message": "飛控目標"
+    },
+    "supportSnapshotExpiresLabel": {
+        "message": "到期時間"
+    },
+    "disconnectSupportSnapshot": {
+        "message": "退出快照模式"
+    },
+    "supportSnapshotReadOnlyBanner": {
+        "message": "目前正在檢視支援快照，所有控制項均為唯讀。"
+    },
     "tabLanding": {
         "message": "歡迎"
     },

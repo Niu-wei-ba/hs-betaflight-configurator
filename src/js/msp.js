@@ -516,7 +516,11 @@ const MSP = {
         if (CONFIGURATOR.supportSnapshotMode) {
             const payload = getSupportSnapshotResponse(code, data);
             if (!payload) {
-                queueMicrotask(() => callback_msp?.({ command: code, data: null, length: 0, snapshotMissing: true }));
+                queueMicrotask(() => {
+                    if (typeof callback_msp === "function") {
+                        callback_msp({ command: code, data: null, length: 0, snapshotMissing: true });
+                    }
+                });
                 return false;
             }
 
@@ -526,7 +530,9 @@ const MSP = {
                 requestKey: createSupportSnapshotRequestKey(code, data),
             });
             queueMicrotask(() => this.replay_message(code, payload));
-            callback_sent?.({ bytesSent: 0, supportSnapshot: true });
+            if (typeof callback_sent === "function") {
+                callback_sent({ bytesSent: 0, supportSnapshot: true });
+            }
             return true;
         }
 

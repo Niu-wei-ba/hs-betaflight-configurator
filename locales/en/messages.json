@@ -485,6 +485,39 @@
     "tabSupportSnapshot": {
         "message": "Support Snapshot"
     },
+    "supportSnapshotTitle": {
+        "message": "Support Snapshot"
+    },
+    "supportSnapshotLoadTitle": {
+        "message": "Load Support Snapshot"
+    },
+    "supportSnapshotIdPlaceholder": {
+        "message": "Enter Support ID"
+    },
+    "supportSnapshotLoadAction": {
+        "message": "Load Snapshot"
+    },
+    "supportSnapshotActiveTitle": {
+        "message": "Loaded Support Snapshot"
+    },
+    "supportSnapshotIdLabel": {
+        "message": "Support ID"
+    },
+    "supportSnapshotFirmwareLabel": {
+        "message": "Firmware"
+    },
+    "supportSnapshotTargetLabel": {
+        "message": "Flight Controller Target"
+    },
+    "supportSnapshotExpiresLabel": {
+        "message": "Expires"
+    },
+    "disconnectSupportSnapshot": {
+        "message": "Exit Snapshot Mode"
+    },
+    "supportSnapshotReadOnlyBanner": {
+        "message": "You are viewing a support snapshot. All controls are read-only."
+    },
     "tabLanding": {
         "message": "Welcome"
     },
