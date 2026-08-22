@@ -92,12 +92,12 @@ function getStaticConfigurationRequests() {
         requests.push({ code: MSPCodes.MSP2_GET_LED_STRIP_CONFIG_VALUES });
     }
 
+    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_46)) {
+        requests.push({ code: MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE });
+    }
+
     if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_47)) {
-        requests.push(
-            { code: MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE },
-            { code: MSPCodes.MSP2_GYRO_SENSOR },
-            { code: MSPCodes.MSP2_MCU_INFO },
-        );
+        requests.push({ code: MSPCodes.MSP2_GYRO_SENSOR }, { code: MSPCodes.MSP2_MCU_INFO });
     }
 
     if (FC.MOTOR_CONFIG.use_dshot_telemetry || FC.MOTOR_CONFIG.use_esc_sensor) {
