@@ -28,6 +28,13 @@ export class MspCrcError extends MspError {
     }
 }
 
+export class MspSnapshotMissingError extends MspError {
+    constructor(message, code) {
+        super(message, code);
+        this.name = "MspSnapshotMissingError";
+    }
+}
+
 /**
  * True when an error is a benign MSP request cancellation — the queue was cleared on a tab
  * switch (reason "cleanup") or a disconnect/reboot (reason "disconnected"), not a real request
@@ -36,4 +43,8 @@ export class MspCrcError extends MspError {
  */
 export function isMspCancelled(error) {
     return error instanceof MspCancelledError;
+}
+
+export function isMspSnapshotMissing(error) {
+    return error instanceof MspSnapshotMissingError;
 }

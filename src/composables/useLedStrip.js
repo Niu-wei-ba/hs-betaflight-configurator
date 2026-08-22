@@ -2,6 +2,7 @@ import { ref, computed } from "vue";
 import FC from "@/js/fc.js";
 import MSP from "@/js/msp";
 import MSPCodes from "@/js/msp/MSPCodes";
+import { isMspSnapshotMissing } from "@/js/msp/mspErrors";
 import { mspHelper } from "@/js/msp/MSPHelper";
 import semver from "semver";
 import { API_VERSION_1_46 } from "@/js/data_storage";
@@ -137,7 +138,9 @@ export function useLedStrip() {
                 await MSP.promise(MSPCodes.MSP2_GET_LED_STRIP_CONFIG_VALUES);
             }
         } catch (error) {
-            console.error("Error loading LED strip data:", error);
+            if (!isMspSnapshotMissing(error)) {
+                console.error("Error loading LED strip data:", error);
+            }
         }
     }
 

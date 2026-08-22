@@ -23,12 +23,22 @@ describe("support snapshot session", () => {
 
         expect(supportSnapshotSession.active).toBe(true);
         expect([...getSupportSnapshotResponse(0x3006, [5])]).toEqual([1, 2, 3]);
-        // Older collectors may not preserve a request payload. A unique response for a code
-        // is therefore safe to replay as a compatibility fallback.
-        expect([...getSupportSnapshotResponse(0x3006, [2])]).toEqual([1, 2, 3]);
         expect(hasSupportSnapshotResponse(0x3006, [5])).toBe(true);
-        expect(hasSupportSnapshotResponse(0x3006, [9])).toBe(true);
+        expect(hasSupportSnapshotResponse(0x3006, [9])).toBe(false);
         expect(hasSupportSnapshotResponse(0x3007)).toBe(false);
+    });
+
+    it("replays legacy code-only responses for parameterized requests", () => {
+        activateSupportSnapshot({
+            supportId: "SUP-23456789ABCDEFGH",
+            snapshot: {
+                schemaVersion: 1,
+                mspResponses: [{ code: 0x3006, payloadBase64: "AQID" }],
+            },
+        });
+
+        expect([...getSupportSnapshotResponse(0x3006, [2])]).toEqual([1, 2, 3]);
+        expect(hasSupportSnapshotResponse(0x3006, [9])).toBe(true);
     });
 
     it("clears the loaded data when the support session is closed", () => {

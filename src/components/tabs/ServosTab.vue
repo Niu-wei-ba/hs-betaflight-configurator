@@ -161,8 +161,8 @@ import GUI from "@/js/gui";
 import FC from "@/js/fc";
 import MSP from "@/js/msp";
 import MSPCodes from "@/js/msp/MSPCodes";
+import { isMspCancelled, isMspSnapshotMissing } from "@/js/msp/mspErrors";
 import { mspHelper } from "@/js/msp/MSPHelper";
-import { isMspCancelled } from "@/js/msp/mspErrors";
 import { useInterval } from "@/composables/useInterval";
 import { useTimeout } from "@/composables/useTimeout";
 import { useSaving } from "@/composables/useSaving";
@@ -296,6 +296,10 @@ async function loadServoData() {
         await MSP.promise(MSPCodes.MSP_BOXNAMES);
         initializeUI();
     } catch (e) {
+        if (isMspSnapshotMissing(e)) {
+            initializeUI();
+            return;
+        }
         console.error("Failed to load servo configs", e);
         isSupported.value = false;
         GUI.content_ready();

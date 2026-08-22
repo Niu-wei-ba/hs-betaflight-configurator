@@ -1,4 +1,4 @@
-import { isMspCancelled } from "../js/msp/mspErrors.js";
+import { isMspCancelled, isMspSnapshotMissing } from "../js/msp/mspErrors.js";
 
 /**
  * Shared tab-load guard: runs a tab's `loadConfig` MSP chain and swallows a benign
@@ -14,7 +14,7 @@ export async function runTabLoad(fn, onError) {
     try {
         return await fn();
     } catch (error) {
-        if (isMspCancelled(error)) {
+        if (isMspCancelled(error) || isMspSnapshotMissing(error)) {
             return undefined;
         }
         onError(error);

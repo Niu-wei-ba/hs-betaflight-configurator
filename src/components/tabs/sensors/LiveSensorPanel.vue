@@ -117,6 +117,7 @@ import {
 import SensorGraph from "./SensorGraph.vue";
 import MSP from "../../../js/msp";
 import MSPCodes from "../../../js/msp/MSPCodes";
+import { isMspSnapshotMissing } from "../../../js/msp/mspErrors";
 import semver from "semver";
 import { API_VERSION_1_46 } from "../../../js/data_storage";
 
@@ -395,15 +396,22 @@ function updateDebugScale(index, value) {
 onMounted(async () => {
     sensorsStore.loadFromConfig();
 
-    // Needed for DSHOT_RPM_TELEMETRY debug decoding (motor_poles); other tabs
-    // load it on mount too, and it isn't fetched at connection time.
-    await MSP.promise(MSPCodes.MSP_MOTOR_CONFIG);
+    try {
+        // Needed for DSHOT_RPM_TELEMETRY debug decoding (motor_poles); other tabs
+        // load it on mount too, and it isn't fetched at connection time.
+        await MSP.promise(MSPCodes.MSP_MOTOR_CONFIG);
 
-    if (semver.gte(fcStore.config.apiVersion, API_VERSION_1_46)) {
-        sensorsStore.debugColumns = 8;
-        await MSP.promise(MSPCodes.MSP_ADVANCED_CONFIG);
-        displayDebugColumnNames();
-    } else {
+        if (semver.gte(fcStore.config.apiVersion, API_VERSION_1_46)) {
+            sensorsStore.debugColumns = 8;
+            await MSP.promise(MSPCodes.MSP_ADVANCED_CONFIG);
+            displayDebugColumnNames();
+        } else {
+            sensorsStore.debugColumns = 4;
+        }
+    } catch (error) {
+        if (!isMspSnapshotMissing(error)) {
+            console.error("Failed to load live sensor configuration", error);
+        }
         sensorsStore.debugColumns = 4;
     }
 

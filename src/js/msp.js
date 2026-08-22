@@ -1,7 +1,7 @@
 import GUI from "./gui.js";
 import CONFIGURATOR from "./data_storage.js";
 import { serial } from "./serial.js";
-import { MspCancelledError, MspTimeoutError } from "./msp/mspErrors.js";
+import { MspCancelledError, MspSnapshotMissingError, MspTimeoutError } from "./msp/mspErrors.js";
 import { createSupportSnapshotRequestKey, getSupportSnapshotResponse } from "./support/SnapshotSession";
 
 const MSP = {
@@ -731,7 +731,7 @@ const MSP = {
                     if (error) {
                         reject(error);
                     } else if (response?.snapshotMissing) {
-                        reject(new Error(`支持快照缺少 MSP 响应: ${code}`));
+                        reject(new MspSnapshotMissingError(`支持快照缺少 MSP 响应: ${code}`, code));
                     } else {
                         resolve(response);
                     }

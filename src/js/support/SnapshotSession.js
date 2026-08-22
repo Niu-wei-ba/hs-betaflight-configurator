@@ -74,9 +74,7 @@ export function getSupportSnapshotResponse(code, data) {
     const emptyRequestResponse = responses.get(createSupportSnapshotRequestKey(code, []));
     if (emptyRequestResponse) return emptyRequestResponse;
 
-    const prefix = `${code}:`;
-    const matches = [...responses.entries()].filter(([key]) => key.startsWith(prefix));
-    return matches.length === 1 ? matches[0][1] : null;
+    return null;
 }
 
 export function hasSupportSnapshotResponse(code, data = []) {
