@@ -714,6 +714,23 @@ const MSP = {
             throw new MspCancelledError("MSP request while disconnected", code, "disconnected");
         }
 
+        // Snapshot sessions have no physical transport. Reuse send_message() so the
+        // request is matched against the recorded payload and replayed through the
+        // normal MSPHelper listener/callback path.
+        if (CONFIGURATOR.supportSnapshotMode) {
+            return new Promise((resolve, reject) => {
+                this.send_message(code, data, undefined, (response, error) => {
+                    if (error) {
+                        reject(error);
+                    } else if (response?.snapshotMissing) {
+                        reject(new Error(`支持快照缺少 MSP 响应: ${code}`));
+                    } else {
+                        resolve(response);
+                    }
+                });
+            });
+        }
+
         return new Promise((resolve, reject) => {
             this._transmit(
                 code,

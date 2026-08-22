@@ -781,12 +781,14 @@ export async function openSupportSnapshotSession(snapshotRecord) {
         if (globalThis.vm?.CONNECTION) globalThis.vm.CONNECTION.timestamp = connectionTimestamp;
         finishOpen();
     } catch (error) {
-        closeSupportSnapshotSession();
+        // Keep the support-snapshot tab mounted so its form can show the actual
+        // initialization error instead of navigating back to the Welcome page.
+        closeSupportSnapshotSession({ preserveTab: true });
         throw error;
     }
 }
 
-export function closeSupportSnapshotSession() {
+export function closeSupportSnapshotSession({ preserveTab = false } = {}) {
     if (!CONFIGURATOR.supportSnapshotMode && !supportSnapshotSession.active) return;
 
     clearSupportSnapshot();
@@ -794,6 +796,17 @@ export function closeSupportSnapshotSession() {
     connectionTimestamp = null;
     if (globalThis.vm?.CONNECTION) globalThis.vm.CONNECTION.timestamp = null;
     resetConnection();
+    if (preserveTab) {
+        MSP.disconnect_cleanup();
+        PortUsage.reset();
+        FC.resetState();
+        GUI.connected_to = false;
+        GUI.allowedTabs = GUI.defaultAllowedTabsWhenDisconnected.slice();
+        GUI.connect_lock = false;
+        GUI.pendingTab = null;
+        return;
+    }
+
     teardownConnectionUi();
 }
 
