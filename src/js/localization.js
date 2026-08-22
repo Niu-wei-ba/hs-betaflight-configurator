@@ -47,6 +47,9 @@ i18n.init = function (cb) {
                 ns: ["messages"],
                 defaultNS: ["messages"],
                 fallbackLng: languageFallback,
+                // Locale files use explicit dialect names (for example zh_CN).
+                // Avoid i18next requesting an unserved base locale such as zh.
+                load: "currentOnly",
                 backend: {
                     loadPath: "./locales/{{lng}}/{{ns}}.json",
                     parse: i18n.parseInputFile,
