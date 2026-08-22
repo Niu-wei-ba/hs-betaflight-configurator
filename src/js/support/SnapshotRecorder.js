@@ -210,9 +210,12 @@ class SupportSnapshotRecorder {
         return this.capturePromise;
     }
 
-    async waitForStaticCapture(timeoutMs = 5_000) {
+    async waitForStaticCapture(timeoutMs) {
         if (!this.capturePromise) return;
-        await Promise.race([this.capturePromise, new Promise((resolve) => setTimeout(resolve, timeoutMs))]);
+        const requestTimeoutMs = (MSP.TIMEOUT || 1_000) * (MSP.MAX_RETRIES || 1);
+        const captureTimeoutMs = Math.max(60_000, this.captureRequests.length * requestTimeoutMs + 5_000);
+        const timeout = timeoutMs ?? captureTimeoutMs;
+        await Promise.race([this.capturePromise, new Promise((resolve) => setTimeout(resolve, timeout))]);
     }
 
     createPayload(cliTranscript) {

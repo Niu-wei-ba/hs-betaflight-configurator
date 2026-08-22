@@ -112,7 +112,9 @@ async function submitSupportData(
             await supportSnapshotRecorder.waitForStaticCapture();
             const snapshot = supportSnapshotRecorder.createPayload(text);
             if (!snapshot.captureReport.complete) {
-                writeToOutput(i18n.getMessage("supportSnapshotCaptureIncomplete"));
+                const missingCodes = snapshot.captureReport.missingResponseCodes?.filter(Boolean).join(", ");
+                const detail = missingCodes ? ` (${missingCodes})` : "";
+                writeToOutput(`${i18n.getMessage("supportSnapshotCaptureIncomplete")}${detail}`);
                 return;
             }
             const submitted = await api.submitSupportSnapshot(snapshot);
