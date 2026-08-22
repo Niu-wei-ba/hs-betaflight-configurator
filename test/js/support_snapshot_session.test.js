@@ -1,15 +1,42 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
     activateSupportSnapshot,
+    applySupportSnapshotAuxiliaryData,
     clearSupportSnapshot,
     createSupportSnapshotRequestKey,
     getSupportSnapshotResponse,
     hasSupportSnapshotResponse,
     supportSnapshotSession,
 } from "../../src/js/support/SnapshotSession";
+import FC from "../../src/js/fc";
 
 describe("support snapshot session", () => {
     afterEach(() => clearSupportSnapshot());
+
+    it("restores sensor hardware names from a snapshot after FC state reset", () => {
+        FC.resetState();
+        activateSupportSnapshot({
+            supportId: "SUP-23456789ABCDEFGH",
+            snapshot: {
+                schemaVersion: 1,
+                mspResponses: [],
+                sensorNames: {
+                    acc: ["MPU6000"],
+                    gyro: ["ICM42688P", "BMI270"],
+                    baro: [],
+                    mag: [],
+                    sonar: ["VL53L1X"],
+                    opticalflow: [],
+                },
+            },
+        });
+
+        FC.resetState();
+        applySupportSnapshotAuxiliaryData();
+
+        expect(FC.SENSOR_NAMES.gyro).toEqual(["ICM42688P", "BMI270"]);
+        expect(FC.SENSOR_NAMES.sonar).toEqual(["VL53L1X"]);
+    });
 
     it("looks up an exact MSP response by code and request payload", () => {
         const requestKey = createSupportSnapshotRequestKey(0x3006, [5]);

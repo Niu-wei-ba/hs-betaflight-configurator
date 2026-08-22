@@ -32,7 +32,12 @@ import { switchTab } from "./tab_switch";
 import { useConnectionStore } from "../stores/connection";
 import { useDialogStore } from "../stores/dialog";
 import { isMspCancelled } from "./msp/mspErrors.js";
-import { activateSupportSnapshot, clearSupportSnapshot, supportSnapshotSession } from "./support/SnapshotSession";
+import {
+    activateSupportSnapshot,
+    applySupportSnapshotAuxiliaryData,
+    clearSupportSnapshot,
+    supportSnapshotSession,
+} from "./support/SnapshotSession";
 import { supportSnapshotRecorder } from "./support/SnapshotRecorder";
 
 const logHead = "[SERIAL-BACKEND]";
@@ -747,6 +752,7 @@ export async function openSupportSnapshotSession(snapshotRecord) {
     DeviceHandler.devicePickerDisabled = true;
 
     FC.resetState();
+    applySupportSnapshotAuxiliaryData();
     MSP.clearListeners();
     MSP.disconnect_cleanup();
     mspHelper = new MspHelper();

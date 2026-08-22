@@ -4,6 +4,7 @@ import FC from "../fc";
 import MSP from "../msp";
 import MSPCodes from "../msp/MSPCodes";
 import { mspHelper } from "../msp/MSPHelper";
+import { parseSensorHardwareNames, requestSensorHardwareNames } from "../sensor_types";
 import semver from "semver";
 import { createSupportSnapshotRequestKey } from "./SnapshotSession";
 
@@ -148,6 +149,8 @@ class SupportSnapshotRecorder {
         this.captureCodes = [];
         this.captureFailedCodes = [];
         this.captureGeneration = 0;
+        this.sensorNames = null;
+        this.sensorHardwareCaptureComplete = true;
     }
 
     start() {
@@ -158,6 +161,8 @@ class SupportSnapshotRecorder {
         this.captureComplete = false;
         this.captureCodes = [];
         this.captureFailedCodes = [];
+        this.sensorNames = null;
+        this.sensorHardwareCaptureComplete = true;
         if (typeof MSP.addResponseListener !== "function") return;
         this.unsubscribe = MSP.addResponseListener(({ code, payload, requestKeys }) => {
             const keys = requestKeys?.length ? requestKeys : [createSupportSnapshotRequestKey(code, [])];
@@ -218,7 +223,26 @@ class SupportSnapshotRecorder {
         await Promise.race([this.capturePromise, new Promise((resolve) => setTimeout(resolve, timeout))]);
     }
 
+    async captureSensorHardwareNames() {
+        if (!semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_48)) {
+            this.sensorHardwareCaptureComplete = true;
+            return;
+        }
+
+        try {
+            const output = await requestSensorHardwareNames();
+            this.sensorNames = parseSensorHardwareNames(output);
+            FC.SENSOR_NAMES = this.sensorNames;
+            this.sensorHardwareCaptureComplete = Object.values(this.sensorNames).some((values) => values.length > 0);
+        } catch (error) {
+            this.sensorNames = null;
+            this.sensorHardwareCaptureComplete = false;
+            console.warn("Support snapshot sensor_hardware capture failed:", error);
+        }
+    }
+
     createPayload(cliTranscript) {
+        const missingAuxiliaryData = this.sensorHardwareCaptureComplete ? [] : ["sensor_hardware"];
         return {
             schemaVersion: 1,
             metadata: {
@@ -230,12 +254,14 @@ class SupportSnapshotRecorder {
                 configuratorVersion: CONFIGURATOR.version,
             },
             mspResponses: [...this.responses.values()],
+            sensorNames: this.sensorNames,
             cliTranscript,
             captureReport: {
-                complete: this.captureComplete,
+                complete: this.captureComplete && missingAuxiliaryData.length === 0,
                 responseCount: this.responses.size,
                 plannedResponseCount: this.captureRequests.length,
                 missingResponseCodes: this.captureFailedCodes,
+                missingAuxiliaryData,
             },
         };
     }

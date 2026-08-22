@@ -1,4 +1,5 @@
 import { reactive } from "vue";
+import FC from "../fc";
 
 function bytesToBase64(bytes) {
     let binary = "";
@@ -32,6 +33,7 @@ export const supportSnapshotSession = reactive({
     metadata: null,
     expiresAt: "",
     captureReport: null,
+    sensorNames: null,
 });
 
 export function activateSupportSnapshot(snapshotRecord) {
@@ -55,6 +57,28 @@ export function activateSupportSnapshot(snapshotRecord) {
     supportSnapshotSession.metadata = snapshotRecord.metadata || snapshot.metadata || null;
     supportSnapshotSession.expiresAt = snapshotRecord.expiresAt || "";
     supportSnapshotSession.captureReport = snapshotRecord.captureReport || snapshot.captureReport || null;
+    supportSnapshotSession.sensorNames = snapshot.sensorNames || null;
+}
+
+export function applySupportSnapshotAuxiliaryData() {
+    if (!supportSnapshotSession.sensorNames) return;
+
+    FC.SENSOR_NAMES = {
+        acc: Array.isArray(supportSnapshotSession.sensorNames.acc) ? [...supportSnapshotSession.sensorNames.acc] : [],
+        gyro: Array.isArray(supportSnapshotSession.sensorNames.gyro)
+            ? [...supportSnapshotSession.sensorNames.gyro]
+            : [],
+        baro: Array.isArray(supportSnapshotSession.sensorNames.baro)
+            ? [...supportSnapshotSession.sensorNames.baro]
+            : [],
+        mag: Array.isArray(supportSnapshotSession.sensorNames.mag) ? [...supportSnapshotSession.sensorNames.mag] : [],
+        sonar: Array.isArray(supportSnapshotSession.sensorNames.sonar)
+            ? [...supportSnapshotSession.sensorNames.sonar]
+            : [],
+        opticalflow: Array.isArray(supportSnapshotSession.sensorNames.opticalflow)
+            ? [...supportSnapshotSession.sensorNames.opticalflow]
+            : [],
+    };
 }
 
 export function clearSupportSnapshot() {
@@ -64,6 +88,7 @@ export function clearSupportSnapshot() {
     supportSnapshotSession.metadata = null;
     supportSnapshotSession.expiresAt = "";
     supportSnapshotSession.captureReport = null;
+    supportSnapshotSession.sensorNames = null;
 }
 
 export function getSupportSnapshotResponse(code, data) {
