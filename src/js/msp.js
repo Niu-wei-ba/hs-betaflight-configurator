@@ -557,7 +557,7 @@ const MSP = {
         }
         return true;
     },
-    _transmit(code, data, callback_sent, callback_msp, errorAware) {
+    _transmit(code, data, callback_sent, callback_msp, errorAware, options = {}) {
         const bufferOut = code <= 254 ? this.encode_message_v1(code, data) : this.encode_message_v2(code, data);
         const view = new Uint8Array(bufferOut);
 
@@ -575,6 +575,7 @@ const MSP = {
                     callback: callback_msp,
                     callbackSent: callback_sent,
                     errorAware: true,
+                    preserveOnTabSwitch: options.preserveOnTabSwitch === true,
                 });
                 return true;
             }
@@ -589,6 +590,7 @@ const MSP = {
             callback: callback_msp,
             callbackSent: callback_sent,
             errorAware,
+            preserveOnTabSwitch: options.preserveOnTabSwitch === true,
             attempts: 1,
             start: performance.now(),
         };
@@ -711,7 +713,7 @@ const MSP = {
      * resolves: {command: code, data: data, length: message_length}
      * rejects: MspTimeoutError, MspCancelledError or MspCrcError
      */
-    async promise(code, data) {
+    async promise(code, data, options = {}) {
         if (code === undefined || (CONFIGURATOR.virtualMode && !CONFIGURATOR.supportSnapshotMode)) {
             return undefined;
         }
@@ -750,24 +752,32 @@ const MSP = {
                     }
                 },
                 true,
+                options,
             );
         });
     },
-    callbacks_cleanup(error = new MspCancelledError("MSP queue cleared", undefined, "cleanup")) {
+    callbacks_cleanup(error = new MspCancelledError("MSP queue cleared", undefined, "cleanup"), { preserve } = {}) {
         const pending = this.callbacks;
-        this.callbacks = [];
+        const retained = typeof preserve === "function" ? pending.filter(preserve) : [];
+        const cancelled = pending.filter((entry) => !retained.includes(entry));
+        this.callbacks = retained;
 
         const parked = [];
-        for (const queue of this.parked.values()) {
-            parked.push(...queue);
+        const retainedParked = new Map();
+        for (const [code, queue] of this.parked.entries()) {
+            const kept = typeof preserve === "function" ? queue.filter(preserve) : [];
+            if (kept.length) {
+                retainedParked.set(code, kept);
+            }
+            parked.push(...queue.filter((entry) => !kept.includes(entry)));
         }
-        this.parked.clear();
+        this.parked = retainedParked;
 
-        for (const entry of pending) {
+        for (const entry of cancelled) {
             clearTimeout(entry.timer);
         }
 
-        for (const entry of [...pending, ...parked]) {
+        for (const entry of [...cancelled, ...parked]) {
             if (!entry.errorAware) {
                 continue;
             }

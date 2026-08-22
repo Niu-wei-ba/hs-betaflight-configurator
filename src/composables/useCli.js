@@ -110,7 +110,12 @@ async function submitSupportData(
             trackPollInterval?.(null);
             const text = getOutputHistory();
             await supportSnapshotRecorder.waitForStaticCapture();
-            const submitted = await api.submitSupportSnapshot(supportSnapshotRecorder.createPayload(text));
+            const snapshot = supportSnapshotRecorder.createPayload(text);
+            if (!snapshot.captureReport.complete) {
+                writeToOutput(i18n.getMessage("supportSnapshotCaptureIncomplete"));
+                return;
+            }
+            const submitted = await api.submitSupportSnapshot(snapshot);
             if (!submitted?.supportId) {
                 writeToOutput(i18n.getMessage("buildServerSupportRequestSubmission", ["** error **"]));
                 return;

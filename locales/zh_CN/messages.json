@@ -419,6 +419,12 @@
     "supportSnapshotReadOnlyBanner": {
         "message": "当前正在查看支持快照，所有控件均为只读。"
     },
+    "supportSnapshotCaptureInProgress": {
+        "message": "正在准备支持快照数据，请等待完成后再打开 CLI。"
+    },
+    "supportSnapshotCaptureIncomplete": {
+        "message": "支持快照采集不完整。请重新连接飞控，等待配置采集完成后再提交。"
+    },
     "tabLanding": {
         "message": "欢迎"
     },

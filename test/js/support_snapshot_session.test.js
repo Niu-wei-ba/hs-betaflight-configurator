@@ -40,4 +40,20 @@ describe("support snapshot session", () => {
         expect(supportSnapshotSession.active).toBe(false);
         expect(getSupportSnapshotResponse(1, [])).toBeNull();
     });
+
+    it("rejects an explicitly incomplete snapshot before entering read-only mode", () => {
+        expect(() =>
+            activateSupportSnapshot({
+                supportId: "SUP-23456789ABCDEFGH",
+                snapshot: {
+                    schemaVersion: 1,
+                    mspResponses: [
+                        { code: 1, requestKey: createSupportSnapshotRequestKey(1, []), payloadBase64: "AQ==" },
+                    ],
+                    captureReport: { complete: false },
+                },
+            }),
+        ).toThrow("采集不完整");
+        expect(supportSnapshotSession.active).toBe(false);
+    });
 });

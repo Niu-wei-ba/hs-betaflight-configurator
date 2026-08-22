@@ -96,6 +96,19 @@ describe("MSP promise semantics", () => {
         expect(serialSendSpy).not.toHaveBeenCalled();
     });
 
+    it("keeps protected background requests across a tab cleanup", async () => {
+        const pending = MSP.promise(EEPROM_WRITE_CODE, undefined, { preserveOnTabSwitch: true });
+
+        MSP.callbacks_cleanup(undefined, {
+            preserve: (entry) => entry.preserveOnTabSwitch === true,
+        });
+
+        expect(MSP.callbacks).toHaveLength(1);
+        readFrame(v1ResponseFrame(EEPROM_WRITE_CODE, [1, 2, 3]));
+
+        await expect(pending).resolves.toMatchObject({ command: EEPROM_WRITE_CODE });
+    });
+
     describe("timeout", () => {
         it("rejects with MspTimeoutError after MAX_RETRIES attempts and removes the queue entry", async () => {
             const rejection = expect(MSP.promise(EEPROM_WRITE_CODE)).rejects.toBeInstanceOf(MspTimeoutError);

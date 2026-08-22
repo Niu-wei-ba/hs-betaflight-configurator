@@ -518,6 +518,12 @@
     "supportSnapshotReadOnlyBanner": {
         "message": "You are viewing a support snapshot. All controls are read-only."
     },
+    "supportSnapshotCaptureInProgress": {
+        "message": "Preparing support snapshot data. Please wait before opening the CLI."
+    },
+    "supportSnapshotCaptureIncomplete": {
+        "message": "Support snapshot capture is incomplete. Reconnect the flight controller, wait for configuration capture to finish, then submit again."
+    },
     "tabLanding": {
         "message": "Welcome"
     },

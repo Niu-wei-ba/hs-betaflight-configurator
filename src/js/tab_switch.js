@@ -58,6 +58,11 @@ export function switchTab(tabKey, options = {}) {
         return false;
     }
 
+    if (mode === "cli" && CONFIGURATOR.supportSnapshotCaptureInProgress) {
+        gui_log(i18n.getMessage("supportSnapshotCaptureInProgress"));
+        return false;
+    }
+
     const isLoginSectionTab = mode === "loggedin";
     if (!GUI.allowedTabs.includes(tabKey) && !isLoginSectionTab) {
         handleDisallowedTab(tabKey, label);

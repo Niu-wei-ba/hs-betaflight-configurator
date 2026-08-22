@@ -39,6 +39,9 @@ export function activateSupportSnapshot(snapshotRecord) {
     if (!snapshot || snapshot.schemaVersion !== 1 || !Array.isArray(snapshot.mspResponses)) {
         throw new Error("不支持或损坏的支持快照。");
     }
+    if (snapshot.captureReport?.complete === false) {
+        throw new Error("该支持快照采集不完整，无法可靠渲染配置。请让飞手重新连接飞控并提交新的支持数据。");
+    }
 
     responses.clear();
     for (const entry of snapshot.mspResponses) {

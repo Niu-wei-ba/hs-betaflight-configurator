@@ -728,6 +728,7 @@ function resetConnection() {
     CONFIGURATOR.cliValid = false;
     CONFIGURATOR.cliActive = false;
     CONFIGURATOR.supportSnapshotMode = false;
+    CONFIGURATOR.supportSnapshotCaptureInProgress = false;
 
     // unlock port select & baud
     DeviceHandler.devicePickerDisabled = false;

@@ -187,6 +187,12 @@
     "supportSnapshotReadOnlyBanner": {
         "message": "目前正在檢視支援快照，所有控制項均為唯讀。"
     },
+    "supportSnapshotCaptureInProgress": {
+        "message": "正在準備支援快照資料，請等待完成後再開啟 CLI。"
+    },
+    "supportSnapshotCaptureIncomplete": {
+        "message": "支援快照擷取不完整。請重新連線飛控，等待設定擷取完成後再提交。"
+    },
     "tabLanding": {
         "message": "歡迎"
     },

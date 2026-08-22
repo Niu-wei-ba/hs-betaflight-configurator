@@ -11,8 +11,12 @@ const STATIC_CONFIGURATION_CODES = [
     MSPCodes.MSP_SENSOR_CONFIG,
     MSPCodes.MSP_RX_CONFIG,
     MSPCodes.MSP_CF_SERIAL_CONFIG,
+    MSPCodes.MSP_BOXNAMES,
     MSPCodes.MSP_MODE_RANGES,
     MSPCodes.MSP_MODE_RANGES_EXTRA,
+    MSPCodes.MSP_BOXIDS,
+    MSPCodes.MSP_RSSI_CONFIG,
+    MSPCodes.MSP_RC,
     MSPCodes.MSP_ADJUSTMENT_RANGES,
     MSPCodes.MSP_RC_TUNING,
     MSPCodes.MSP_PID,
@@ -52,14 +56,18 @@ class SupportSnapshotRecorder {
         this.capturePromise = null;
         this.captureComplete = false;
         this.captureCodes = [];
+        this.captureFailedCodes = [];
+        this.captureGeneration = 0;
     }
 
     start() {
         this.stop();
+        this.captureGeneration += 1;
         this.responses.clear();
         this.capturePromise = null;
         this.captureComplete = false;
         this.captureCodes = [];
+        this.captureFailedCodes = [];
         if (typeof MSP.addResponseListener !== "function") return;
         this.unsubscribe = MSP.addResponseListener(({ code, payload, requestKeys }) => {
             const keys = requestKeys?.length ? requestKeys : [createSupportSnapshotRequestKey(code, [])];
@@ -70,6 +78,8 @@ class SupportSnapshotRecorder {
     }
 
     stop() {
+        this.captureGeneration += 1;
+        CONFIGURATOR.supportSnapshotCaptureInProgress = false;
         this.unsubscribe?.();
         this.unsubscribe = null;
     }
@@ -78,13 +88,25 @@ class SupportSnapshotRecorder {
         if (this.capturePromise) return this.capturePromise;
 
         this.captureCodes = STATIC_CONFIGURATION_CODES;
+        const captureGeneration = this.captureGeneration;
+        CONFIGURATOR.supportSnapshotCaptureInProgress = true;
         this.capturePromise = (async () => {
             for (const code of STATIC_CONFIGURATION_CODES) {
-                await MSP.promise(code);
+                try {
+                    await MSP.promise(code, undefined, { preserveOnTabSwitch: true });
+                } catch (error) {
+                    this.captureFailedCodes.push(code);
+                    console.warn(`Support snapshot capture failed for MSP ${code}:`, error);
+                }
             }
-            this.captureComplete = true;
-        })().catch((error) => {
-            console.warn("Support snapshot configuration capture failed:", error);
+            const capturedCodes = new Set([...this.responses.values()].map((entry) => entry.code));
+            const missingResponseCodes = STATIC_CONFIGURATION_CODES.filter((code) => !capturedCodes.has(code));
+            this.captureFailedCodes = [...new Set([...this.captureFailedCodes, ...missingResponseCodes])];
+            this.captureComplete = this.captureFailedCodes.length === 0;
+        })().finally(() => {
+            if (captureGeneration === this.captureGeneration) {
+                CONFIGURATOR.supportSnapshotCaptureInProgress = false;
+            }
         });
         return this.capturePromise;
     }
@@ -111,6 +133,7 @@ class SupportSnapshotRecorder {
                 complete: this.captureComplete,
                 responseCount: this.responses.size,
                 plannedResponseCount: this.captureCodes.length,
+                missingResponseCodes: this.captureFailedCodes,
             },
         };
     }

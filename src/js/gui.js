@@ -285,7 +285,9 @@ class GuiControl {
     // callback = code to run when cleanup is finished
     // default switch doesn't require callback to be set
     tab_switch_cleanup(callback) {
-        MSP.callbacks_cleanup(); // we don't care about any old data that might or might not arrive
+        MSP.callbacks_cleanup(undefined, {
+            preserve: (entry) => entry.preserveOnTabSwitch === true,
+        });
         this.interval_kill_all(); // all intervals (mostly data pulling) needs to be removed on tab switch
 
         if (this.active_tab && TABS[this.active_tab]) {
