@@ -1,10 +1,12 @@
 import CONFIGURATOR from "../data_storage";
+import { API_VERSION_1_45, API_VERSION_1_47 } from "../data_storage";
 import FC from "../fc";
 import MSP from "../msp";
 import MSPCodes from "../msp/MSPCodes";
+import semver from "semver";
 import { createSupportSnapshotRequestKey } from "./SnapshotSession";
 
-const STATIC_CONFIGURATION_CODES = [
+const BASE_STATIC_CONFIGURATION_CODES = [
     MSPCodes.MSP_FEATURE_CONFIG,
     MSPCodes.MSP_BEEPER_CONFIG,
     MSPCodes.MSP_ARMING_CONFIG,
@@ -42,6 +44,28 @@ const STATIC_CONFIGURATION_CODES = [
     MSPCodes.MSP_GPS_CONFIG,
     MSPCodes.MSP_GPS_RESCUE,
 ].filter((code, index, codes) => Number.isInteger(code) && codes.indexOf(code) === index);
+
+function getStaticConfigurationCodes() {
+    const codes = [
+        ...BASE_STATIC_CONFIGURATION_CODES,
+        MSPCodes.MSP_MOTOR_3D_CONFIG,
+        MSPCodes.MSP2_MOTOR_OUTPUT_REORDERING,
+    ];
+
+    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_45)) {
+        codes.push(MSPCodes.MSP_OSD_CANVAS);
+    }
+
+    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_47)) {
+        codes.push(MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE);
+    }
+
+    if (FC.MOTOR_CONFIG.use_dshot_telemetry || FC.MOTOR_CONFIG.use_esc_sensor) {
+        codes.push(MSPCodes.MSP_MOTOR_TELEMETRY);
+    }
+
+    return codes.filter((code, index, allCodes) => Number.isInteger(code) && allCodes.indexOf(code) === index);
+}
 
 function bytesToBase64(bytes) {
     let binary = "";
@@ -87,11 +111,12 @@ class SupportSnapshotRecorder {
     captureStaticConfiguration() {
         if (this.capturePromise) return this.capturePromise;
 
-        this.captureCodes = STATIC_CONFIGURATION_CODES;
+        this.captureCodes = getStaticConfigurationCodes();
+        const captureCodes = this.captureCodes;
         const captureGeneration = this.captureGeneration;
         CONFIGURATOR.supportSnapshotCaptureInProgress = true;
         this.capturePromise = (async () => {
-            for (const code of STATIC_CONFIGURATION_CODES) {
+            for (const code of captureCodes) {
                 try {
                     await MSP.promise(code, undefined, { preserveOnTabSwitch: true });
                 } catch (error) {
@@ -100,7 +125,7 @@ class SupportSnapshotRecorder {
                 }
             }
             const capturedCodes = new Set([...this.responses.values()].map((entry) => entry.code));
-            const missingResponseCodes = STATIC_CONFIGURATION_CODES.filter((code) => !capturedCodes.has(code));
+            const missingResponseCodes = captureCodes.filter((code) => !capturedCodes.has(code));
             this.captureFailedCodes = [...new Set([...this.captureFailedCodes, ...missingResponseCodes])];
             this.captureComplete = this.captureFailedCodes.length === 0;
         })().finally(() => {

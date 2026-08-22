@@ -301,7 +301,8 @@ import GUI from "../../js/gui";
 import MSP from "../../js/msp";
 import MSPCodes from "../../js/msp/MSPCodes";
 import { mspHelper } from "../../js/msp/MSPHelper";
-import { API_VERSION_1_45, API_VERSION_1_47 } from "../../js/data_storage";
+import CONFIGURATOR, { API_VERSION_1_45, API_VERSION_1_47 } from "../../js/data_storage";
+import { hasSupportSnapshotResponse } from "../../js/support/SnapshotSession";
 import { i18n } from "../../js/localization";
 import semver from "semver";
 import { gui_log } from "../../js/gui_log";
@@ -955,7 +956,12 @@ export default defineComponent({
                             await MSP.promise(MSPCodes.MSP_NAME);
                         }
 
-                        if (fcStore.config?.apiVersion && semver.gte(fcStore.config.apiVersion, API_VERSION_1_47)) {
+                        if (
+                            fcStore.config?.apiVersion &&
+                            semver.gte(fcStore.config.apiVersion, API_VERSION_1_47) &&
+                            (!CONFIGURATOR.supportSnapshotMode ||
+                                hasSupportSnapshotResponse(MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE))
+                        ) {
                             await MSP.promise(MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE);
                         }
 

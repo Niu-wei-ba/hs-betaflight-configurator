@@ -4,6 +4,7 @@ import {
     clearSupportSnapshot,
     createSupportSnapshotRequestKey,
     getSupportSnapshotResponse,
+    hasSupportSnapshotResponse,
     supportSnapshotSession,
 } from "../../src/js/support/SnapshotSession";
 
@@ -25,6 +26,9 @@ describe("support snapshot session", () => {
         // Older collectors may not preserve a request payload. A unique response for a code
         // is therefore safe to replay as a compatibility fallback.
         expect([...getSupportSnapshotResponse(0x3006, [2])]).toEqual([1, 2, 3]);
+        expect(hasSupportSnapshotResponse(0x3006, [5])).toBe(true);
+        expect(hasSupportSnapshotResponse(0x3006, [9])).toBe(true);
+        expect(hasSupportSnapshotResponse(0x3007)).toBe(false);
     });
 
     it("clears the loaded data when the support session is closed", () => {

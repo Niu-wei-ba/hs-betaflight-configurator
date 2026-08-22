@@ -79,6 +79,10 @@ export function getSupportSnapshotResponse(code, data) {
     return matches.length === 1 ? matches[0][1] : null;
 }
 
+export function hasSupportSnapshotResponse(code, data = []) {
+    return getSupportSnapshotResponse(code, data) !== null;
+}
+
 export function supportSnapshotResponseEntries() {
     return [...responses.entries()];
 }
