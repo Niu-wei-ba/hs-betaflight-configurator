@@ -9,6 +9,7 @@ import {
     supportSnapshotSession,
 } from "../../src/js/support/SnapshotSession";
 import FC from "../../src/js/fc";
+import { parseSensorHardwareNames } from "../../src/js/sensor_types";
 
 describe("support snapshot session", () => {
     afterEach(() => clearSupportSnapshot());
@@ -36,6 +37,19 @@ describe("support snapshot session", () => {
 
         expect(FC.SENSOR_NAMES.gyro).toEqual(["ICM42688P", "BMI270"]);
         expect(FC.SENSOR_NAMES.sonar).toEqual(["VL53L1X"]);
+    });
+
+    it("parses sensor hardware names from a CLI transcript", () => {
+        const names = parseSensorHardwareNames(
+            "(sensor_hardware)# sensor_hardware\n" +
+                "gyro: NONE,AUTO,ICM42688P,BMI270\n" +
+                "acc: AUTO,NONE,ICM42688P\n" +
+                "rangefinder: NONE,TFMINI\n",
+        );
+
+        expect(names.gyro).toEqual(["NONE", "AUTO", "ICM42688P", "BMI270"]);
+        expect(names.acc).toEqual(["AUTO", "NONE", "ICM42688P"]);
+        expect(names.sonar).toEqual(["NONE", "TFMINI"]);
     });
 
     it("looks up an exact MSP response by code and request payload", () => {

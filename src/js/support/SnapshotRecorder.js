@@ -223,8 +223,16 @@ class SupportSnapshotRecorder {
         await Promise.race([this.capturePromise, new Promise((resolve) => setTimeout(resolve, timeout))]);
     }
 
-    async captureSensorHardwareNames() {
+    async captureSensorHardwareNames(cliTranscript = "") {
         if (!semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_48)) {
+            this.sensorHardwareCaptureComplete = true;
+            return;
+        }
+
+        const transcriptSensorNames = parseSensorHardwareNames(cliTranscript);
+        if (Object.values(transcriptSensorNames).some((values) => values.length > 0)) {
+            this.sensorNames = transcriptSensorNames;
+            FC.SENSOR_NAMES = this.sensorNames;
             this.sensorHardwareCaptureComplete = true;
             return;
         }
