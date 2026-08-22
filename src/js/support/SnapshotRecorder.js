@@ -151,6 +151,8 @@ class SupportSnapshotRecorder {
         this.captureGeneration = 0;
         this.sensorNames = null;
         this.sensorHardwareCaptureComplete = true;
+        this.rateProfiles = null;
+        this.rateProfilesCaptureComplete = true;
     }
 
     start() {
@@ -163,6 +165,8 @@ class SupportSnapshotRecorder {
         this.captureFailedCodes = [];
         this.sensorNames = null;
         this.sensorHardwareCaptureComplete = true;
+        this.rateProfiles = null;
+        this.rateProfilesCaptureComplete = true;
         if (typeof MSP.addResponseListener !== "function") return;
         this.unsubscribe = MSP.addResponseListener(({ code, payload, requestKeys }) => {
             const keys = requestKeys?.length ? requestKeys : [createSupportSnapshotRequestKey(code, [])];
@@ -200,6 +204,7 @@ class SupportSnapshotRecorder {
                     console.warn(`Support snapshot capture failed for MSP ${request.code}:`, error);
                 }
             }
+            await this.captureRateProfiles();
             const missingRequests = captureRequests.filter(
                 (request) => !this.responses.has(createSupportSnapshotRequestKey(request.code, request.data)),
             );
@@ -218,9 +223,62 @@ class SupportSnapshotRecorder {
     async waitForStaticCapture(timeoutMs) {
         if (!this.capturePromise) return;
         const requestTimeoutMs = (MSP.TIMEOUT || 1_000) * (MSP.MAX_RETRIES || 1);
-        const captureTimeoutMs = Math.max(60_000, this.captureRequests.length * requestTimeoutMs + 5_000);
+        const rateProfileRequests = (Number(FC.CONFIG.numberOfRateProfiles) || 4) * 4 + 4;
+        const captureTimeoutMs = Math.max(
+            60_000,
+            (this.captureRequests.length + rateProfileRequests) * requestTimeoutMs + 5_000,
+        );
         const timeout = timeoutMs ?? captureTimeoutMs;
         await Promise.race([this.capturePromise, new Promise((resolve) => setTimeout(resolve, timeout))]);
+    }
+
+    async captureRateProfiles() {
+        const originalRateProfile = Number(FC.CONFIG.rateProfile) || 0;
+        const configuredCount = Number(FC.CONFIG.numberOfRateProfiles) || 4;
+        const profileCount = Math.min(Math.max(configuredCount, 1), 8);
+        const profiles = {};
+
+        try {
+            for (let profileIndex = 0; profileIndex < profileCount; profileIndex += 1) {
+                await MSP.promise(MSPCodes.MSP_SELECT_SETTING, [profileIndex | 128], {
+                    preserveOnTabSwitch: true,
+                });
+                FC.CONFIG.rateProfile = profileIndex;
+                await MSP.promise(MSPCodes.MSP_RC_TUNING, undefined, { preserveOnTabSwitch: true });
+
+                let name = FC.CONFIG.rateProfileNames?.[profileIndex] || "";
+                if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_45)) {
+                    await MSP.promise(
+                        MSPCodes.MSP2_GET_TEXT,
+                        mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.RATE_PROFILE_NAME),
+                        { preserveOnTabSwitch: true },
+                    );
+                    name = FC.CONFIG.rateProfileNames?.[profileIndex] || name;
+                }
+
+                profiles[profileIndex] = {
+                    name,
+                    config: JSON.parse(JSON.stringify(FC.RC_TUNING)),
+                };
+            }
+
+            this.rateProfiles = profiles;
+            this.rateProfilesCaptureComplete = Object.keys(profiles).length === profileCount;
+        } catch (error) {
+            this.rateProfiles = null;
+            this.rateProfilesCaptureComplete = false;
+            console.warn("Support snapshot rate profile capture failed:", error);
+        } finally {
+            try {
+                await MSP.promise(MSPCodes.MSP_SELECT_SETTING, [originalRateProfile | 128], {
+                    preserveOnTabSwitch: true,
+                });
+                FC.CONFIG.rateProfile = originalRateProfile;
+                await MSP.promise(MSPCodes.MSP_RC_TUNING, undefined, { preserveOnTabSwitch: true });
+            } catch (restoreError) {
+                console.warn("Failed to restore the original rate profile after support capture:", restoreError);
+            }
+        }
     }
 
     async captureSensorHardwareNames(cliTranscript = "") {
@@ -251,6 +309,9 @@ class SupportSnapshotRecorder {
 
     createPayload(cliTranscript) {
         const missingAuxiliaryData = this.sensorHardwareCaptureComplete ? [] : ["sensor_hardware"];
+        if (!this.rateProfilesCaptureComplete) {
+            missingAuxiliaryData.push("rate_profiles");
+        }
         return {
             schemaVersion: 1,
             metadata: {
@@ -263,6 +324,7 @@ class SupportSnapshotRecorder {
             },
             mspResponses: [...this.responses.values()],
             sensorNames: this.sensorNames,
+            rateProfiles: this.rateProfiles,
             cliTranscript,
             captureReport: {
                 complete: this.captureComplete && missingAuxiliaryData.length === 0,

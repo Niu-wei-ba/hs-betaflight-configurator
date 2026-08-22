@@ -34,6 +34,7 @@ export const supportSnapshotSession = reactive({
     expiresAt: "",
     captureReport: null,
     sensorNames: null,
+    rateProfiles: null,
 });
 
 export function activateSupportSnapshot(snapshotRecord) {
@@ -58,6 +59,7 @@ export function activateSupportSnapshot(snapshotRecord) {
     supportSnapshotSession.expiresAt = snapshotRecord.expiresAt || "";
     supportSnapshotSession.captureReport = snapshotRecord.captureReport || snapshot.captureReport || null;
     supportSnapshotSession.sensorNames = snapshot.sensorNames || null;
+    supportSnapshotSession.rateProfiles = snapshot.rateProfiles || null;
 }
 
 export function applySupportSnapshotAuxiliaryData() {
@@ -81,6 +83,24 @@ export function applySupportSnapshotAuxiliaryData() {
     };
 }
 
+export function applySupportSnapshotRateProfile(profileIndex) {
+    const profile =
+        supportSnapshotSession.rateProfiles?.[profileIndex] ??
+        supportSnapshotSession.rateProfiles?.[String(profileIndex)];
+    if (!profile?.config) return false;
+
+    const index = Number(profileIndex);
+    FC.CONFIG.rateProfile = index;
+    FC.RC_TUNING = {
+        ...FC.RC_TUNING,
+        ...JSON.parse(JSON.stringify(profile.config)),
+    };
+    if (Array.isArray(FC.CONFIG.rateProfileNames) && typeof profile.name === "string") {
+        FC.CONFIG.rateProfileNames[index] = profile.name;
+    }
+    return true;
+}
+
 export function clearSupportSnapshot() {
     responses.clear();
     supportSnapshotSession.active = false;
@@ -89,6 +109,7 @@ export function clearSupportSnapshot() {
     supportSnapshotSession.expiresAt = "";
     supportSnapshotSession.captureReport = null;
     supportSnapshotSession.sensorNames = null;
+    supportSnapshotSession.rateProfiles = null;
 }
 
 export function getSupportSnapshotResponse(code, data) {

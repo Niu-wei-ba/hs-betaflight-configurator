@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
     activateSupportSnapshot,
     applySupportSnapshotAuxiliaryData,
+    applySupportSnapshotRateProfile,
     clearSupportSnapshot,
     createSupportSnapshotRequestKey,
     getSupportSnapshotResponse,
@@ -50,6 +51,29 @@ describe("support snapshot session", () => {
         expect(names.gyro).toEqual(["NONE", "AUTO", "ICM42688P", "BMI270"]);
         expect(names.acc).toEqual(["AUTO", "NONE", "ICM42688P"]);
         expect(names.sonar).toEqual(["NONE", "TFMINI"]);
+    });
+
+    it("applies a captured rate profile without a live flight controller", () => {
+        FC.resetState();
+        FC.RC_TUNING.RC_RATE = 0;
+        activateSupportSnapshot({
+            supportId: "SUP-23456789ABCDEFGH",
+            snapshot: {
+                schemaVersion: 1,
+                mspResponses: [],
+                rateProfiles: {
+                    1: {
+                        name: "CINEMATIC",
+                        config: { RC_RATE: 0.85, roll_rate: 0.72, rates_type: 3 },
+                    },
+                },
+            },
+        });
+
+        expect(applySupportSnapshotRateProfile(1)).toBe(true);
+        expect(FC.CONFIG.rateProfile).toBe(1);
+        expect(FC.RC_TUNING.RC_RATE).toBe(0.85);
+        expect(FC.CONFIG.rateProfileNames[1]).toBe("CINEMATIC");
     });
 
     it("looks up an exact MSP response by code and request payload", () => {
