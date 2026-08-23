@@ -11,8 +11,8 @@ bfc_configure_version_channel() {
             ;;
         2026.6.1)
             BFC_VERSION_CHANNEL="2026.6.1"
-            BFC_VERSION_BRANCH="feature/betaflight-2026.6.1"
-            BFC_VERSION_WORKTREE_DEFAULT="/Users/lihao/Documents/betaflight-configurator-2026.6.1"
+            BFC_VERSION_BRANCH="feature/betaflight-2026.6.1-dev"
+            BFC_VERSION_WORKTREE_DEFAULT="/Users/lihao/Documents/betaflight-configurator-2026.6.1-dev"
             BFC_VERSION_NODE="24"
             BFC_VERSION_BUILD_OUTPUT_REL="src/dist"
             ;;
