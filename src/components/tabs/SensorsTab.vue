@@ -2363,9 +2363,12 @@ function setupMagSection() {
 }
 
 function setupPeripherals() {
-    if (isApi147.value) {
+    // Rangefinder support was added in MSP API 1.46; optical flow remains 1.47+.
+    if (isApi146.value) {
         sonarTypesList.value = sensorTypesData.value?.sonar?.elements || [];
         showRangefinder.value = sonarTypesList.value.length > 0;
+    }
+    if (isApi147.value) {
         opticalFlowTypesList.value = sensorTypesData.value?.opticalflow?.elements || [];
         showOpticalFlow.value = opticalFlowTypesList.value.length > 0;
     }
@@ -2446,8 +2449,10 @@ const saveConfig = () =>
             fcStore.sensorConfig.baro_hardware = sensorConfig.baro_hardware;
             fcStore.sensorConfig.mag_hardware = sensorConfig.mag_hardware;
 
-            if (isApi147.value) {
+            if (isApi146.value) {
                 fcStore.sensorConfig.sonar_hardware = sensorConfig.sonar_hardware;
+            }
+            if (isApi147.value) {
                 fcStore.sensorConfig.opticalflow_hardware = sensorConfig.opticalflow_hardware;
             }
 
