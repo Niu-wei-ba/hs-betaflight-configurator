@@ -40,9 +40,11 @@ Never copy or write the private key contents into the repo. It is enough to refe
 
 ## Release Branch Policy
 
-- The frontend release and deployment branch is `feature/betaflight-2026.6.1`.
-- Do not deploy the frontend from `feat/custom-betaflight-2026.06.3` or another feature branch.
-- The remote support snapshot frontend is part of the `feature/betaflight-2026.6.1` history; deploy the checked-out commit from that branch.
+- The hosted Dev frontend for channel `2026.6.1` must be deployed only from `feature/betaflight-2026.6.1-dev`.
+- The default Dev worktree is `/Users/lihao/Documents/betaflight-configurator-2026.6.1-dev`.
+- `feature/betaflight-2026.6.1` is the snapshot-free base branch and must not be deployed to the hosted Dev URL.
+- Remote support snapshot functionality exists only on `feature/betaflight-2026.6.1-dev`.
+- Do not deploy the frontend from `feat/custom-betaflight-2026.06.3` or any other feature branch.
 - The companion firmware API is maintained in `/Users/lihao/Documents/hs-betaflight-firmware-api` on `feature/cos-private-read` unless an explicit backend branch transition is requested.
 - The active hosted dev URL is `https://betaflight.hs-fpv.com/v/2026.6.1/`; preserve the portal at `/` and the `/v/2026.6.1/` versioned release layout.
 
