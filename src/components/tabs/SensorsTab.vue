@@ -61,7 +61,15 @@
                             </template>
                             <USwitch v-model="baroHardwareEnabled" />
                         </SettingRow>
-                        <SettingRow v-if="showRangefinder" :label="$t('configurationRangefinder')" fullWidth>
+                        <SettingRow
+                            v-if="showRangefinder"
+                            :label="sonarHwName ? '' : $t('configurationRangefinder')"
+                            fullWidth
+                        >
+                            <template v-if="sonarHwName" #label>
+                                {{ $t("configurationRangefinder") }}
+                                <span class="text-dimmed font-normal">&mdash; {{ sonarHwName }}</span>
+                            </template>
                             <USwitch v-model="sonarHardwareEnabled" />
                             <USelect
                                 v-if="sonarHardwareEnabled"
@@ -1027,6 +1035,7 @@ const gyroHwName = ref("");
 const accHwName = ref("");
 const baroHwName = ref("");
 const magHwName = ref("");
+const sonarHwName = ref("");
 
 function resolveSensorNames() {
     const types = sensorTypesData.value;
@@ -1053,6 +1062,7 @@ function resolveSensorNames() {
     accHwName.value = resolve("acc_hardware", "acc");
     baroHwName.value = resolve("baro_hardware", "baro");
     magHwName.value = resolve("mag_hardware", "mag");
+    sonarHwName.value = resolve("sonar_hardware", "sonar");
 }
 
 const showGyroToUse = computed(() => {
