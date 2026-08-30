@@ -1,4 +1,5 @@
 import { useSettingsStore } from "./stores/settings.js";
+import { runtimeAssetUrl } from "../js/utils/runtimeAssetUrl";
 
 export function MapGrapher() {
     const { userSettings } = useSettingsStore();
@@ -28,14 +29,14 @@ export function MapGrapher() {
     };
 
     const craftIcon = L.icon({
-        iconUrl: "../images/markers/craft.png",
+        iconUrl: runtimeAssetUrl("images/markers/craft.png"),
         iconSize: [30, 30],
         iconAnchor: [15, 15],
         className: "icon",
     });
 
     const homeIcon = L.icon({
-        iconUrl: "../images/markers/home.png",
+        iconUrl: runtimeAssetUrl("images/markers/home.png"),
         iconSize: [40, 40],
         iconAnchor: [20, 35],
         className: "icon",

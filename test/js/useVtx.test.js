@@ -109,4 +109,15 @@ describe("useVtx", () => {
         expect(tracking.sendSaveAndChangeEvents).not.toHaveBeenCalled();
         expect(vtx.savePending.value).toBe(true);
     });
+
+    it("loads the VTX schema from the application asset root", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ json: async () => ({}) });
+        const clipboard = { readText: vi.fn().mockResolvedValue(JSON.stringify({ version: "1.0", vtx_table: {} })) };
+        vi.stubGlobal("fetch", fetchMock);
+        Object.defineProperty(navigator, "clipboard", { configurable: true, value: clipboard });
+
+        await vtx.loadClipboardJson();
+
+        expect(fetchMock).toHaveBeenCalledWith("/resources/jsonschema/vtxconfig_schema-1.0.json");
+    });
 });
