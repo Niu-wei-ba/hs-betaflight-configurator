@@ -10,6 +10,7 @@ import { VtxDeviceTypes } from "../utils/VtxDeviceStatus/VtxDeviceStatus";
 import MSP from "../msp";
 import MSPCodes from "../msp/MSPCodes";
 import { gui_log } from "../gui_log";
+import { runtimeAssetUrl } from "../utils/runtimeAssetUrl";
 import $ from "jquery";
 import FileSystem from "../FileSystem";
 
@@ -160,7 +161,7 @@ vtx.initialize = function (callback) {
             valid ? callback_valid() : callback_error();
         }
 
-        const vtxJsonSchemaUrl = `../../resources/jsonschema/vtxconfig_schema-${vtxConfig.version}.json`;
+        const vtxJsonSchemaUrl = runtimeAssetUrl(`resources/jsonschema/vtxconfig_schema-${vtxConfig.version}.json`);
 
         fetch(vtxJsonSchemaUrl)
             .then((response) => response.json())

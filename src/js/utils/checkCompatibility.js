@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { runtimeAssetUrl } from "./runtimeAssetUrl";
 
 // Detects OS using modern userAgentData API with fallback to legacy platform
 // Returns standardized OS name string or "unknown"
@@ -106,7 +107,7 @@ export function checkCompatibility() {
         .css({
             height: "100%",
             display: "grid",
-            "background-image": "url(/images/pattern_dark.png)",
+            "background-image": `url(${runtimeAssetUrl("images/pattern_dark.png")})`,
             "background-size": "300px",
             "background-repeat": "repeat",
             "background-color": "var(--surface-500)",
