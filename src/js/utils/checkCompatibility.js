@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { runtimeAssetUrl } from "./runtimeAssetUrl";
 
 /**
  * Detect the host OS using the modern userAgentData API with a fallback to the
@@ -178,7 +179,7 @@ export function checkCompatibility() {
     Object.assign(body.style, {
         height: "100%",
         display: "grid",
-        backgroundImage: "url(/images/pattern_dark.png)",
+        backgroundImage: `url(${runtimeAssetUrl("images/pattern_dark.png")})`,
         backgroundSize: "300px",
         backgroundRepeat: "repeat",
         backgroundColor: "var(--surface-500)",
