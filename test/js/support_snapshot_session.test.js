@@ -4,6 +4,7 @@ import {
     clearSupportSnapshot,
     getSupportSnapshotResponse,
     getSupportSnapshotEntry,
+    isSupportSnapshotResponseUnsupported,
     supportSnapshotSession,
 } from "../../src/js/support/SnapshotSession";
 import { snapshotV2, addResponse } from "../fixtures/supportSnapshotV2";
@@ -47,6 +48,12 @@ describe("support snapshot v2 session", () => {
         activateSupportSnapshot({ snapshot });
         expect(getSupportSnapshotEntry(137, [1]).unsupported).toBe(true);
         expect(getSupportSnapshotResponse(137, [1])).toBeNull();
+    });
+    it("distinguishes an unsupported optional response from a missing response", () => {
+        const snapshot = addResponse(snapshotV2(), 0x300c, "12300:", "", true);
+        activateSupportSnapshot({ snapshot });
+        expect(isSupportSnapshotResponseUnsupported(0x300c)).toBe(true);
+        expect(isSupportSnapshotResponseUnsupported(137, [1])).toBe(false);
     });
     it("ignores contradictory summary fields and clears state on exit", () => {
         activateSupportSnapshot({ snapshot: snapshotV2(), captureReport: { profile: { pid: 0, rate: 0 } } });

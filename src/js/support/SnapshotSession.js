@@ -55,6 +55,10 @@ export function getSupportSnapshotEntry(code, data) {
     return responses.get(createSupportSnapshotRequestKey(code, data)) || null;
 }
 
+export function isSupportSnapshotResponseUnsupported(code, data = []) {
+    return getSupportSnapshotEntry(code, data)?.unsupported === true;
+}
+
 export function getSupportSnapshotResponse(code, data) {
     const entry = getSupportSnapshotEntry(code, data);
     return entry && !entry.unsupported ? entry.bytes : null;
