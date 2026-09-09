@@ -7,7 +7,7 @@ import {
     getSupportSnapshotEntry,
     reportSupportSnapshotIssue,
 } from "./support/SnapshotSession";
-import { isSnapshotReadCode } from "./support/SnapshotRequests";
+import { describeSnapshotRequest, isSnapshotReadCode } from "./support/SnapshotRequests";
 
 const MSP = {
     snapshotCaptureActive: false,
@@ -527,7 +527,8 @@ const MSP = {
                 return false;
             };
             if (!isSnapshotReadCode(code)) return fail("支持快照只读，不能修改、切换 Profile 或执行飞控操作。");
-            if (!entry) return fail(`未采集 MSP ${code} 数据，本页无法可靠回放。请重新采集。`);
+            const requestDescription = describeSnapshotRequest(code, data);
+            if (!entry) return fail(`未采集 ${requestDescription} 数据，本页无法可靠回放。请重新采集。`);
             queueMicrotask(() => {
                 if (!CONFIGURATOR.supportSnapshotMode || getSupportSnapshotEntry(code, data) !== entry) {
                     callback_msp?.(null, new MspCancelledError("快照会话已关闭。", code, "snapshot-closed"));
@@ -535,7 +536,7 @@ const MSP = {
                 }
                 this.replay_message(code, entry.bytes, entry.unsupported);
                 if (entry.unsupported) {
-                    const message = `飞控不支持 MSP ${code}，本页数据不可用。`;
+                    const message = `飞控不支持 ${requestDescription}，本页数据不可用。`;
                     reportSupportSnapshotIssue(GUI.active_tab, message);
                     callback_msp?.(null, new MspSnapshotMissingError(message, code));
                 } else {

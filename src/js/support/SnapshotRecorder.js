@@ -97,7 +97,10 @@ export class SupportSnapshotRecorder {
             } else {
                 await request(MSPCodes.MSP_NAME);
             }
-            if (semver.gte(this.fc.CONFIG.apiVersion, "1.48.0")) {
+            if (
+                semver.gte(this.fc.CONFIG.apiVersion, "1.48.0") &&
+                (Number(this.fc.CONFIG.numberOfBatteryProfiles) || 0) > 0
+            ) {
                 await request(MSPCodes.MSP2_GET_TEXT, [MSPCodes.BATTERY_PROFILE_NAME]);
             }
             for (let index = 1; index <= Math.min(this.fc.VTX_CONFIG.vtx_table_bands || 0, 255); index++) {

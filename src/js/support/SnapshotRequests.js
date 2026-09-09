@@ -28,3 +28,30 @@ const readCodes = new Set([
 ]);
 export const isSnapshotReadCode = (code) => readCodes.has(code);
 export const isSnapshotRequiredCode = (code) => Object.hasOwn(REQUIRED_RESPONSE_LENGTHS, code);
+
+const textTypeNames = new Map([
+    [MSPCodes.PILOT_NAME, "PILOT_NAME"],
+    [MSPCodes.CRAFT_NAME, "CRAFT_NAME"],
+    [MSPCodes.PID_PROFILE_NAME, "PID_PROFILE_NAME"],
+    [MSPCodes.RATE_PROFILE_NAME, "RATE_PROFILE_NAME"],
+    [MSPCodes.BUILD_KEY, "BUILD_KEY"],
+    [MSPCodes.BATTERY_PROFILE_NAME, "BATTERY_PROFILE_NAME"],
+]);
+
+function requestBytes(data) {
+    if (data instanceof ArrayBuffer) return new Uint8Array(data);
+    if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    return Uint8Array.from(data || []);
+}
+
+export function describeSnapshotRequest(code, data = []) {
+    const bytes = requestBytes(data);
+    if (code === MSPCodes.MSP2_GET_TEXT && bytes.length === 1) {
+        const type = bytes[0];
+        return `MSP2_GET_TEXT(${type}: ${textTypeNames.get(type) || "UNKNOWN_TEXT_TYPE"})`;
+    }
+    if ([MSPCodes.MSP_VTXTABLE_BAND, MSPCodes.MSP_VTXTABLE_POWERLEVEL].includes(code) && bytes.length === 1) {
+        return `MSP ${code}(index: ${bytes[0]})`;
+    }
+    return bytes.length ? `MSP ${code}(参数: ${[...bytes].join(",")})` : `MSP ${code}`;
+}

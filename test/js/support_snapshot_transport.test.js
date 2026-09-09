@@ -41,6 +41,13 @@ describe("snapshot MSP transport", () => {
         expect(MSP.unsupported).toBe(1);
         expect(FC.SENSOR_CONFIG.acc_hardware).toBe(42);
     });
+    it("identifies the exact unsupported MSP2_GET_TEXT subtype", async () => {
+        activateSupportSnapshot({
+            snapshot: addResponse(snapshotV2(), 0x3006, "12294:Cw==", "", true),
+        });
+        CONFIGURATOR.supportSnapshotMode = true;
+        await expect(MSP.promise(0x3006, [11])).rejects.toThrow("BATTERY_PROFILE_NAME");
+    });
     it("rejects absent replies instead of resolving with default state", async () => {
         activateSupportSnapshot({ snapshot: snapshotV2() });
         CONFIGURATOR.supportSnapshotMode = true;

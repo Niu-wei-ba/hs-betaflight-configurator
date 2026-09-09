@@ -41,6 +41,23 @@ describe("isolated support capture", () => {
         expect(state.ready).toBe(true);
         expect(msp.snapshotCaptureActive).toBe(false);
     });
+    it("captures the battery Profile name only when API 1.48 reports battery Profiles", async () => {
+        const withoutProfiles = harness();
+        withoutProfiles.fc.CONFIG.apiVersion = "1.48.0";
+        withoutProfiles.fc.CONFIG.numberOfBatteryProfiles = 0;
+        await withoutProfiles.recorder.captureStaticConfiguration();
+        expect(
+            withoutProfiles.msp.captureRequest.mock.calls.some(([code, data]) => code === 0x3006 && data[0] === 11),
+        ).toBe(false);
+
+        const withProfiles = harness();
+        withProfiles.fc.CONFIG.apiVersion = "1.48.0";
+        withProfiles.fc.CONFIG.numberOfBatteryProfiles = 2;
+        await withProfiles.recorder.captureStaticConfiguration();
+        expect(
+            withProfiles.msp.captureRequest.mock.calls.some(([code, data]) => code === 0x3006 && data[0] === 11),
+        ).toBe(true);
+    });
     it("rejects a Profile change and releases capture lock", async () => {
         let statuses = 0;
         const { recorder, state, msp } = harness((code, _data, _options, fc) => {
