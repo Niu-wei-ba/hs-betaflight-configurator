@@ -169,7 +169,13 @@ const isAllowed = (item) => {
 const activeItems = computed(() =>
     sidebarItems
         .filter((item) => isModeVisible(item.mode))
-        .filter((item) => !(connectionStore.supportSnapshotMode && item.key === "cli"))
+        .filter(
+            (item) =>
+                !(
+                    connectionStore.supportSnapshotMode &&
+                    ["cli", "presets", "autotune", "flight_plan_connected", "backups", "logging"].includes(item.key)
+                ),
+        )
         .filter((item) => !item.hideInSidebar)
         .filter((item) => isAllowed(item))
         .filter((item) => isItemVisible(item, ctx.value)),

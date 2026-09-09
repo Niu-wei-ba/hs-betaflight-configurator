@@ -70,6 +70,7 @@
                     />
                     <UButton
                         v-if="activeSubtab === 'pid'"
+                        data-snapshot-navigation
                         :label="showAllPids ? $t('pidTuningHideUnusedPids') : $t('pidTuningShowAllPids')"
                         color="neutral"
                         variant="outline"

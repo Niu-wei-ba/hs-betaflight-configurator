@@ -15,7 +15,7 @@ import { get as getConfig } from "../js/ConfigStorage";
 import { useCliAutocomplete } from "./useCliAutocomplete";
 import { highlightCliLine } from "../js/CliSyntaxHighlight";
 import { escapeHtml } from "../js/utils/common";
-import { supportSnapshotRecorder } from "../js/support/SnapshotRecorder";
+import { supportSnapshotRecorder, supportSnapshotCaptureState } from "../js/support/SnapshotRecorder";
 
 const backspaceCode = 8;
 const lineFeedCode = 10;
@@ -109,15 +109,11 @@ async function submitSupportData(
             clearInterval(delay);
             trackPollInterval?.(null);
             const text = getOutputHistory();
-            await supportSnapshotRecorder.waitForStaticCapture();
-            await supportSnapshotRecorder.captureSensorHardwareNames(text);
-            const snapshot = supportSnapshotRecorder.createPayload(text);
-            if (!snapshot.captureReport.complete) {
-                const missingCodes = snapshot.captureReport.missingResponseCodes?.filter(Boolean).join(", ");
-                const missingAuxiliaryData = snapshot.captureReport.missingAuxiliaryData?.filter(Boolean).join(", ");
-                const missingData = [missingCodes, missingAuxiliaryData].filter(Boolean).join(", ");
-                const detail = missingData ? ` (${missingData})` : "";
-                writeToOutput(`${i18n.getMessage("supportSnapshotCaptureIncomplete")}${detail}`);
+            let snapshot;
+            try {
+                snapshot = supportSnapshotRecorder.createPayload(text);
+            } catch (error) {
+                writeToOutput(`${i18n.getMessage("supportSnapshotCaptureIncomplete")}: ${error.message}`);
                 return;
             }
             const submitted = await api.submitSupportSnapshot(snapshot);
@@ -366,6 +362,12 @@ export function useCli() {
     };
 
     const submitSupportRequest = async () => {
+        if (!supportSnapshotCaptureState.ready) {
+            writeToOutput(
+                `${i18n.getMessage("supportSnapshotCaptureIncomplete")}: ${supportSnapshotCaptureState.error || "请重新进入 CLI 后等待采集完成。"}`,
+            );
+            return;
+        }
         showSupportWarningDialog((data) =>
             submitSupportData(
                 data,

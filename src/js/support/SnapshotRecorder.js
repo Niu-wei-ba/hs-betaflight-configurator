@@ -1,339 +1,160 @@
+import { reactive } from "vue";
 import CONFIGURATOR from "../data_storage";
-import { API_VERSION_1_45, API_VERSION_1_46, API_VERSION_1_47, API_VERSION_1_48 } from "../data_storage";
 import FC from "../fc";
 import MSP from "../msp";
 import MSPCodes from "../msp/MSPCodes";
-import { mspHelper } from "../msp/MSPHelper";
-import { parseSensorHardwareNames, requestSensorHardwareNames } from "../sensor_types";
 import semver from "semver";
 import { createSupportSnapshotRequestKey } from "./SnapshotSession";
+import { STATIC_SNAPSHOT_CODES, isSnapshotRequiredCode } from "./SnapshotRequests";
+import { validateSnapshotV2 } from "./SnapshotContract";
 
-const BASE_STATIC_CONFIGURATION_CODES = [
-    MSPCodes.MSP_FEATURE_CONFIG,
-    MSPCodes.MSP_BEEPER_CONFIG,
-    MSPCodes.MSP_ARMING_CONFIG,
-    MSPCodes.MSP_BOARD_ALIGNMENT_CONFIG,
-    MSPCodes.MSP_SENSOR_CONFIG,
-    MSPCodes.MSP_SENSOR_ALIGNMENT,
-    MSPCodes.MSP_ACC_TRIM,
-    MSPCodes.MSP_RX_CONFIG,
-    MSPCodes.MSP_RX_MAP,
-    MSPCodes.MSP_RC_DEADBAND,
-    MSPCodes.MSP_CF_SERIAL_CONFIG,
-    MSPCodes.MSP2_COMMON_SERIAL_CONFIG,
-    MSPCodes.MSP_BOXNAMES,
-    MSPCodes.MSP_MODE_RANGES,
-    MSPCodes.MSP_MODE_RANGES_EXTRA,
-    MSPCodes.MSP_BOXIDS,
-    MSPCodes.MSP_RSSI_CONFIG,
-    MSPCodes.MSP_RC,
-    MSPCodes.MSP_ADJUSTMENT_RANGES,
-    MSPCodes.MSP_RC_TUNING,
-    MSPCodes.MSP_PID,
-    MSPCodes.MSP_PIDNAMES,
-    MSPCodes.MSP_SIMPLIFIED_TUNING,
-    MSPCodes.MSP_PID_ADVANCED,
-    MSPCodes.MSP_FILTER_CONFIG,
-    MSPCodes.MSP_MOTOR_CONFIG,
-    MSPCodes.MSP_ADVANCED_CONFIG,
-    MSPCodes.MSP_MIXER_CONFIG,
-    MSPCodes.MSP_FAILSAFE_CONFIG,
-    MSPCodes.MSP_RXFAIL_CONFIG,
-    MSPCodes.MSP_BATTERY_CONFIG,
-    MSPCodes.MSP_BATTERY_STATE,
-    MSPCodes.MSP_STATUS_EX,
-    MSPCodes.MSP_VOLTAGE_METERS,
-    MSPCodes.MSP_CURRENT_METERS,
-    MSPCodes.MSP_CURRENT_METER_CONFIG,
-    MSPCodes.MSP_VOLTAGE_METER_CONFIG,
-    MSPCodes.MSP_OSD_CONFIG,
-    MSPCodes.MSP_VTX_CONFIG,
-    MSPCodes.MSP_LED_STRIP_CONFIG,
-    MSPCodes.MSP_LED_COLORS,
-    MSPCodes.MSP_LED_STRIP_MODECOLOR,
-    MSPCodes.MSP_BLACKBOX_CONFIG,
-    MSPCodes.MSP_DATAFLASH_SUMMARY,
-    MSPCodes.MSP_SDCARD_SUMMARY,
-    MSPCodes.MSP_GPS_CONFIG,
-    MSPCodes.MSP_GPS_RESCUE,
-    MSPCodes.MSP_COMPASS_CONFIG,
-    MSPCodes.MSP_SERVO_CONFIGURATIONS,
-    MSPCodes.MSP_SERVO_MIX_RULES,
-].filter((code, index, codes) => Number.isInteger(code) && codes.indexOf(code) === index);
+export const supportSnapshotCaptureState = reactive({ active: false, ready: false, error: "" });
 
-function getStaticConfigurationRequests() {
-    const requests = BASE_STATIC_CONFIGURATION_CODES.map((code) => ({ code }));
-
-    requests.push({ code: MSPCodes.MSP_MOTOR_3D_CONFIG }, { code: MSPCodes.MSP2_MOTOR_OUTPUT_REORDERING });
-
-    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_45)) {
-        requests.push(
-            { code: MSPCodes.MSP2_GET_TEXT, data: mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.CRAFT_NAME) },
-            { code: MSPCodes.MSP2_GET_TEXT, data: mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.PILOT_NAME) },
-            { code: MSPCodes.MSP2_GET_TEXT, data: mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.PID_PROFILE_NAME) },
-            {
-                code: MSPCodes.MSP2_GET_TEXT,
-                data: mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.RATE_PROFILE_NAME),
-            },
-        );
+function deepFreeze(value) {
+    if (value && typeof value === "object") {
+        Object.values(value).forEach(deepFreeze);
+        Object.freeze(value);
     }
-
-    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_48) && (FC.CONFIG.numberOfBatteryProfiles || 0) > 0) {
-        requests.push({
-            code: MSPCodes.MSP2_GET_TEXT,
-            data: mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.BATTERY_PROFILE_NAME),
-        });
-    }
-
-    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_45)) {
-        requests.push({ code: MSPCodes.MSP_OSD_CANVAS });
-    }
-
-    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_46)) {
-        requests.push({ code: MSPCodes.MSP2_GET_LED_STRIP_CONFIG_VALUES });
-    }
-
-    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_46)) {
-        requests.push({ code: MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE });
-    }
-
-    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_47)) {
-        requests.push({ code: MSPCodes.MSP2_GYRO_SENSOR }, { code: MSPCodes.MSP2_MCU_INFO });
-    }
-
-    if (FC.MOTOR_CONFIG.use_dshot_telemetry || FC.MOTOR_CONFIG.use_esc_sensor) {
-        requests.push({ code: MSPCodes.MSP_MOTOR_TELEMETRY });
-    }
-
-    return requests;
+    return value;
 }
 
-function appendVtxTableRequests(requests) {
-    const bands = Math.min(Math.max(Number(FC.VTX_CONFIG.vtx_table_bands) || 0, 0), 8);
-    const powerLevels = Math.min(Math.max(Number(FC.VTX_CONFIG.vtx_table_powerlevels) || 0, 0), 8);
-
-    for (let index = 1; index <= bands; index += 1) {
-        requests.push({ code: MSPCodes.MSP_VTXTABLE_BAND, data: [index] });
-    }
-
-    for (let index = 1; index <= powerLevels; index += 1) {
-        requests.push({ code: MSPCodes.MSP_VTXTABLE_POWERLEVEL, data: [index] });
-    }
-}
-
-function getCaptureRequests() {
-    const requests = getStaticConfigurationRequests();
-    const vtxConfigIndex = requests.findIndex(({ code }) => code === MSPCodes.MSP_VTX_CONFIG);
-    if (vtxConfigIndex !== -1) {
-        // The table sizes are returned by MSP_VTX_CONFIG, so table requests are appended
-        // immediately after it during capture once FC.VTX_CONFIG has been populated.
-        requests.splice(vtxConfigIndex + 1, 0, { code: MSPCodes.MSP_VTX_CONFIG, _appendVtxTables: true });
-        requests.splice(vtxConfigIndex, 1);
-    }
-    return requests;
-}
-
-function bytesToBase64(bytes) {
-    let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    return btoa(binary);
-}
-
-class SupportSnapshotRecorder {
-    constructor() {
-        this.responses = new Map();
-        this.unsubscribe = null;
-        this.capturePromise = null;
-        this.captureComplete = false;
-        this.captureRequests = [];
-        this.captureCodes = [];
-        this.captureFailedCodes = [];
-        this.captureGeneration = 0;
-        this.sensorNames = null;
-        this.sensorHardwareCaptureComplete = true;
-        this.rateProfiles = null;
-        this.rateProfilesCaptureComplete = true;
+export class SupportSnapshotRecorder {
+    constructor({ msp = MSP, fc = FC, config = CONFIGURATOR, state = supportSnapshotCaptureState } = {}) {
+        Object.assign(this, { msp, fc, config, state, controller: null, frozen: null });
     }
 
     start() {
         this.stop();
-        this.captureGeneration += 1;
-        this.responses.clear();
-        this.capturePromise = null;
-        this.captureComplete = false;
-        this.captureCodes = [];
-        this.captureFailedCodes = [];
-        this.sensorNames = null;
-        this.sensorHardwareCaptureComplete = true;
-        this.rateProfiles = null;
-        this.rateProfilesCaptureComplete = true;
-        if (typeof MSP.addResponseListener !== "function") return;
-        this.unsubscribe = MSP.addResponseListener(({ code, payload, requestKeys }) => {
-            const keys = requestKeys?.length ? requestKeys : [createSupportSnapshotRequestKey(code, [])];
-            for (const requestKey of keys) {
-                this.responses.set(requestKey, { code, requestKey, payloadBase64: bytesToBase64(payload) });
-            }
-        });
     }
 
     stop() {
-        this.captureGeneration += 1;
-        CONFIGURATOR.supportSnapshotCaptureInProgress = false;
-        this.unsubscribe?.();
-        this.unsubscribe = null;
+        this.controller?.abort();
+        this.frozen = null;
+        this.state.ready = false;
+        this.state.active = false;
+        this.config.supportSnapshotCaptureInProgress = false;
+        this.msp.snapshotCaptureActive = false;
     }
 
-    captureStaticConfiguration() {
-        if (this.capturePromise) return this.capturePromise;
-
-        this.captureRequests = getCaptureRequests();
-        this.captureCodes = this.captureRequests.map(({ code }) => code);
-        const captureRequests = this.captureRequests;
-        const captureGeneration = this.captureGeneration;
-        CONFIGURATOR.supportSnapshotCaptureInProgress = true;
-        this.capturePromise = (async () => {
-            for (let index = 0; index < captureRequests.length; index += 1) {
-                const request = captureRequests[index];
-                try {
-                    await MSP.promise(request.code, request.data, { preserveOnTabSwitch: true });
-                    if (request._appendVtxTables) {
-                        appendVtxTableRequests(captureRequests);
-                    }
-                } catch (error) {
-                    this.captureFailedCodes.push(request.code);
-                    console.warn(`Support snapshot capture failed for MSP ${request.code}:`, error);
-                }
-            }
-            await this.captureRateProfiles();
-            const missingRequests = captureRequests.filter(
-                (request) => !this.responses.has(createSupportSnapshotRequestKey(request.code, request.data)),
-            );
-            const missingResponseCodes = missingRequests.map(({ code }) => code);
-            this.captureCodes = captureRequests.map(({ code }) => code);
-            this.captureFailedCodes = [...new Set([...this.captureFailedCodes, ...missingResponseCodes])];
-            this.captureComplete = this.captureFailedCodes.length === 0;
-        })().finally(() => {
-            if (captureGeneration === this.captureGeneration) {
-                CONFIGURATOR.supportSnapshotCaptureInProgress = false;
-            }
-        });
-        return this.capturePromise;
-    }
-
-    async waitForStaticCapture(timeoutMs) {
-        if (!this.capturePromise) return;
-        const requestTimeoutMs = (MSP.TIMEOUT || 1_000) * (MSP.MAX_RETRIES || 1);
-        const rateProfileRequests = (Number(FC.CONFIG.numberOfRateProfiles) || 4) * 4 + 4;
-        const captureTimeoutMs = Math.max(
+    async captureStaticConfiguration() {
+        this.stop();
+        const controller = new AbortController();
+        this.controller = controller;
+        this.state.active = true;
+        this.state.error = "";
+        this.config.supportSnapshotCaptureInProgress = true;
+        this.msp.snapshotCaptureActive = true;
+        const startedAt = new Date().toISOString();
+        const responses = new Map();
+        const requests = new Map();
+        const overallTimeout = setTimeout(
+            () => controller.abort(new Error("快照采集超过 60 秒，请重新进入 CLI 重试。")),
             60_000,
-            (this.captureRequests.length + rateProfileRequests) * requestTimeoutMs + 5_000,
         );
-        const timeout = timeoutMs ?? captureTimeoutMs;
-        await Promise.race([this.capturePromise, new Promise((resolve) => setTimeout(resolve, timeout))]);
-    }
-
-    async captureRateProfiles() {
-        const originalRateProfile = Number(FC.CONFIG.rateProfile) || 0;
-        const configuredCount = Number(FC.CONFIG.numberOfRateProfiles) || 4;
-        const profileCount = Math.min(Math.max(configuredCount, 1), 8);
-        const profiles = {};
-
-        try {
-            for (let profileIndex = 0; profileIndex < profileCount; profileIndex += 1) {
-                await MSP.promise(MSPCodes.MSP_SELECT_SETTING, [profileIndex | 128], {
-                    preserveOnTabSwitch: true,
-                });
-                FC.CONFIG.rateProfile = profileIndex;
-                await MSP.promise(MSPCodes.MSP_RC_TUNING, undefined, { preserveOnTabSwitch: true });
-
-                let name = FC.CONFIG.rateProfileNames?.[profileIndex] || "";
-                if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_45)) {
-                    await MSP.promise(
-                        MSPCodes.MSP2_GET_TEXT,
-                        mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.RATE_PROFILE_NAME),
-                        { preserveOnTabSwitch: true },
-                    );
-                    name = FC.CONFIG.rateProfileNames?.[profileIndex] || name;
-                }
-
-                profiles[profileIndex] = {
-                    name,
-                    config: JSON.parse(JSON.stringify(FC.RC_TUNING)),
-                };
-            }
-
-            this.rateProfiles = profiles;
-            this.rateProfilesCaptureComplete = Object.keys(profiles).length === profileCount;
-        } catch (error) {
-            this.rateProfiles = null;
-            this.rateProfilesCaptureComplete = false;
-            console.warn("Support snapshot rate profile capture failed:", error);
-        } finally {
+        const request = async (code, data = []) => {
+            const requestKey = createSupportSnapshotRequestKey(code, data);
+            const required = isSnapshotRequiredCode(code);
+            const item = { code, requestKey, required, status: "failed" };
+            requests.set(requestKey, item);
             try {
-                await MSP.promise(MSPCodes.MSP_SELECT_SETTING, [originalRateProfile | 128], {
-                    preserveOnTabSwitch: true,
+                const response = await this.msp.captureRequest(code, data, {
+                    signal: controller.signal,
+                    timeoutMs: 3000,
                 });
-                FC.CONFIG.rateProfile = originalRateProfile;
-                await MSP.promise(MSPCodes.MSP_RC_TUNING, undefined, { preserveOnTabSwitch: true });
-            } catch (restoreError) {
-                console.warn("Failed to restore the original rate profile after support capture:", restoreError);
+                if (response.crcError) throw new Error(`MSP ${code} 校验失败，请重新采集。`);
+                item.status = response.unsupported ? "unsupported" : "success";
+                if (required && response.unsupported) throw new Error(`飞控不支持必要的 MSP ${code}，无法采集快照。`);
+                const bytes = response.unsupported
+                    ? new Uint8Array()
+                    : new Uint8Array(response.data.buffer, response.data.byteOffset, response.data.byteLength);
+                let binary = "";
+                for (const byte of bytes) binary += String.fromCharCode(byte);
+                responses.set(requestKey, {
+                    code,
+                    requestKey,
+                    payloadBase64: btoa(binary),
+                    unsupported: Boolean(response.unsupported),
+                });
+            } catch (error) {
+                item.status = error.name === "TimeoutError" ? "timeout" : "failed";
+                throw error;
             }
-        }
-    }
-
-    async captureSensorHardwareNames(cliTranscript = "") {
-        if (!semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_48)) {
-            this.sensorHardwareCaptureComplete = true;
-            return;
-        }
-
-        const transcriptSensorNames = parseSensorHardwareNames(cliTranscript);
-        if (Object.values(transcriptSensorNames).some((values) => values.length > 0)) {
-            this.sensorNames = transcriptSensorNames;
-            FC.SENSOR_NAMES = this.sensorNames;
-            this.sensorHardwareCaptureComplete = true;
-            return;
-        }
-
+        };
         try {
-            const output = await requestSensorHardwareNames();
-            this.sensorNames = parseSensorHardwareNames(output);
-            FC.SENSOR_NAMES = this.sensorNames;
-            this.sensorHardwareCaptureComplete = Object.values(this.sensorNames).some((values) => values.length > 0);
+            await request(MSPCodes.MSP_STATUS_EX);
+            const profile = { pid: this.fc.CONFIG.profile, rate: this.fc.CONFIG.rateProfile };
+            for (const code of STATIC_SNAPSHOT_CODES) await request(code);
+            if (semver.gte(this.fc.CONFIG.apiVersion, "1.45.0")) {
+                for (const type of [
+                    MSPCodes.BUILD_KEY,
+                    MSPCodes.CRAFT_NAME,
+                    MSPCodes.PILOT_NAME,
+                    MSPCodes.PID_PROFILE_NAME,
+                    MSPCodes.RATE_PROFILE_NAME,
+                ]) {
+                    await request(MSPCodes.MSP2_GET_TEXT, [type]);
+                }
+            } else {
+                await request(MSPCodes.MSP_NAME);
+            }
+            if (semver.gte(this.fc.CONFIG.apiVersion, "1.48.0")) {
+                await request(MSPCodes.MSP2_GET_TEXT, [MSPCodes.BATTERY_PROFILE_NAME]);
+            }
+            for (let index = 1; index <= Math.min(this.fc.VTX_CONFIG.vtx_table_bands || 0, 255); index++) {
+                await request(MSPCodes.MSP_VTXTABLE_BAND, [index]);
+            }
+            for (let index = 1; index <= Math.min(this.fc.VTX_CONFIG.vtx_table_powerlevels || 0, 255); index++) {
+                await request(MSPCodes.MSP_VTXTABLE_POWERLEVEL, [index]);
+            }
+            await request(MSPCodes.MSP_STATUS_EX);
+            if (profile.pid !== this.fc.CONFIG.profile || profile.rate !== this.fc.CONFIG.rateProfile) {
+                throw new Error("采集期间 Profile 已变化，请重新进入 CLI 采集。");
+            }
+            controller.signal.throwIfAborted();
+            const snapshot = {
+                schemaVersion: 2,
+                metadata: {
+                    createdAt: startedAt,
+                    firmwareVersion: this.fc.CONFIG.flightControllerVersion,
+                    apiVersion: this.fc.CONFIG.apiVersion,
+                    target: this.fc.CONFIG.targetName,
+                    boardName: this.fc.CONFIG.boardName,
+                    configuratorVersion: this.config.version,
+                },
+                mspResponses: [...responses.values()],
+                captureReport: {
+                    complete: [...requests.values()].every(
+                        (entry) => entry.status === "success" || (!entry.required && entry.status === "unsupported"),
+                    ),
+                    startedAt,
+                    completedAt: new Date().toISOString(),
+                    profile,
+                    requests: [...requests.values()],
+                    responseCount: responses.size,
+                    plannedResponseCount: requests.size,
+                },
+            };
+            validateSnapshotV2(snapshot);
+            this.frozen = deepFreeze(snapshot);
+            this.state.ready = true;
+            return this.frozen;
         } catch (error) {
-            this.sensorNames = null;
-            this.sensorHardwareCaptureComplete = false;
-            console.warn("Support snapshot sensor_hardware capture failed:", error);
+            if (this.controller === controller) this.state.error = error.message || "采集已取消，请重新进入 CLI 重试。";
+            throw error;
+        } finally {
+            clearTimeout(overallTimeout);
+            if (this.controller === controller) {
+                this.controller = null;
+                this.state.active = false;
+                this.config.supportSnapshotCaptureInProgress = false;
+                this.msp.snapshotCaptureActive = false;
+            }
         }
     }
 
     createPayload(cliTranscript) {
-        const missingAuxiliaryData = this.sensorHardwareCaptureComplete ? [] : ["sensor_hardware"];
-        if (!this.rateProfilesCaptureComplete) {
-            missingAuxiliaryData.push("rate_profiles");
-        }
-        return {
-            schemaVersion: 1,
-            metadata: {
-                createdAt: new Date().toISOString(),
-                firmwareVersion: FC.CONFIG.flightControllerVersion,
-                apiVersion: FC.CONFIG.apiVersion,
-                target: FC.CONFIG.targetName,
-                boardName: FC.CONFIG.boardName,
-                configuratorVersion: CONFIGURATOR.version,
-            },
-            mspResponses: [...this.responses.values()],
-            sensorNames: this.sensorNames,
-            rateProfiles: this.rateProfiles,
-            cliTranscript,
-            captureReport: {
-                complete: this.captureComplete && missingAuxiliaryData.length === 0,
-                responseCount: this.responses.size,
-                plannedResponseCount: this.captureRequests.length,
-                missingResponseCodes: this.captureFailedCodes,
-                missingAuxiliaryData,
-            },
-        };
+        if (!this.frozen || !this.state.ready) throw new Error("没有完整快照，请重新进入 CLI 采集后再提交。");
+        return { ...this.frozen, cliTranscript };
     }
 }
 
