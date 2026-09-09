@@ -107,7 +107,7 @@ describe("snapshot MSP transport", () => {
         MSP.snapshotCaptureActive = true;
         const capture = MSP.captureRequest(1, [], { signal: new AbortController().signal });
         MSP.read({ data: new Uint8Array([36, 77, 62, 3, 1, 0, 1, 47, 0]).buffer });
-        expect((await capture).crcError).toBe(true);
+        await expect(capture).rejects.toThrow("CRC");
         MSP.snapshotCaptureActive = false;
         activateSupportSnapshot({ snapshot: snapshotV2() });
         CONFIGURATOR.supportSnapshotMode = true;

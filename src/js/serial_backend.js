@@ -1238,10 +1238,6 @@ function finishOpen() {
     getConnectionState().setPhase(ConnPhase.CONNECTED);
 
     GUI.selectDefaultTabWhenConnected();
-
-    if (!CONFIGURATOR.supportSnapshotMode) {
-        void supportSnapshotRecorder.captureStaticConfiguration();
-    }
 }
 
 function connectCli() {

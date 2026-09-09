@@ -798,7 +798,9 @@ const MSP = {
             const abort = () =>
                 finish(signal?.reason || new MspCancelledError("采集已取消，请重新进入 CLI。", code, "aborted"));
             const callback = (response, error) => {
-                if (error) finish(error);
+                if (error instanceof MspCancelledError) {
+                    finish(new MspCancelledError("采集已取消，请重新进入 CLI。", code, error.reason || "cancelled"));
+                } else if (error) finish(error);
                 else if (!response?.data && !response?.unsupported)
                     finish(new MspCancelledError("飞控已断开，采集失败。", code, "disconnected"));
                 else
