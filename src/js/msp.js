@@ -1,9 +1,16 @@
 import GUI from "./gui.js";
 import CONFIGURATOR from "./data_storage.js";
 import { serial } from "./serial.js";
-import { createSupportSnapshotRequestKey, getSupportSnapshotResponse } from "./support/SnapshotSession";
+import {
+    createSupportSnapshotRequestKey,
+    getSupportSnapshotEntry,
+    reportSupportSnapshotIssue,
+} from "./support/SnapshotSession";
+
+import { isSnapshotReadCode } from "./support/SnapshotRequests";
 
 const MSP = {
+    snapshotCaptureActive: false,
     symbols: {
         BEGIN: "$".charCodeAt(0),
         PROTO_V1: "M".charCodeAt(0),
@@ -297,7 +304,9 @@ const MSP = {
                 .filter((callback) => callback.code === this.code)
                 .map((callback) => callback.requestKey)
                 .filter(Boolean);
-            this.responseListeners.forEach((listener) => listener({ code: this.code, payload, requestKeys }));
+            this.responseListeners.forEach((listener) =>
+                listener({ code: this.code, payload, requestKeys, unsupported: Boolean(this.unsupported) }),
+            );
         }
         this.notify();
         // Reset variables
@@ -504,22 +513,46 @@ const MSP = {
             }
         }
     },
-    send_message(code, data, callback_sent, callback_msp) {
+    send_message(code, data, callback_sent, callback_msp, snapshotCapture = false) {
+        const respond = (response) => {
+            if (typeof callback_msp === "function") callback_msp(response);
+        };
         if (CONFIGURATOR.supportSnapshotMode) {
-            const payload = getSupportSnapshotResponse(code, data);
-            if (!payload) {
-                queueMicrotask(() => callback_msp?.({ command: code, data: null, length: 0, snapshotMissing: true }));
+            const entry = getSupportSnapshotEntry(code, data);
+            const fail = (message) => {
+                reportSupportSnapshotIssue(GUI.active_tab, message);
+                queueMicrotask(() => respond({ command: code, error: new Error(message), snapshotMissing: true }));
                 return false;
-            }
-
-            this.callbacks.push({
-                code,
-                callback: callback_msp,
-                requestKey: createSupportSnapshotRequestKey(code, data),
+            };
+            if (!isSnapshotReadCode(code)) return fail("支持快照只读，不能修改、切换 Profile 或执行飞控操作。");
+            if (!entry) return fail(`未采集 MSP ${code} 数据，本页无法可靠回放。请重新采集。`);
+            // Run each replay and its callback together. Shared callbacks matched only by
+            // command would otherwise deliver index 1 to simultaneous index 2 requests.
+            queueMicrotask(() => {
+                try {
+                    if (!CONFIGURATOR.supportSnapshotMode || getSupportSnapshotEntry(code, data) !== entry) {
+                        respond({ command: code, error: new Error("快照会话已关闭。") });
+                        return;
+                    }
+                    this.replay_message(code, entry.bytes, entry.unsupported);
+                    if (entry.unsupported) {
+                        const message = `飞控不支持 MSP ${code}，本页数据不可用。`;
+                        reportSupportSnapshotIssue(GUI.active_tab, message);
+                        respond({ command: code, unsupported: true, error: new Error(message) });
+                    } else {
+                        respond({ command: code, data: this.dataView, length: entry.bytes.length });
+                    }
+                } catch (error) {
+                    reportSupportSnapshotIssue(GUI.active_tab, `快照解码失败：${error.message}。请重新采集。`);
+                    respond({ command: code, error });
+                }
             });
-            queueMicrotask(() => this.replay_message(code, payload));
-            callback_sent?.({ bytesSent: 0, supportSnapshot: true });
+            if (typeof callback_sent === "function") callback_sent({ bytesSent: 0, supportSnapshot: true });
             return true;
+        }
+        if (this.snapshotCaptureActive && !snapshotCapture) {
+            queueMicrotask(() => respond({ command: code, error: new Error("正在采集快照，请稍后操作。") }));
+            return false;
         }
 
         if (code === undefined || !serial.connected || CONFIGURATOR.virtualMode) {
@@ -545,6 +578,7 @@ const MSP = {
             requestKey: createSupportSnapshotRequestKey(code, data),
             callback: callback_msp,
             start: performance.now(),
+            snapshotCapture,
         };
 
         if (!requestExists) {
@@ -580,23 +614,58 @@ const MSP = {
 
         return true;
     },
-    replay_message(code, payload) {
+    replay_message(code, payload, unsupported = false) {
         const bytes = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
         this.code = code;
         this.dataView = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
         this.message_length_expected = bytes.byteLength;
         this.crcError = false;
-        this.unsupported = 0;
+        this.unsupported = unsupported ? 1 : 0;
         this.notify();
     },
     /**
      * resolves: {command: code, data: data, length: message_length}
      */
     async promise(code, data) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             this.send_message(code, data, false, (_data) => {
-                resolve(_data);
+                if (_data?.error) reject(_data.error);
+                else resolve(_data);
             });
+        });
+    },
+    captureRequest(code, data, { signal, timeoutMs = 3000 }) {
+        return new Promise((resolve, reject) => {
+            let timer;
+            let settled = false;
+            const finish = (error, response) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                signal.removeEventListener("abort", abort);
+                for (const entry of this.callbacks.filter((item) => item.callback === callback))
+                    clearTimeout(entry.timer);
+                this.callbacks = this.callbacks.filter((item) => item.callback !== callback);
+                if (error) reject(error);
+                else resolve(response);
+            };
+            const callback = (response) =>
+                finish(response?.error || (!response?.data && new Error("飞控已断开，采集失败。")), response);
+            const abort = () => finish(signal.reason || new Error("采集已取消，请重新进入 CLI。"));
+            if (signal.aborted) {
+                abort();
+                return;
+            }
+            signal.addEventListener("abort", abort, { once: true });
+            timer = setTimeout(
+                () => finish(new DOMException(`MSP ${code} 采集超时，请重新进入 CLI 重试。`, "TimeoutError")),
+                timeoutMs,
+            );
+            try {
+                if (!this.send_message(code, data, false, callback, true)) finish(new Error("飞控未连接，无法采集。"));
+            } catch (error) {
+                finish(error);
+            }
         });
     },
     callbacks_cleanup() {
@@ -604,7 +673,12 @@ const MSP = {
             clearTimeout(callback.timer);
         }
 
+        const pending = this.callbacks;
         this.callbacks = [];
+        for (const callback of pending) {
+            if (callback.snapshotCapture)
+                callback.callback?.({ error: new Error("采集已取消，请重新进入 CLI 重试。") });
+        }
     },
     disconnect_cleanup() {
         this.state = 0; // reset packet state for "clean" initial entry (this is only required if user hot-disconnects)

@@ -29,7 +29,12 @@ import { unmountVueTab } from "./vue_tab_mounter";
 import { switchTab } from "./tab_switch";
 import { useConnectionStore } from "../stores/connection";
 import { useDialogStore } from "../stores/dialog";
-import { activateSupportSnapshot, clearSupportSnapshot, supportSnapshotSession } from "./support/SnapshotSession";
+import {
+    activateSupportSnapshot,
+    clearSupportSnapshot,
+    supportSnapshotSession,
+    getSupportSnapshotEntry,
+} from "./support/SnapshotSession";
 import { supportSnapshotRecorder } from "./support/SnapshotRecorder";
 
 const logHead = "[SERIAL-BACKEND]";
@@ -482,6 +487,7 @@ export async function openSupportSnapshotSession(snapshotRecord) {
         await MSP.promise(MSPCodes.MSP_BUILD_INFO);
         await MSP.promise(MSPCodes.MSP_BOARD_INFO);
         await MSP.promise(MSPCodes.MSP_STATUS);
+        await MSP.promise(MSPCodes.MSP_STATUS_EX);
         await MSP.promise(MSPCodes.MSP_UID);
 
         if (
@@ -492,12 +498,16 @@ export async function openSupportSnapshotSession(snapshotRecord) {
             throw new Error("该支持快照不包含可用的 Betaflight 身份信息。");
         }
 
+        const readOptional = async (code, data) => {
+            const entry = getSupportSnapshotEntry(code, data);
+            if (entry && !entry.unsupported) await MSP.promise(code, data);
+        };
         if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_45)) {
-            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.BUILD_KEY));
-            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.CRAFT_NAME));
-            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.PILOT_NAME));
+            for (const type of [MSPCodes.BUILD_KEY, MSPCodes.CRAFT_NAME, MSPCodes.PILOT_NAME]) {
+                await readOptional(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, type));
+            }
         } else {
-            await MSP.promise(MSPCodes.MSP_NAME);
+            await readOptional(MSPCodes.MSP_NAME);
         }
 
         isConnected = true;
@@ -513,6 +523,7 @@ export async function openSupportSnapshotSession(snapshotRecord) {
 export function closeSupportSnapshotSession() {
     if (!CONFIGURATOR.supportSnapshotMode && !supportSnapshotSession.active) return;
 
+    MSP.disconnect_cleanup();
     clearSupportSnapshot();
     isConnected = false;
     connectionTimestamp = null;
@@ -811,7 +822,7 @@ function setRtc() {
 function finishOpen() {
     CONFIGURATOR.connectionValid = true;
 
-    if (isCliOnlyMode()) {
+    if (isCliOnlyMode() && !CONFIGURATOR.supportSnapshotMode) {
         connectCli();
         return;
     }
@@ -836,10 +847,6 @@ function finishOpen() {
     onConnect();
 
     GUI.selectDefaultTabWhenConnected();
-
-    if (!CONFIGURATOR.supportSnapshotMode) {
-        void supportSnapshotRecorder.captureStaticConfiguration();
-    }
 }
 
 function connectCli() {
@@ -890,7 +897,10 @@ function updateTabVisibility() {
 // Initialize feature-related UI and fetch configs from the flight controller
 function initFeaturesOnConnect() {
     if (FC.CONFIG.flightControllerVersion !== "" && !isCliOnlyMode()) {
-        if (!CONFIGURATOR.virtualMode && PortHandler.portPicker.selectedPort !== "virtual") {
+        if (
+            CONFIGURATOR.supportSnapshotMode ||
+            (!CONFIGURATOR.virtualMode && PortHandler.portPicker.selectedPort !== "virtual")
+        ) {
             FC.FEATURE_CONFIG.features = new Features(FC.CONFIG);
             FC.BEEPER_CONFIG.beepers = new Beepers(FC.CONFIG);
             FC.BEEPER_CONFIG.dshotBeaconConditions = new Beepers(FC.CONFIG, ["RX_LOST", "RX_SET"]);
@@ -965,7 +975,7 @@ export async function update_sensor_status() {
 async function update_live_status() {
     // Check if live data is paused via Pinia store
     const connectionStore = useConnectionStore();
-    if (connectionStore.liveDataPaused) {
+    if (connectionStore.liveDataPaused || MSP.snapshotCaptureActive || CONFIGURATOR.supportSnapshotMode) {
         return;
     }
 

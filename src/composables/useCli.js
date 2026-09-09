@@ -1,3 +1,4 @@
+import MSP from "../js/msp";
 import { ref, reactive, nextTick } from "vue";
 import { i18n } from "../js/localization";
 import BFClipboard from "../js/Clipboard";
@@ -14,7 +15,7 @@ import { get as getConfig } from "../js/ConfigStorage";
 import { useCliAutocomplete } from "./useCliAutocomplete";
 import { highlightCliLine } from "../js/CliSyntaxHighlight";
 import { escapeHtml } from "../js/utils/common";
-import { supportSnapshotRecorder } from "../js/support/SnapshotRecorder";
+import { supportSnapshotRecorder, supportSnapshotCaptureState } from "../js/support/SnapshotRecorder";
 
 const backspaceCode = 8;
 const lineFeedCode = 10;
@@ -82,33 +83,37 @@ function onCopyFailed(ex) {
 }
 
 async function submitSupportData(data, state, clearHistory, executeCommands, writeToOutput, getOutputHistory) {
-    clearHistory();
-    const api = new BuildApi();
-
-    let commands = await api.getSupportCommands();
-    if (!commands) {
-        alert("An error has occurred");
-        return;
-    }
-
-    commands = [`###\n# Problem description\n# ${data}\n###`, ...commands];
-    await executeCommands(commands.join("\n"));
-    const delay = setInterval(async () => {
-        const time = Date.now();
-        if (state.lastArrival < time - 250) {
-            clearInterval(delay);
-            const text = getOutputHistory();
-            await supportSnapshotRecorder.waitForStaticCapture();
-            const submitted = await api.submitSupportSnapshot(supportSnapshotRecorder.createPayload(text));
-            if (!submitted?.supportId) {
-                writeToOutput(i18n.getMessage("buildServerSupportRequestSubmission", ["** error **"]));
-                return;
-            }
-            const key = submitted.supportId;
-            state.lastSupportId = key;
-            writeToOutput(i18n.getMessage("buildServerSupportRequestSubmission", [key]));
+    if (state.supportSubmitting) return;
+    state.supportSubmitting = true;
+    const generation = state.generation;
+    try {
+        // Take the frozen object before doing asynchronous work. Never upload a
+        // different connection's snapshot if the user disconnects while awaiting HTTP.
+        const payload = supportSnapshotRecorder.createPayload("");
+        const api = new BuildApi();
+        const commands = await api.getSupportCommands();
+        if (generation !== state.generation) return;
+        if (!commands) throw new Error("获取支持命令失败，请重试。");
+        clearHistory();
+        state.lastArrival = Date.now();
+        await executeCommands([`###\n# Problem description\n# ${data}\n###`, ...commands].join("\n"));
+        const deadline = Date.now() + 60_000;
+        while (state.commandsPending || Date.now() - state.lastArrival < 500) {
+            if (generation !== state.generation) return;
+            if (Date.now() > deadline) throw new Error("CLI 输出超时，未上传快照，请重试。");
+            await new Promise((resolve) => setTimeout(resolve, 100));
         }
-    }, 250);
+        if (generation !== state.generation || !CONFIGURATOR.cliActive) return;
+        const submitted = await api.submitSupportSnapshot({ ...payload, cliTranscript: getOutputHistory() });
+        if (generation !== state.generation) return;
+        if (!submitted?.supportId) throw new Error("快照上传失败，请确认服务支持 v2 后重试。");
+        state.lastSupportId = submitted.supportId;
+        writeToOutput(i18n.getMessage("buildServerSupportRequestSubmission", [submitted.supportId]));
+    } catch (error) {
+        if (generation === state.generation) writeToOutput(`快照提交失败：${error.message}`);
+    } finally {
+        if (generation === state.generation) state.supportSubmitting = false;
+    }
 }
 
 export function useCli() {
@@ -117,6 +122,10 @@ export function useCli() {
     // outputHistory/cliBuffer are plain vars (not reactive) — avoids Vue Proxy overhead in the serial read hot path.
     const state = reactive({
         startProcessing: false,
+        generation: 0,
+        cliReady: false,
+        supportSubmitting: false,
+        commandsPending: false,
         lastArrival: 0,
         lastSupportId: null,
         lineDelayMs: 5,
@@ -230,6 +239,7 @@ export function useCli() {
 
     const encoder = new TextEncoder();
     const send = (line, callback) => {
+        if (!CONFIGURATOR.cliActive || MSP.snapshotCaptureActive || CONFIGURATOR.supportSnapshotMode) return;
         serial.send(encoder.encode(line), callback);
     };
 
@@ -237,6 +247,7 @@ export function useCli() {
         history.add(outString.trim());
 
         const outputArray = outString.split("\n");
+        state.commandsPending = true;
 
         // Wall-clock timer: logs "[CLI] paste: N lines" and "paste done: X.XXs" to the browser console.
         if (outputArray.length > 1) {
@@ -277,6 +288,8 @@ export function useCli() {
 
             if (commandArray.length > 0) {
                 GUI.timeout_add("CLI_send_slowly", () => sendCommandIterative(commandArray), processingDelay);
+            } else {
+                state.commandsPending = false;
             }
         }
 
@@ -588,7 +601,25 @@ export function useCli() {
         }
     };
 
-    const initialize = async () => {
+    const initialize = async ({ withoutSnapshot = false } = {}) => {
+        if (supportSnapshotCaptureState.active || CONFIGURATOR.cliActive) return;
+        const generation = ++state.generation;
+        state.cliReady = false;
+        GUI.interval_kill_all();
+        MSP.callbacks_cleanup();
+        if (!withoutSnapshot) {
+            try {
+                await supportSnapshotRecorder.captureStaticConfiguration();
+            } catch {
+                return;
+            }
+        } else {
+            // CLI-only recovery must remain possible on firmware without MSP support.
+            // There is no frozen payload, so support submission stays disabled.
+            supportSnapshotRecorder.stop();
+        }
+        if (generation !== state.generation) return;
+        state.cliReady = true;
         outputHistory = "";
         cliBuffer = "";
         state.startProcessing = false;
@@ -597,6 +628,7 @@ export function useCli() {
 
         // Wait for DOM to be ready
         await nextTick();
+        if (generation !== state.generation) return;
 
         // ResizeObserver keeps the scroll threshold in sync with the rendered line height,
         // making the near-bottom detection zoom-level and UI-scale independent.
@@ -664,6 +696,11 @@ export function useCli() {
     };
 
     const cleanup = () => {
+        state.generation++;
+        state.cliReady = false;
+        state.commandsPending = false;
+        state.supportSubmitting = false;
+        supportSnapshotRecorder.stop();
         GUI.timeout_remove("CLI_send_slowly");
         GUI.timeout_remove("enter_cli");
 
@@ -730,6 +767,7 @@ export function useCli() {
         snippetPreviewDialogRef,
         supportWarningDialogRef,
         initialize,
+        captureState: supportSnapshotCaptureState,
         cleanup,
         clearHistory,
         saveFile,

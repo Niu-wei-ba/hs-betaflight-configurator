@@ -1809,7 +1809,13 @@ MspHelper.prototype.process_data = function (dataHandler) {
             // crcError.
             if (callback) {
                 try {
-                    callback({ command: code, data: data, length: data ? data.byteLength : 0, crcError: crcError });
+                    callback({
+                        command: code,
+                        data: data,
+                        length: data ? data.byteLength : 0,
+                        crcError: crcError,
+                        unsupported: Boolean(dataHandler.unsupported),
+                    });
                 } catch (e) {
                     console.error(`callback for code ${code} threw:`, e);
                 }

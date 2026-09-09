@@ -1,79 +1,60 @@
 import { reactive } from "vue";
-
-function bytesToBase64(bytes) {
-    let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    return btoa(binary);
-}
-
-function base64ToBytes(value) {
-    const binary = atob(value);
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-    return bytes;
-}
-
-function toUint8Array(data) {
-    if (!data) return new Uint8Array();
-    if (data instanceof Uint8Array) return data;
-    if (data instanceof ArrayBuffer) return new Uint8Array(data);
-    return Uint8Array.from(data);
-}
+import { validateSnapshotV2 } from "./SnapshotContract";
 
 export function createSupportSnapshotRequestKey(code, data) {
-    return `${code}:${bytesToBase64(toUint8Array(data))}`;
+    const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data || []);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return `${code}:${btoa(binary)}`;
 }
 
-const responses = new Map();
-
+let responses = new Map();
 export const supportSnapshotSession = reactive({
     active: false,
     supportId: "",
     metadata: null,
     expiresAt: "",
     captureReport: null,
+    issues: {},
 });
 
 export function activateSupportSnapshot(snapshotRecord) {
-    const snapshot = snapshotRecord?.snapshot;
-    if (!snapshot || snapshot.schemaVersion !== 1 || !Array.isArray(snapshot.mspResponses)) {
-        throw new Error("不支持或损坏的支持快照。");
-    }
-
-    responses.clear();
-    for (const entry of snapshot.mspResponses) {
-        if (!Number.isInteger(entry?.code) || typeof entry.payloadBase64 !== "string") continue;
-        const requestKey = entry.requestKey || createSupportSnapshotRequestKey(entry.code, []);
-        responses.set(requestKey, base64ToBytes(entry.payloadBase64));
-    }
-
-    supportSnapshotSession.active = true;
-    supportSnapshotSession.supportId = snapshotRecord.supportId;
-    supportSnapshotSession.metadata = snapshotRecord.metadata || snapshot.metadata || null;
-    supportSnapshotSession.expiresAt = snapshotRecord.expiresAt || "";
-    supportSnapshotSession.captureReport = snapshotRecord.captureReport || snapshot.captureReport || null;
+    // Validate into a temporary map: a bad record must never partially activate a session.
+    const validated = validateSnapshotV2(snapshotRecord?.snapshot);
+    responses = validated;
+    Object.assign(supportSnapshotSession, {
+        active: true,
+        supportId: snapshotRecord.supportId,
+        metadata: snapshotRecord.snapshot.metadata || null,
+        expiresAt: snapshotRecord.expiresAt || "",
+        captureReport: snapshotRecord.snapshot.captureReport,
+        issues: {},
+    });
 }
 
 export function clearSupportSnapshot() {
-    responses.clear();
-    supportSnapshotSession.active = false;
-    supportSnapshotSession.supportId = "";
-    supportSnapshotSession.metadata = null;
-    supportSnapshotSession.expiresAt = "";
-    supportSnapshotSession.captureReport = null;
+    responses = new Map();
+    Object.assign(supportSnapshotSession, {
+        active: false,
+        supportId: "",
+        metadata: null,
+        expiresAt: "",
+        captureReport: null,
+        issues: {},
+    });
+}
+
+export function getSupportSnapshotEntry(code, data) {
+    return responses.get(createSupportSnapshotRequestKey(code, data)) || null;
 }
 
 export function getSupportSnapshotResponse(code, data) {
-    const exactKey = createSupportSnapshotRequestKey(code, data);
-    const exactResponse = responses.get(exactKey);
-    if (exactResponse) return exactResponse;
+    const entry = getSupportSnapshotEntry(code, data);
+    return entry && !entry.unsupported ? entry.bytes : null;
+}
 
-    const emptyRequestResponse = responses.get(createSupportSnapshotRequestKey(code, []));
-    if (emptyRequestResponse) return emptyRequestResponse;
-
-    const prefix = `${code}:`;
-    const matches = [...responses.entries()].filter(([key]) => key.startsWith(prefix));
-    return matches.length === 1 ? matches[0][1] : null;
+export function reportSupportSnapshotIssue(tab, message) {
+    supportSnapshotSession.issues[tab || "setup"] = message;
 }
 
 export function supportSnapshotResponseEntries() {

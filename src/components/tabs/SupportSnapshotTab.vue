@@ -21,6 +21,11 @@
             </UiBox>
 
             <UiBox v-if="session.active" :title="$t('supportSnapshotActiveTitle')" class="support-snapshot__details">
+                <p>仅查看采集时的数据，动态曲线不代表当前飞控状态。</p>
+                <p>
+                    PID Profile {{ session.captureReport?.profile?.pid + 1 }} / Rates Profile
+                    {{ session.captureReport?.profile?.rate + 1 }}（固定只读）
+                </p>
                 <dl>
                     <div>
                         <dt>{{ $t("supportSnapshotIdLabel") }}</dt>
