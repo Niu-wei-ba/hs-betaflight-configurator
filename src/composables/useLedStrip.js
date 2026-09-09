@@ -234,8 +234,12 @@ export function useLedStrip() {
 
     // Update LED config values (brightness, rainbow delta/freq)
     async function updateLedConfigValue(key, value) {
+        if (FC.LED_CONFIG_VALUES[key] === value) {
+            return false;
+        }
         FC.LED_CONFIG_VALUES[key] = value;
         await mspHelper.sendLedStripConfigValues();
+        return true;
     }
 
     return {
