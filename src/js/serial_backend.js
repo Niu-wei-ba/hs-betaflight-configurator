@@ -36,6 +36,7 @@ import {
     activateSupportSnapshot,
     applySupportSnapshotAuxiliaryData,
     clearSupportSnapshot,
+    getSupportSnapshotResponse,
     supportSnapshotSession,
 } from "./support/SnapshotSession";
 import { supportSnapshotRecorder } from "./support/SnapshotRecorder";
@@ -776,9 +777,12 @@ export async function openSupportSnapshotSession(snapshotRecord) {
         }
 
         if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_45)) {
-            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.BUILD_KEY));
-            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.CRAFT_NAME));
-            await MSP.promise(MSPCodes.MSP2_GET_TEXT, mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.PILOT_NAME));
+            for (const type of [MSPCodes.BUILD_KEY, MSPCodes.CRAFT_NAME, MSPCodes.PILOT_NAME]) {
+                const data = mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, type);
+                if (getSupportSnapshotResponse(MSPCodes.MSP2_GET_TEXT, data) !== null) {
+                    await MSP.promise(MSPCodes.MSP2_GET_TEXT, data);
+                }
+            }
         } else {
             await MSP.promise(MSPCodes.MSP_NAME);
         }
