@@ -804,6 +804,7 @@ export function closeSupportSnapshotSession({ preserveTab = false } = {}) {
 
     clearSupportSnapshot();
     getConnectionState().setLinkOpen(false);
+    getConnectionState().notifyClosed();
     connectionTimestamp = null;
     if (globalThis.vm?.CONNECTION) globalThis.vm.CONNECTION.timestamp = null;
     resetConnection();
