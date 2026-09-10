@@ -14,6 +14,7 @@ export const supportSnapshotSession = reactive({
     supportId: "",
     metadata: null,
     expiresAt: "",
+    cliTranscript: "",
     captureReport: null,
     issues: {},
 });
@@ -27,6 +28,7 @@ export function activateSupportSnapshot(snapshotRecord) {
         supportId: snapshotRecord.supportId,
         metadata: snapshotRecord.snapshot.metadata || null,
         expiresAt: snapshotRecord.expiresAt || "",
+        cliTranscript: snapshotRecord.snapshot.cliTranscript || "",
         captureReport: snapshotRecord.snapshot.captureReport,
         issues: {},
     });
@@ -39,6 +41,7 @@ export function clearSupportSnapshot() {
         supportId: "",
         metadata: null,
         expiresAt: "",
+        cliTranscript: "",
         captureReport: null,
         issues: {},
     });

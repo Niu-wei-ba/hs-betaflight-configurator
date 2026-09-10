@@ -44,6 +44,9 @@
                         <dd>{{ formattedExpiry }}</dd>
                     </div>
                 </dl>
+                <pre class="support-snapshot__terminal" tabindex="0" aria-label="快照信息与 CLI 记录">{{
+                    terminalText
+                }}</pre>
                 <UButton
                     color="error"
                     variant="soft"
@@ -77,6 +80,25 @@ export default defineComponent({
             session.expiresAt ? new Date(session.expiresAt).toLocaleString() : "-",
         );
 
+        const terminalText = computed(() => {
+            const report = session.captureReport;
+            const requests = report?.requests || [];
+            const date = (value) => (value ? new Date(value).toLocaleString() : "未记录");
+            return [
+                `# Support ID: ${session.supportId}`,
+                `# 固件: ${session.metadata?.firmwareVersion || "未记录"}`,
+                `# 板卡: ${session.metadata?.target || session.metadata?.boardName || "未记录"}`,
+                `# 采集时间: ${date(report?.startedAt || session.metadata?.createdAt)}`,
+                `# 到期时间: ${date(session.expiresAt)}`,
+                `# PID Profile: ${report?.profile?.pid + 1} / Rates Profile: ${report?.profile?.rate + 1}（固定只读）`,
+                `# 采集结果: ${report?.complete ? "完整" : "不完整"}；成功 ${requests.filter((r) => r.status === "success").length}；不支持 ${requests.filter((r) => r.status === "unsupported").length}；共 ${requests.length} 项`,
+                "",
+                "# 采集时的 CLI 记录（只读）",
+                "",
+                session.cliTranscript || "此快照未保存 CLI 记录",
+            ].join("\n");
+        });
+
         async function loadSnapshot() {
             error.value = "";
             loading.value = true;
@@ -96,12 +118,23 @@ export default defineComponent({
         }
 
         onMounted(() => GUI.content_ready());
-        return { supportId, loading, error, session, formattedExpiry, loadSnapshot, closeSnapshot };
+        return { terminalText, supportId, loading, error, session, formattedExpiry, loadSnapshot, closeSnapshot };
     },
 });
 </script>
 
 <style scoped lang="less">
+.support-snapshot__terminal {
+    max-height: 60vh;
+    overflow: auto;
+    padding: 16px;
+    background: #15191f;
+    color: #e4e9ef;
+    font-family: monospace;
+    white-space: pre;
+    user-select: text;
+}
+
 .support-snapshot__form {
     display: flex;
     gap: 8px;

@@ -11,6 +11,14 @@ import { snapshotV2, addResponse } from "../fixtures/supportSnapshotV2";
 
 describe("support snapshot v2 session", () => {
     afterEach(clearSupportSnapshot);
+    it("keeps literal CLI text and clears it on exit", () => {
+        const snapshot = snapshotV2();
+        snapshot.cliTranscript = "<script>alert(1)</script>\n  set foo = bar";
+        activateSupportSnapshot({ snapshot });
+        expect(supportSnapshotSession.cliTranscript).toBe(snapshot.cliTranscript);
+        clearSupportSnapshot();
+        expect(supportSnapshotSession.cliTranscript).toBe("");
+    });
     it("only replays the exact index, never an empty or unique fallback", () => {
         const snapshot = addResponse(snapshotV2(), 137, "137:AQ==", "AQID");
         activateSupportSnapshot({ supportId: "SUP-TEST", snapshot });

@@ -1241,7 +1241,11 @@ function finishOpen() {
     // Readiness edge #1: full MSP chain complete -> CONNECTED (FULLY_READY).
     getConnectionState().setPhase(ConnPhase.CONNECTED);
 
-    GUI.selectDefaultTabWhenConnected();
+    if (CONFIGURATOR.supportSnapshotMode) {
+        switchTab("support_snapshot", { mode: "shared" });
+    } else {
+        GUI.selectDefaultTabWhenConnected();
+    }
 }
 
 function connectCli() {

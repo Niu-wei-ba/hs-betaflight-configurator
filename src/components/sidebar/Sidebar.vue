@@ -69,6 +69,7 @@
 </template>
 
 <script setup>
+import { isSupportSnapshotMenuVisible } from "../../js/support/SnapshotNavigation";
 import { computed, inject, onMounted, onUnmounted, ref, watch } from "vue";
 import { useTranslation } from "i18next-vue";
 import UserSession from "@/components/user-session/UserSession.vue";
@@ -169,6 +170,7 @@ const isAllowed = (item) => {
 const activeItems = computed(() =>
     sidebarItems
         .filter((item) => isModeVisible(item.mode))
+        .filter((item) => item.key !== "support_snapshot" || isSupportSnapshotMenuVisible(connectionStore))
         .filter(
             (item) =>
                 !(
