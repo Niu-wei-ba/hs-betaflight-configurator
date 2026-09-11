@@ -20,6 +20,49 @@
                 <p v-if="error" class="support-snapshot__error">{{ error }}</p>
             </UiBox>
 
+            <UiBox title="使用说明">
+                <p class="mb-4 leading-relaxed">
+                    支持快照用于远程排查飞控配置问题。分享 Support ID 后，对方无需连接你的飞控，即可查看采集时的配置与
+                    CLI 记录。
+                </p>
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <section>
+                        <h3 class="mb-2 font-semibold">求助者：生成并分享快照</h3>
+                        <p class="leading-relaxed">
+                            在命令行（CLI）页面点击右下角「提交支持数据」，复制生成的 Support
+                            ID，发送给远程帮你调试问题的人。
+                        </p>
+                        <figure class="mt-4">
+                            <img
+                                :src="cliGuideImage"
+                                alt="第一步点击提交支持数据，第二步复制提交成功后显示的 Support ID"
+                                class="w-full rounded border border-current/15"
+                            />
+                            <figcaption class="mt-2 text-sm opacity-70">第一步：提交支持数据；第二步：复制 Support ID</figcaption>
+                        </figure>
+                    </section>
+                    <section>
+                        <h3 class="mb-2 font-semibold">协助者：加载并查看快照</h3>
+                        <p class="leading-relaxed">
+                            将求助者发来的 Support ID
+                            填入上方输入框，点击「加载快照」，即可通过左侧菜单查看配置，并在本页查看 CLI 记录。
+                        </p>
+                    </section>
+                </div>
+                <div class="mt-5 border-t border-current/15 pt-4 text-sm leading-relaxed">
+                    <p>
+                        新快照上传后有效期为 24 小时，具体到期时间以加载后的显示为准。过期后请重新连接飞控采集并提交。
+                    </p>
+                    <p class="mt-2">
+                        快照仅供查看，固定显示采集时的 PID / Rates
+                        Profile，不能切换、修改或写入飞控；动态数值也不代表飞控当前状态。
+                    </p>
+                    <p class="mt-2">
+                        若提示旧格式、采集不完整或数据未采集，请重新采集。固件不支持的功能会显示相应提示。
+                    </p>
+                </div>
+            </UiBox>
+
             <UiBox v-if="session.active" :title="$t('supportSnapshotActiveTitle')" class="support-snapshot__details">
                 <p>仅查看采集时的数据，动态曲线不代表当前飞控状态。</p>
                 <p>
@@ -60,6 +103,7 @@
 </template>
 
 <script>
+import cliGuideImage from "../../images/support-snapshot-cli-guide.png";
 import { computed, defineComponent, onMounted, ref } from "vue";
 import BaseTab from "./BaseTab.vue";
 import UiBox from "../elements/UiBox.vue";
@@ -118,7 +162,7 @@ export default defineComponent({
         }
 
         onMounted(() => GUI.content_ready());
-        return { terminalText, supportId, loading, error, session, formattedExpiry, loadSnapshot, closeSnapshot };
+        return { cliGuideImage, terminalText, supportId, loading, error, session, formattedExpiry, loadSnapshot, closeSnapshot };
     },
 });
 </script>
