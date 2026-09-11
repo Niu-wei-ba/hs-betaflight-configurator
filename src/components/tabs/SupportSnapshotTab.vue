@@ -20,6 +20,42 @@
                 <p v-if="error" class="support-snapshot__error">{{ error }}</p>
             </UiBox>
 
+            <UiBox v-if="session.active" :title="$t('supportSnapshotActiveTitle')" class="support-snapshot__details">
+                <p>仅查看采集时的数据，动态曲线不代表当前飞控状态。</p>
+                <p>
+                    PID Profile {{ session.captureReport?.profile?.pid + 1 }} / Rates Profile
+                    {{ session.captureReport?.profile?.rate + 1 }}（固定只读）
+                </p>
+                <dl>
+                    <div>
+                        <dt>{{ $t("supportSnapshotIdLabel") }}</dt>
+                        <dd>{{ session.supportId }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ $t("supportSnapshotFirmwareLabel") }}</dt>
+                        <dd>{{ session.metadata?.firmwareVersion || "-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ $t("supportSnapshotTargetLabel") }}</dt>
+                        <dd>{{ session.metadata?.target || session.metadata?.boardName || "-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>{{ $t("supportSnapshotExpiresLabel") }}</dt>
+                        <dd>{{ formattedExpiry }}</dd>
+                    </div>
+                </dl>
+                <pre class="support-snapshot__terminal" tabindex="0" aria-label="快照信息与 CLI 记录">{{
+                    terminalText
+                }}</pre>
+                <UButton
+                    color="error"
+                    variant="soft"
+                    icon="i-lucide-link-2-off"
+                    :label="$t('disconnectSupportSnapshot')"
+                    @click="closeSnapshot"
+                />
+            </UiBox>
+
             <UiBox title="使用说明">
                 <p class="mb-4 leading-relaxed">
                     支持快照用于远程排查飞控配置问题。分享 Support ID 后，对方无需连接你的飞控，即可查看采集时的配置与
@@ -61,42 +97,6 @@
                         若提示旧格式、采集不完整或数据未采集，请重新采集。固件不支持的功能会显示相应提示。
                     </p>
                 </div>
-            </UiBox>
-
-            <UiBox v-if="session.active" :title="$t('supportSnapshotActiveTitle')" class="support-snapshot__details">
-                <p>仅查看采集时的数据，动态曲线不代表当前飞控状态。</p>
-                <p>
-                    PID Profile {{ session.captureReport?.profile?.pid + 1 }} / Rates Profile
-                    {{ session.captureReport?.profile?.rate + 1 }}（固定只读）
-                </p>
-                <dl>
-                    <div>
-                        <dt>{{ $t("supportSnapshotIdLabel") }}</dt>
-                        <dd>{{ session.supportId }}</dd>
-                    </div>
-                    <div>
-                        <dt>{{ $t("supportSnapshotFirmwareLabel") }}</dt>
-                        <dd>{{ session.metadata?.firmwareVersion || "-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>{{ $t("supportSnapshotTargetLabel") }}</dt>
-                        <dd>{{ session.metadata?.target || session.metadata?.boardName || "-" }}</dd>
-                    </div>
-                    <div>
-                        <dt>{{ $t("supportSnapshotExpiresLabel") }}</dt>
-                        <dd>{{ formattedExpiry }}</dd>
-                    </div>
-                </dl>
-                <pre class="support-snapshot__terminal" tabindex="0" aria-label="快照信息与 CLI 记录">{{
-                    terminalText
-                }}</pre>
-                <UButton
-                    color="error"
-                    variant="soft"
-                    icon="i-lucide-link-2-off"
-                    :label="$t('disconnectSupportSnapshot')"
-                    @click="closeSnapshot"
-                />
             </UiBox>
         </div>
     </BaseTab>
