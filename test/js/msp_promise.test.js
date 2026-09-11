@@ -6,11 +6,8 @@ import MspHelper from "../../src/js/msp/MSPHelper";
 import MSPCodes from "../../src/js/msp/MSPCodes";
 import CONFIGURATOR from "../../src/js/data_storage";
 import { MspCancelledError, MspTimeoutError, MspCrcError } from "../../src/js/msp/mspErrors";
-import {
-    activateSupportSnapshot,
-    clearSupportSnapshot,
-    createSupportSnapshotRequestKey,
-} from "../../src/js/support/SnapshotSession";
+import { activateSupportSnapshot, clearSupportSnapshot } from "../../src/js/support/SnapshotSession";
+import { snapshotV2 } from "../fixtures/supportSnapshotV2";
 
 const EEPROM_WRITE_CODE = MSPCodes.MSP_EEPROM_WRITE;
 
@@ -63,24 +60,12 @@ describe("MSP promise semantics", () => {
 
     it("replays promise requests from a support snapshot without using serial transport", async () => {
         CONFIGURATOR.supportSnapshotMode = true;
-        activateSupportSnapshot({
-            supportId: "SUP-23456789ABCDEFGH",
-            snapshot: {
-                schemaVersion: 1,
-                mspResponses: [
-                    {
-                        code: EEPROM_WRITE_CODE,
-                        requestKey: createSupportSnapshotRequestKey(EEPROM_WRITE_CODE, []),
-                        payloadBase64: "AQID",
-                    },
-                ],
-            },
-        });
+        activateSupportSnapshot({ supportId: "SUP-23456789ABCDEFGH", snapshot: snapshotV2() });
 
-        const response = await MSP.promise(EEPROM_WRITE_CODE);
+        const response = await MSP.promise(MSPCodes.MSP_API_VERSION);
 
-        expect(response).toMatchObject({ command: EEPROM_WRITE_CODE });
-        expect([...new Uint8Array(response.data.buffer)]).toEqual([1, 2, 3]);
+        expect(response).toMatchObject({ command: MSPCodes.MSP_API_VERSION });
+        expect([...new Uint8Array(response.data.buffer)]).toEqual([0, 1, 47]);
         expect(serialSendSpy).not.toHaveBeenCalled();
         expect(MSP.callbacks).toHaveLength(0);
     });
@@ -89,10 +74,10 @@ describe("MSP promise semantics", () => {
         CONFIGURATOR.supportSnapshotMode = true;
         activateSupportSnapshot({
             supportId: "SUP-23456789ABCDEFGH",
-            snapshot: { schemaVersion: 1, mspResponses: [] },
+            snapshot: snapshotV2(),
         });
 
-        await expect(MSP.promise(EEPROM_WRITE_CODE)).rejects.toThrow("支持快照缺少 MSP 响应");
+        await expect(MSP.promise(MSPCodes.MSP_ATTITUDE)).rejects.toThrow("未采集 MSP 108 数据");
         expect(serialSendSpy).not.toHaveBeenCalled();
     });
 

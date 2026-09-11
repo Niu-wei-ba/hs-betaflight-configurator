@@ -214,12 +214,13 @@ export async function sensorTypes() {
 
         const legacyTypes = sensorTypesLegacy();
         return Object.fromEntries(
-            Object.entries(legacyTypes).map(([type, definition]) => ({
-                [type]: {
+            Object.entries(legacyTypes).map(([type, definition]) => [
+                type,
+                {
                     ...definition,
                     elements: FC.SENSOR_NAMES?.[type]?.length ? FC.SENSOR_NAMES[type] : definition.elements,
                 },
-            })),
+            ]),
         );
     } else {
         return sensorTypesLegacy();
