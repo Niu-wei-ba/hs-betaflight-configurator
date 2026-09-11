@@ -61,7 +61,15 @@
                             </template>
                             <USwitch v-model="baroHardwareEnabled" />
                         </SettingRow>
-                        <SettingRow v-if="showRangefinder" :label="$t('configurationRangefinder')" fullWidth>
+                        <SettingRow
+                            v-if="showRangefinder"
+                            :label="sonarHwName ? '' : $t('configurationRangefinder')"
+                            fullWidth
+                        >
+                            <template v-if="sonarHwName" #label>
+                                {{ $t("configurationRangefinder") }}
+                                <span class="text-dimmed font-normal">&mdash; {{ sonarHwName }}</span>
+                            </template>
                             <USwitch v-model="sonarHardwareEnabled" />
                             <USelect
                                 v-if="sonarHardwareEnabled"
@@ -824,7 +832,8 @@ import MSPCodes from "../../js/msp/MSPCodes";
 import { mspHelper } from "../../js/msp/MSPHelper.js";
 import { gui_log } from "../../js/gui_log";
 import { i18n } from "../../js/localization";
-import { API_VERSION_1_46, API_VERSION_1_47, API_VERSION_1_48 } from "../../js/data_storage";
+import CONFIGURATOR, { API_VERSION_1_46, API_VERSION_1_47, API_VERSION_1_48 } from "../../js/data_storage";
+import { hasSupportSnapshotResponse } from "../../js/support/SnapshotSession";
 import { have_sensor } from "../../js/sensor_helpers";
 import { bit_check, bit_set, bit_clear } from "../../js/bit";
 import { sensorTypes } from "../../js/sensor_types";
@@ -1026,6 +1035,7 @@ const gyroHwName = ref("");
 const accHwName = ref("");
 const baroHwName = ref("");
 const magHwName = ref("");
+const sonarHwName = ref("");
 
 function resolveSensorNames() {
     const types = sensorTypesData.value;
@@ -1052,6 +1062,7 @@ function resolveSensorNames() {
     accHwName.value = resolve("acc_hardware", "acc");
     baroHwName.value = resolve("baro_hardware", "baro");
     magHwName.value = resolve("mag_hardware", "mag");
+    sonarHwName.value = resolve("sonar_hardware", "sonar");
 }
 
 const showGyroToUse = computed(() => {
@@ -2387,7 +2398,9 @@ const loadConfig = async () => {
             await MSP.promise(MSPCodes.MSP_SENSOR_ALIGNMENT);
             await MSP.promise(MSPCodes.MSP_BOARD_ALIGNMENT_CONFIG);
             await MSP.promise(MSPCodes.MSP_ACC_TRIM);
-            await MSP.promise(MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE);
+            if (!CONFIGURATOR.supportSnapshotMode || hasSupportSnapshotResponse(MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE)) {
+                await MSP.promise(MSPCodes.MSP2_SENSOR_CONFIG_ACTIVE);
+            }
             // initModel() reads FC.MIXER_CONFIG.mixer; load it here (nothing else on this tab does),
             // else mixer stays 0 and the loader fetches a non-existent `undefined.gltf`.
             await MSP.promise(MSPCodes.MSP_MIXER_CONFIG);
@@ -2396,7 +2409,10 @@ const loadConfig = async () => {
                 await MSP.promise(MSPCodes.MSP_COMPASS_CONFIG);
             }
 
-            if (isApi147.value) {
+            if (
+                isApi147.value &&
+                (!CONFIGURATOR.supportSnapshotMode || hasSupportSnapshotResponse(MSPCodes.MSP2_GYRO_SENSOR))
+            ) {
                 await MSP.promise(MSPCodes.MSP2_GYRO_SENSOR);
             }
 

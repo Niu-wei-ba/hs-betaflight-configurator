@@ -19,6 +19,10 @@ export const NON_EXPERT_SLIDER_MAX_GYRO = 150;
 export const NON_EXPERT_SLIDER_MIN_DTERM = 80;
 export const NON_EXPERT_SLIDER_MAX_DTERM = 120;
 
+function isOfflineTuningMode() {
+    return CONFIGURATOR.virtualMode || CONFIGURATOR.supportSnapshotMode;
+}
+
 // ── Pure utilities ───────────────────────────────────────────────────────────
 
 export function scaleSliderValue(value) {
@@ -97,7 +101,7 @@ export function calculateNewPids(s) {
     // In virtual mode there is no FC to crunch the sliders, so compute the
     // resulting PID/feedforward/D-max values client-side (port of the firmware's
     // simplified_tuning.c) and resolve immediately.
-    if (CONFIGURATOR.virtualMode) {
+    if (isOfflineTuningMode()) {
         applySimplifiedPids();
         return Promise.resolve();
     }
@@ -122,7 +126,7 @@ export function calculateNewGyroFilters(multiplier) {
     FC.TUNING_SLIDERS.slider_gyro_filter = 1;
     FC.TUNING_SLIDERS.slider_gyro_filter_multiplier = Math.round(multiplier * 100);
 
-    if (CONFIGURATOR.virtualMode) {
+    if (isOfflineTuningMode()) {
         applySimplifiedGyroFilters();
         return Promise.resolve();
     }
@@ -147,7 +151,7 @@ export function calculateNewDTermFilters(multiplier) {
     FC.TUNING_SLIDERS.slider_dterm_filter = 1;
     FC.TUNING_SLIDERS.slider_dterm_filter_multiplier = Math.round(multiplier * 100);
 
-    if (CONFIGURATOR.virtualMode) {
+    if (isOfflineTuningMode()) {
         applySimplifiedDtermFilters();
         return Promise.resolve();
     }
@@ -181,7 +185,7 @@ export function validateTuningSliders() {
 
     // In virtual mode, compare the stored PID/filter values against what the
     // sliders would produce client-side instead of asking the FC.
-    if (CONFIGURATOR.virtualMode) {
+    if (isOfflineTuningMode()) {
         validateVirtualSimplifiedTuning();
         patchInvalidSliders();
         return Promise.resolve();

@@ -550,6 +550,9 @@ import { useMotorConfiguration } from "@/composables/motors/useMotorConfiguratio
 import { useMotorDataPolling } from "@/composables/motors/useMotorDataPolling";
 import { useSaving } from "@/composables/useSaving";
 import { useReboot } from "@/composables/useReboot";
+import CONFIGURATOR from "@/js/data_storage";
+import { hasSupportSnapshotResponse } from "@/js/support/SnapshotSession";
+import { isMspSnapshotMissing } from "@/js/msp/mspErrors";
 
 const API_VERSION_1_47 = "1.47.0";
 
@@ -792,19 +795,32 @@ watch(
 );
 
 onMounted(async () => {
-    // Request MSP data
-    await MSP.promise(MSPCodes.MSP_PID_ADVANCED);
-    await MSP.promise(MSPCodes.MSP_FEATURE_CONFIG);
-    await MSP.promise(MSPCodes.MSP_MIXER_CONFIG);
-    await MSP.promise(MSPCodes.MSP_MOTOR_CONFIG);
-    if (fcStore.motorConfig.use_dshot_telemetry || fcStore.motorConfig.use_esc_sensor) {
-        await MSP.promise(MSPCodes.MSP_MOTOR_TELEMETRY);
+    try {
+        // Request MSP data
+        await MSP.promise(MSPCodes.MSP_PID_ADVANCED);
+        await MSP.promise(MSPCodes.MSP_FEATURE_CONFIG);
+        await MSP.promise(MSPCodes.MSP_MIXER_CONFIG);
+        await MSP.promise(MSPCodes.MSP_MOTOR_CONFIG);
+        if (fcStore.motorConfig.use_dshot_telemetry || fcStore.motorConfig.use_esc_sensor) {
+            if (!CONFIGURATOR.supportSnapshotMode || hasSupportSnapshotResponse(MSPCodes.MSP_MOTOR_TELEMETRY)) {
+                await MSP.promise(MSPCodes.MSP_MOTOR_TELEMETRY);
+            }
+        }
+        if (!CONFIGURATOR.supportSnapshotMode || hasSupportSnapshotResponse(MSPCodes.MSP_MOTOR_3D_CONFIG)) {
+            await MSP.promise(MSPCodes.MSP_MOTOR_3D_CONFIG);
+        }
+        if (!CONFIGURATOR.supportSnapshotMode || hasSupportSnapshotResponse(MSPCodes.MSP2_MOTOR_OUTPUT_REORDERING)) {
+            await MSP.promise(MSPCodes.MSP2_MOTOR_OUTPUT_REORDERING);
+        }
+        await MSP.promise(MSPCodes.MSP_ADVANCED_CONFIG);
+        await MSP.promise(MSPCodes.MSP_FILTER_CONFIG);
+        await MSP.promise(MSPCodes.MSP_ARMING_CONFIG);
+    } catch (error) {
+        if (!isMspSnapshotMissing(error)) {
+            console.error("Failed to load motor configuration", error);
+        }
+        return;
     }
-    await MSP.promise(MSPCodes.MSP_MOTOR_3D_CONFIG);
-    await MSP.promise(MSPCodes.MSP2_MOTOR_OUTPUT_REORDERING);
-    await MSP.promise(MSPCodes.MSP_ADVANCED_CONFIG);
-    await MSP.promise(MSPCodes.MSP_FILTER_CONFIG);
-    await MSP.promise(MSPCodes.MSP_ARMING_CONFIG);
 
     // Initialize motors state (CRITICAL: must be after MSP data loaded)
     motorsState.initializeDefaults();

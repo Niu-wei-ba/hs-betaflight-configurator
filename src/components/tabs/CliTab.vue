@@ -1,5 +1,16 @@
 <template>
     <BaseTab tab-name="cli" @mounted="onTabMounted" @cleanup="onTabCleanup">
+        <div v-if="cli.captureState.active || cli.captureState.error" role="status" class="p-4">
+            <p>{{ cli.captureState.active ? "正在采集支持快照，请稍候（最长 60 秒）…" : cli.captureState.error }}</p>
+            <template v-if="!cli.captureState.active && !cli.state.cliReady">
+                <UButton label="重新采集并进入 CLI" @click="cli.initialize" />
+                <UButton
+                    label="仅进入 CLI（不提供快照）"
+                    variant="outline"
+                    @click="cli.initialize({ withoutSnapshot: true })"
+                />
+            </template>
+        </div>
         <div class="content_wrapper flex flex-col overflow-hidden pb-0 max-[1055px]:h-[calc(100%-87px)]">
             <UiBox highlight class="mb-3">
                 <p v-html="$t('cliInfo')"></p>
@@ -25,6 +36,7 @@
                     @hover="cli.autocomplete.activeIndex.value = $event"
                 />
                 <textarea
+                    :disabled="!cli.state.cliReady || cli.state.supportSubmitting"
                     ref="commandInputRef"
                     v-model="cli.state.commandInput"
                     name="commands"
@@ -102,6 +114,8 @@
             />
             <UButton
                 v-if="cli.isSupportRequestAvailable()"
+                :disabled="!cli.state.cliReady || !cli.captureState.ready || cli.state.supportSubmitting"
+                :loading="cli.state.supportSubmitting"
                 :label="$t('cliSupportRequestBtn')"
                 @click="cli.submitSupportRequest"
             />
@@ -143,7 +157,7 @@ export default defineComponent({
         const onBuildStop = () => {
             if (cli.commandInputRef.value) {
                 cli.commandInputRef.value.placeholder = i18n.getMessage("cliInputPlaceholder");
-                cli.commandInputRef.value.disabled = false;
+                cli.commandInputRef.value.disabled = !cli.state.cliReady;
                 cli.commandInputRef.value.focus();
             }
             // Initialize autocomplete strategies now that cache is ready

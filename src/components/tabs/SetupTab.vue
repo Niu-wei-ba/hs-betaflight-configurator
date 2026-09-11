@@ -299,8 +299,14 @@ import { mspHelper } from "../../js/msp/MSPHelper";
 import MSP from "../../js/msp";
 import Model from "../../js/model";
 import MSPCodes from "../../js/msp/MSPCodes";
-import { API_VERSION_1_45, API_VERSION_1_46, API_VERSION_1_47, API_VERSION_1_48 } from "../../js/data_storage";
+import CONFIGURATOR, {
+    API_VERSION_1_45,
+    API_VERSION_1_46,
+    API_VERSION_1_47,
+    API_VERSION_1_48,
+} from "../../js/data_storage";
 import { gui_log } from "../../js/gui_log";
+import { isSupportSnapshotResponseUnsupported } from "../../js/support/SnapshotSession";
 import { ispConnected } from "../../js/utils/connection";
 import { addArrayElementsAfter, replaceArrayElement } from "../../js/utils/array";
 import { flightIndicator } from "../../../libraries/flightIndicators";
@@ -311,6 +317,7 @@ const { t } = useTranslation();
 const yaw_fix = ref(0);
 
 let modelInstance = null;
+let mcuInfoUnavailable = false;
 // Local reactive state to replace jQuery DOM updates
 const state = reactive({
     batVoltage: "0 V",
@@ -507,10 +514,23 @@ let boundModelResize = null;
 
 async function initialize() {
     cleanup();
+    mcuInfoUnavailable = false;
     try {
         await MSP.promise(MSPCodes.MSP_ACC_TRIM, false);
         await MSP.promise(MSPCodes.MSP_STATUS_EX, false);
-        await MSP.promise(MSPCodes.MSP2_MCU_INFO, false);
+        if (semver.gte(fcStore.config.apiVersion, API_VERSION_1_47)) {
+            if (isSupportSnapshotResponseUnsupported(MSPCodes.MSP2_MCU_INFO)) {
+                mcuInfoUnavailable = true;
+            } else {
+                try {
+                    await MSP.promise(MSPCodes.MSP2_MCU_INFO, false);
+                } catch (error) {
+                    if (CONFIGURATOR.supportSnapshotMode) throw error;
+                    mcuInfoUnavailable = true;
+                    console.warn("MCU information is unavailable:", error);
+                }
+            }
+        }
         await MSP.promise(MSPCodes.MSP_MIXER_CONFIG, false);
         await MSP.promise(MSPCodes.MSP_SENSOR_ALIGNMENT, false);
         await MSP.promise(MSPCodes.MSP_ADVANCED_CONFIG, false);
@@ -641,7 +661,7 @@ function process_html() {
         }
 
         if (semver.gte(fcStore.config.apiVersion, API_VERSION_1_47)) {
-            state.mcu = fcStore.mcuInfo.name;
+            state.mcu = mcuInfoUnavailable ? "N/A" : fcStore.mcuInfo.name;
         } else {
             state.mcu = "";
         }

@@ -261,6 +261,7 @@
 import { defineComponent, ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import BaseTab from "./BaseTab.vue";
 import GUI from "../../js/gui";
+import { isMspSnapshotMissing } from "../../js/msp/mspErrors";
 import MSP from "../../js/msp";
 import MSPCodes from "../../js/msp/MSPCodes";
 import { mspHelper } from "../../js/msp/MSPHelper";
@@ -742,7 +743,9 @@ export default defineComponent({
 
                 addInterval("gps_pull", getRawGpsData, 100, true);
             } catch (error) {
-                console.error("Failed to load GPS configuration", error);
+                if (!isMspSnapshotMissing(error)) {
+                    console.error("Failed to load GPS configuration", error);
+                }
                 isOnline.value = ispConnected();
                 isWaiting.value = false;
             } finally {

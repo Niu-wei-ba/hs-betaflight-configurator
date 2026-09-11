@@ -482,6 +482,48 @@
     "tabDownloadCenter": {
         "message": "Download Center"
     },
+    "tabSupportSnapshot": {
+        "message": "Support Snapshot"
+    },
+    "supportSnapshotTitle": {
+        "message": "Support Snapshot"
+    },
+    "supportSnapshotLoadTitle": {
+        "message": "Load Support Snapshot"
+    },
+    "supportSnapshotIdPlaceholder": {
+        "message": "Enter Support ID"
+    },
+    "supportSnapshotLoadAction": {
+        "message": "Load Snapshot"
+    },
+    "supportSnapshotActiveTitle": {
+        "message": "Loaded Support Snapshot"
+    },
+    "supportSnapshotIdLabel": {
+        "message": "Support ID"
+    },
+    "supportSnapshotFirmwareLabel": {
+        "message": "Firmware"
+    },
+    "supportSnapshotTargetLabel": {
+        "message": "Flight Controller Target"
+    },
+    "supportSnapshotExpiresLabel": {
+        "message": "Expires"
+    },
+    "disconnectSupportSnapshot": {
+        "message": "Exit Snapshot Mode"
+    },
+    "supportSnapshotReadOnlyBanner": {
+        "message": "You are viewing a support snapshot. All controls are read-only."
+    },
+    "supportSnapshotCaptureInProgress": {
+        "message": "Preparing support snapshot data. Please wait before opening the CLI."
+    },
+    "supportSnapshotCaptureIncomplete": {
+        "message": "Support snapshot capture is incomplete. Reconnect the flight controller, wait for configuration capture to finish, then submit again."
+    },
     "tabLanding": {
         "message": "Welcome"
     },

@@ -42,6 +42,13 @@ function handleDisallowedTab(tabKey, tabLabel) {
 }
 
 export function switchTab(tabKey, options = {}) {
+    if (
+        CONFIGURATOR.supportSnapshotMode &&
+        ["cli", "presets", "autotune", "flight_plan", "backups", "logging"].includes(tabKey)
+    ) {
+        gui_log("支持快照只读，此功能不可用。");
+        return false;
+    }
     const mode = options.mode ?? "disconnected";
     const label = options.label ?? defaultLabel(tabKey);
 
@@ -55,6 +62,11 @@ export function switchTab(tabKey, options = {}) {
 
     const requiresConnection = mode === "connected" || mode === "cli";
     if (!canSwitchTab(requiresConnection)) {
+        return false;
+    }
+
+    if (mode === "cli" && CONFIGURATOR.supportSnapshotCaptureInProgress) {
+        gui_log(i18n.getMessage("supportSnapshotCaptureInProgress"));
         return false;
     }
 

@@ -10,7 +10,7 @@ import MSPCodes from "../js/msp/MSPCodes";
 import { useConnectionStore } from "../stores/connection";
 import GUI from "../js/gui";
 import { gui_log } from "../js/gui_log";
-import { isMspCancelled } from "../js/msp/mspErrors.js";
+import { isMspCancelled, isMspSnapshotMissing } from "../js/msp/mspErrors.js";
 import { useReboot } from "./useReboot";
 
 export function usePower() {
@@ -269,7 +269,9 @@ export function usePower() {
             // Update reactive state
             updateStateFromFC();
         } catch (error) {
-            console.error("Error loading power data:", error);
+            if (!isMspSnapshotMissing(error)) {
+                console.error("Error loading power data:", error);
+            }
         } finally {
             isLoading.value = false;
         }

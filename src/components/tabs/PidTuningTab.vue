@@ -70,6 +70,7 @@
                     />
                     <UButton
                         v-if="activeSubtab === 'pid'"
+                        data-snapshot-navigation
                         :label="showAllPids ? $t('pidTuningHideUnusedPids') : $t('pidTuningShowAllPids')"
                         color="neutral"
                         variant="outline"
@@ -130,6 +131,7 @@ import GUI from "@/js/gui";
 import MSP from "@/js/msp";
 import MSPCodes from "@/js/msp/MSPCodes";
 import FC from "@/js/fc";
+import CONFIGURATOR from "@/js/data_storage";
 import { i18n } from "@/js/localization";
 import { validateTuningSliders } from "@/composables/useTuningSliders";
 import { mspHelper } from "@/js/msp/MSPHelper";
@@ -143,6 +145,7 @@ import { gui_log } from "@/js/gui_log";
 import { useSaving } from "@/composables/useSaving";
 import { useReboot } from "@/composables/useReboot";
 import { runTabLoad } from "@/composables/useTabLoad";
+import { applySupportSnapshotRateProfile, supportSnapshotSession } from "@/js/support/SnapshotSession";
 
 const { t } = useTranslation();
 const pidTuningStore = usePidTuningStore();
@@ -226,7 +229,7 @@ const localRateProfileName = computed({
 const hasChanges = computed(() => pidTuningStore.hasChanges);
 
 // MSP Data Loading
-async function loadData() {
+async function loadData(snapshotRateProfileIndex = null) {
     isLoading.value = true;
     try {
         return await runTabLoad(
@@ -239,7 +242,10 @@ async function loadData() {
                 await MSP.promise(MSPCodes.MSP_PIDNAMES);
                 await MSP.promise(MSPCodes.MSP_PID);
                 await MSP.promise(MSPCodes.MSP_PID_ADVANCED);
-                await MSP.promise(MSPCodes.MSP_RC_TUNING);
+                const hasRateProfileSnapshot = CONFIGURATOR.supportSnapshotMode && supportSnapshotSession.rateProfiles;
+                if (!hasRateProfileSnapshot) {
+                    await MSP.promise(MSPCodes.MSP_RC_TUNING);
+                }
                 await MSP.promise(MSPCodes.MSP_FILTER_CONFIG);
                 await MSP.promise(MSPCodes.MSP_RC_DEADBAND);
                 await MSP.promise(MSPCodes.MSP_MOTOR_CONFIG);
@@ -250,15 +256,21 @@ async function loadData() {
                         MSPCodes.MSP2_GET_TEXT,
                         mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.PID_PROFILE_NAME),
                     );
-                    await MSP.promise(
-                        MSPCodes.MSP2_GET_TEXT,
-                        mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.RATE_PROFILE_NAME),
-                    );
+                    if (!hasRateProfileSnapshot) {
+                        await MSP.promise(
+                            MSPCodes.MSP2_GET_TEXT,
+                            mspHelper.crunch(MSPCodes.MSP2_GET_TEXT, MSPCodes.RATE_PROFILE_NAME),
+                        );
+                    }
                 }
 
                 // Status EX (API 1.47+)
                 if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_47)) {
                     await MSP.promise(MSPCodes.MSP_STATUS_EX);
+                }
+
+                if (hasRateProfileSnapshot) {
+                    applySupportSnapshotRateProfile(snapshotRateProfileIndex ?? FC.CONFIG.rateProfile);
                 }
 
                 await MSP.promise(MSPCodes.MSP_SIMPLIFIED_TUNING);
@@ -332,6 +344,11 @@ async function onProfileChange() {
 
 async function onRateProfileChange() {
     FC.CONFIG.rateProfile = currentRateProfile.value;
+
+    if (CONFIGURATOR.supportSnapshotMode && supportSnapshotSession.rateProfiles) {
+        await loadData(currentRateProfile.value);
+        return;
+    }
 
     // Select rate profile via MSP (use high bit to indicate rate profile)
     await MSP.promise(MSPCodes.MSP_SELECT_SETTING, [currentRateProfile.value | 128]);

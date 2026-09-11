@@ -9,6 +9,7 @@ import semver from "semver";
 import { useFlightControllerStore } from "./fc";
 import CONFIGURATOR, { API_VERSION_1_45, API_VERSION_1_46, API_VERSION_1_47 } from "../js/data_storage";
 import { bit_set } from "../js/bit";
+import { hasSupportSnapshotResponse } from "../js/support/SnapshotSession";
 
 function encodeStatisticsPayload(statItem, isVirtualMode, virtualMode) {
     if (isVirtualMode && virtualMode) {
@@ -28,7 +29,9 @@ async function fetchOsdInfo(fcStore) {
     }
 
     if (fcStore.config?.apiVersion && semver.gte(fcStore.config.apiVersion, API_VERSION_1_45)) {
-        await MSP.promise(MSPCodes.MSP_OSD_CANVAS);
+        if (!CONFIGURATOR.supportSnapshotMode || hasSupportSnapshotResponse(MSPCodes.MSP_OSD_CANVAS)) {
+            await MSP.promise(MSPCodes.MSP_OSD_CANVAS);
+        }
     }
 
     return MSP.promise(MSPCodes.MSP_OSD_CONFIG);

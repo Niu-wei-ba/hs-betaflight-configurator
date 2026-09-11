@@ -1,7 +1,7 @@
 import semver from "semver";
 import FC from "./fc";
 import MSP from "./msp";
-import { API_VERSION_1_47, API_VERSION_1_48 } from "./data_storage";
+import CONFIGURATOR, { API_VERSION_1_47, API_VERSION_1_48 } from "./data_storage";
 import { removeArrayElement, addArrayElement, addArrayElementsAfter } from "./utils/array";
 
 // Map firmware sensor type names to configurator names
@@ -9,13 +9,8 @@ const SENSOR_NAME_MAP = {
     rangefinder: "sonar",
 };
 
-/**
- * Fetches sensor hardware names from the flight controller for API 1.48+.
- * Sends a single "sensor_hardware" command and parses the response lines in "type: VAL1,VAL2,..." format.
- * @returns {Promise<void>} Promise that resolves when all sensor names have been fetched
- */
-export async function fetchSensorNames() {
-    FC.SENSOR_NAMES = {
+export function parseSensorHardwareNames(output) {
+    const sensorNames = {
         acc: [],
         gyro: [],
         baro: [],
@@ -24,33 +19,55 @@ export async function fetchSensorNames() {
         opticalflow: [],
     };
 
-    try {
-        const output = await new Promise((resolve) => {
-            MSP.send_cli_command("sensor_hardware", (response) => {
-                resolve([...response]);
-            });
-        });
+    const text = Array.isArray(output) ? output.join("\n") : String(output || "");
+    for (const line of text.split("\n")) {
+        const match = line.match(/^\s*([^:]+):\s*(.*?)\s*$/);
+        if (!match) continue;
 
-        const text = output.join("\n");
-        for (const line of text.split("\n")) {
-            const separatorIndex = line.indexOf(": ");
-            if (separatorIndex === -1) {
-                continue;
-            }
+        const firmwareType = match[1].trim().toLowerCase();
+        const type = SENSOR_NAME_MAP[firmwareType] ?? firmwareType;
+        const values = match[2]
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
 
-            const firmwareType = line.substring(0, separatorIndex).trim();
-            const type = SENSOR_NAME_MAP[firmwareType] ?? firmwareType;
-            const values = line
-                .substring(separatorIndex + 2)
-                .split(",")
-                .map((v) => v.trim());
-
-            if (type in FC.SENSOR_NAMES) {
-                FC.SENSOR_NAMES[type] = values;
-            }
+        if (type in sensorNames) {
+            sensorNames[type] = values;
         }
+    }
+
+    return sensorNames;
+}
+
+export function requestSensorHardwareNames({ timeoutMs = 10_000 } = {}) {
+    return new Promise((resolve, reject) => {
+        MSP.send_cli_command(
+            "sensor_hardware",
+            (response, error) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                resolve([...response]);
+            },
+            { timeoutMs },
+        );
+    });
+}
+
+/**
+ * Fetches sensor hardware names from the flight controller for API 1.48+.
+ * Sends a single "sensor_hardware" command and parses the response lines in "type: VAL1,VAL2,..." format.
+ * @returns {Promise<Object>} Parsed sensor names grouped by configurator sensor type.
+ */
+export async function fetchSensorNames() {
+    try {
+        const output = await requestSensorHardwareNames();
+        FC.SENSOR_NAMES = parseSensorHardwareNames(output);
+        return FC.SENSOR_NAMES;
     } catch (error) {
         console.warn(`Failed to fetch sensor hardware names: ${error.message}`);
+        return FC.SENSOR_NAMES;
     }
 }
 
@@ -191,36 +208,19 @@ export async function sensorTypes() {
     if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_48)) {
         const hasSensorNames = FC.SENSOR_NAMES && Object.values(FC.SENSOR_NAMES).some((arr) => arr.length > 0);
 
-        if (!hasSensorNames) {
+        if (!hasSensorNames && !CONFIGURATOR.supportSnapshotMode) {
             await fetchSensorNames();
         }
 
-        return {
-            acc: {
-                name: "Accelerometer",
-                elements: FC.SENSOR_NAMES.acc || [],
-            },
-            gyro: {
-                name: "Gyroscope",
-                elements: FC.SENSOR_NAMES.gyro || [],
-            },
-            baro: {
-                name: "Barometer",
-                elements: FC.SENSOR_NAMES.baro || [],
-            },
-            mag: {
-                name: "Magnetometer",
-                elements: FC.SENSOR_NAMES.mag || [],
-            },
-            sonar: {
-                name: "Sonar",
-                elements: FC.SENSOR_NAMES.sonar || [],
-            },
-            opticalflow: {
-                name: "Optical Flow",
-                elements: FC.SENSOR_NAMES.opticalflow || [],
-            },
-        };
+        const legacyTypes = sensorTypesLegacy();
+        return Object.fromEntries(
+            Object.entries(legacyTypes).map(([type, definition]) => ({
+                [type]: {
+                    ...definition,
+                    elements: FC.SENSOR_NAMES?.[type]?.length ? FC.SENSOR_NAMES[type] : definition.elements,
+                },
+            })),
+        );
     } else {
         return sensorTypesLegacy();
     }

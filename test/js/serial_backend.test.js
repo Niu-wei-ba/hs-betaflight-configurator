@@ -58,7 +58,7 @@ const { GUI, serial, serialHandlers, unmountVueTab, switchTab, dialogStore, mspH
         mspHelperInstance: {
             setArmingEnabled: vi.fn(),
             process_data: vi.fn(),
-            crunch: vi.fn(() => []),
+            crunch: vi.fn((_code, modifier) => (modifier === undefined ? [] : [modifier])),
             RESET_TYPES: { CUSTOM_DEFAULTS: 0 },
         },
     };
@@ -98,7 +98,18 @@ vi.mock("../../src/js/msp/MSPHelper", () => ({
 
 vi.mock("../../src/js/msp/MSPCodes", () => ({
     __esModule: true,
-    default: new Proxy({}, { get: (_t, p) => p }),
+    default: new Proxy(
+        {},
+        {
+            get: (_target, property) =>
+                ({
+                    MSP2_GET_TEXT: 0x3006,
+                    PILOT_NAME: 1,
+                    CRAFT_NAME: 2,
+                    BUILD_KEY: 5,
+                })[property] ?? property,
+        },
+    ),
 }));
 
 vi.mock("../../src/js/port_usage", () => ({
@@ -218,6 +229,8 @@ import {
     connectDisconnect,
     disconnect,
     initializeSerialBackend,
+    openSupportSnapshotSession,
+    closeSupportSnapshotSession,
     reinitializeConnection,
     shouldConcludeRebootDialog,
 } from "../../src/js/serial_backend";
@@ -226,6 +239,7 @@ import CONFIGURATOR from "../../src/js/data_storage";
 import MSP from "../../src/js/msp";
 import MSPCodes from "../../src/js/msp/MSPCodes";
 import { __resetConnectionStateForTests, getConnectionState } from "../../src/js/connection_state.js";
+import { addResponse, snapshotV2 } from "../fixtures/supportSnapshotV2";
 
 // Reset all mock state and bring the module to a known DISCONNECTED state
 // before each test. Because module-private state (isConnected,
@@ -266,6 +280,26 @@ function establishConnection() {
     // onOpen needs connecting_to so connected_to is set; beginConnect set it.
     serialHandlers.connect({ detail: true });
 }
+
+describe("support snapshot session startup", () => {
+    afterEach(() => closeSupportSnapshotSession({ preserveTab: true }));
+
+    it("skips an unsupported optional build key without blocking the session", async () => {
+        const snapshot = addResponse(
+            addResponse(addResponse(snapshotV2(), 0x3006, "12294:BQ==", "", true), 0x3006, "12294:Ag==", "AgA="),
+            0x3006,
+            "12294:AQ==",
+            "AQA=",
+        );
+
+        await openSupportSnapshotSession({ supportId: "SUP-BUILD-KEY", snapshot });
+
+        expect(MSP.promise).not.toHaveBeenCalledWith(MSPCodes.MSP2_GET_TEXT, [MSPCodes.BUILD_KEY]);
+        expect(MSP.promise).toHaveBeenCalledWith(MSPCodes.MSP2_GET_TEXT, [MSPCodes.CRAFT_NAME]);
+        expect(MSP.promise).toHaveBeenCalledWith(MSPCodes.MSP2_GET_TEXT, [MSPCodes.PILOT_NAME]);
+        expect(CONFIGURATOR.connectionValid).toBe(true);
+    });
+});
 
 // Drive the module into a "connected" state for a VIRTUAL port. beginConnect passes
 // onOpenVirtual as serial.connect's third argument (only for the virtual port); the default

@@ -47,6 +47,9 @@ i18n.init = function (cb) {
                 ns: ["messages"],
                 defaultNS: ["messages"],
                 fallbackLng: languageFallback,
+                // Locale files use explicit dialect names (for example zh_CN).
+                // Avoid i18next requesting an unserved base locale such as zh.
+                load: "currentOnly",
                 backend: {
                     loadPath: "./locales/{{lng}}/{{ns}}.json",
                     parse: i18n.parseInputFile,
@@ -186,6 +189,16 @@ function getStoredUserLocale(cb) {
 
 function getValidLocale(userLocale) {
     let validUserLocale = userLocale;
+    const localeAliases = {
+        zh: "zh_CN",
+        zh_CN: "zh_CN",
+        zh_TW: "zh_TW",
+    };
+
+    if (localeAliases[validUserLocale]) {
+        return localeAliases[validUserLocale];
+    }
+
     if (validUserLocale === "DEFAULT") {
         validUserLocale = window.navigator.userLanguage || window.navigator.language;
         console.log(`Detected locale ${validUserLocale}`);
@@ -194,6 +207,9 @@ function getValidLocale(userLocale) {
         // we use underscore because the eventPage.js uses Chrome localization that needs underscore.
         // If at some moment we get rid of the Chrome localization we can remove all of this
         validUserLocale = validUserLocale.replace("-", "_");
+        if (localeAliases[validUserLocale]) {
+            return localeAliases[validUserLocale];
+        }
         // Locale not found
         if (languagesAvailables.indexOf(validUserLocale) === -1) {
             // Is a composite locale?

@@ -6,6 +6,11 @@ import MspHelper from "../../src/js/msp/MSPHelper";
 import MSPCodes from "../../src/js/msp/MSPCodes";
 import CONFIGURATOR from "../../src/js/data_storage";
 import { MspCancelledError, MspTimeoutError, MspCrcError } from "../../src/js/msp/mspErrors";
+import {
+    activateSupportSnapshot,
+    clearSupportSnapshot,
+    createSupportSnapshotRequestKey,
+} from "../../src/js/support/SnapshotSession";
 
 const EEPROM_WRITE_CODE = MSPCodes.MSP_EEPROM_WRITE;
 
@@ -50,8 +55,58 @@ describe("MSP promise semantics", () => {
     });
 
     afterEach(() => {
+        clearSupportSnapshot();
+        CONFIGURATOR.supportSnapshotMode = false;
         vi.useRealTimers();
         vi.restoreAllMocks();
+    });
+
+    it("replays promise requests from a support snapshot without using serial transport", async () => {
+        CONFIGURATOR.supportSnapshotMode = true;
+        activateSupportSnapshot({
+            supportId: "SUP-23456789ABCDEFGH",
+            snapshot: {
+                schemaVersion: 1,
+                mspResponses: [
+                    {
+                        code: EEPROM_WRITE_CODE,
+                        requestKey: createSupportSnapshotRequestKey(EEPROM_WRITE_CODE, []),
+                        payloadBase64: "AQID",
+                    },
+                ],
+            },
+        });
+
+        const response = await MSP.promise(EEPROM_WRITE_CODE);
+
+        expect(response).toMatchObject({ command: EEPROM_WRITE_CODE });
+        expect([...new Uint8Array(response.data.buffer)]).toEqual([1, 2, 3]);
+        expect(serialSendSpy).not.toHaveBeenCalled();
+        expect(MSP.callbacks).toHaveLength(0);
+    });
+
+    it("reports a missing support snapshot response instead of timing out", async () => {
+        CONFIGURATOR.supportSnapshotMode = true;
+        activateSupportSnapshot({
+            supportId: "SUP-23456789ABCDEFGH",
+            snapshot: { schemaVersion: 1, mspResponses: [] },
+        });
+
+        await expect(MSP.promise(EEPROM_WRITE_CODE)).rejects.toThrow("支持快照缺少 MSP 响应");
+        expect(serialSendSpy).not.toHaveBeenCalled();
+    });
+
+    it("keeps protected background requests across a tab cleanup", async () => {
+        const pending = MSP.promise(EEPROM_WRITE_CODE, undefined, { preserveOnTabSwitch: true });
+
+        MSP.callbacks_cleanup(undefined, {
+            preserve: (entry) => entry.preserveOnTabSwitch === true,
+        });
+
+        expect(MSP.callbacks).toHaveLength(1);
+        readFrame(v1ResponseFrame(EEPROM_WRITE_CODE, [1, 2, 3]));
+
+        await expect(pending).resolves.toMatchObject({ command: EEPROM_WRITE_CODE });
     });
 
     describe("timeout", () => {

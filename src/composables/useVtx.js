@@ -12,6 +12,7 @@ import { gui_log } from "../js/gui_log";
 import FileSystem from "../js/FileSystem";
 import { runtimeAssetUrl } from "../js/utils/runtimeAssetUrl";
 import { useReboot } from "./useReboot";
+import { isMspSnapshotMissing } from "../js/msp/mspErrors";
 
 const MAX_POWERLEVEL_VALUES = 8;
 const MAX_BAND_VALUES = 8;
@@ -91,7 +92,12 @@ function buildPowerOptionsFromTable(powerLevelList, count) {
 function sendMspPromise(code, buffer = false) {
     // Error-aware: a tab switch / disconnect that clears the MSP queue rejects with
     // MspCancelledError instead of dropping the callback and hanging.
-    return MSP.promise(code, buffer);
+    return MSP.promise(code, buffer).catch((error) => {
+        if (isMspSnapshotMissing(error)) {
+            return undefined;
+        }
+        throw error;
+    });
 }
 
 function buildPowerOptionsFromRange(range) {
