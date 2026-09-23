@@ -412,6 +412,12 @@
                                 class="w-24"
                             />
                         </SettingColumn>
+                        <SettingColumn
+                            :label="$t('configurationMagCoordinates')"
+                            :help="$t('configurationMagCoordinatesHelp')"
+                        >
+                            <UInput :model-value="magCoordinatesText" disabled size="xs" class="w-48" />
+                        </SettingColumn>
                     </div>
 
                     <!-- Mag calibration needed note -->
@@ -816,6 +822,73 @@
                 />
             </div>
         </div>
+
+        <UModal v-model:open="showDeclinationLocationDialog" :title="$t('sensorConfigDeclinationLocationTitle')">
+            <template #body>
+                <div class="flex flex-col gap-4">
+                    <p class="text-sm text-[var(--surface-600)]">
+                        {{ $t(declinationLocationErrorKey) }}
+                    </p>
+
+                    <div class="flex flex-wrap gap-2">
+                        <UButton
+                            size="sm"
+                            variant="outline"
+                            :label="$t('sensorConfigDeclinationRetryBrowser')"
+                            :loading="isFetchingDeclination"
+                            @click="retryBrowserDeclination"
+                        />
+                        <UButton
+                            size="sm"
+                            variant="outline"
+                            :label="$t('sensorConfigDeclinationUseGps')"
+                            :loading="isFetchingDeclination"
+                            @click="useFlightControllerDeclination"
+                        />
+                    </div>
+
+                    <div class="border-t border-[var(--surface-200)] pt-3">
+                        <p class="mb-2 text-sm font-medium">{{ $t("sensorConfigDeclinationManualTitle") }}</p>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <UInput
+                                v-model="manualDeclinationLatitude"
+                                inputmode="decimal"
+                                :placeholder="$t('preflightLatitude')"
+                                @update:model-value="manualCoordinatesTouched = true"
+                            />
+                            <UInput
+                                v-model="manualDeclinationLongitude"
+                                inputmode="decimal"
+                                :placeholder="$t('preflightLongitude')"
+                                @update:model-value="manualCoordinatesTouched = true"
+                            />
+                        </div>
+                        <p
+                            v-if="manualCoordinatesTouched && manualCoordinatesError"
+                            class="mt-2 text-xs text-[var(--error-500)]"
+                        >
+                            {{ $t(manualCoordinatesError) }}
+                        </p>
+                        <UButton
+                            class="mt-3"
+                            size="sm"
+                            color="success"
+                            :label="$t('preflightApply')"
+                            :disabled="!manualCoordinatesValid || isFetchingDeclination"
+                            @click="applyManualDeclination"
+                        />
+                    </div>
+                </div>
+            </template>
+            <template #footer>
+                <UButton
+                    color="neutral"
+                    variant="soft"
+                    :label="$t('cancel')"
+                    @click="showDeclinationLocationDialog = false"
+                />
+            </template>
+        </UModal>
     </BaseTab>
 </template>
 
@@ -838,6 +911,11 @@ import { have_sensor } from "../../js/sensor_helpers";
 import { bit_check, bit_set, bit_clear } from "../../js/bit";
 import { sensorTypes } from "../../js/sensor_types";
 import { useMagCalibration, computeDeclination, getGeoReference } from "../../composables/useMagCalibration";
+import {
+    BrowserGeolocationErrorCode,
+    getBrowserCoordinates,
+    parseCoordinatePair,
+} from "../../js/utils/browserGeolocation";
 import { isMspCliSupported } from "../../composables/useMspCliSession";
 import { detectAlignment } from "../../js/utils/magAlignment";
 import { degToRad } from "../../js/utils/common";
@@ -1342,12 +1420,53 @@ function cleanupAlignDetection() {
 const magDeclination = ref(0);
 const magInclination = ref(null);
 const magFieldStrength = ref(null);
+const magCoordinates = ref(null);
 const showMagSection = ref(false);
 const hasMagSensor = ref(false);
 const magNeedsCalibration = ref(false);
 const isFetchingDeclination = ref(false);
 const declinationWarning = ref("");
 const declinationNote = ref("");
+const showDeclinationLocationDialog = ref(false);
+const declinationLocationErrorCode = ref(BrowserGeolocationErrorCode.UNAVAILABLE);
+const manualDeclinationLatitude = ref("");
+const manualDeclinationLongitude = ref("");
+const manualCoordinatesTouched = ref(false);
+
+const declinationLocationErrorKey = computed(() => {
+    switch (declinationLocationErrorCode.value) {
+        case BrowserGeolocationErrorCode.UNSUPPORTED:
+            return "sensorConfigDeclinationBrowserUnsupported";
+        case BrowserGeolocationErrorCode.DENIED:
+            return "sensorConfigDeclinationBrowserDenied";
+        case BrowserGeolocationErrorCode.TIMEOUT:
+            return "sensorConfigDeclinationBrowserTimeout";
+        case "gps-unavailable":
+            return "sensorConfigDeclinationGpsUnavailable";
+        default:
+            return "sensorConfigDeclinationBrowserFailed";
+    }
+});
+
+const manualCoordinateResult = computed(() =>
+    parseCoordinatePair(manualDeclinationLatitude.value, manualDeclinationLongitude.value),
+);
+const manualCoordinatesValid = computed(() => manualCoordinateResult.value.ok);
+const manualCoordinatesError = computed(() => {
+    if (manualCoordinateResult.value.error === "latitude") {
+        return "sensorConfigDeclinationInvalidLatitude";
+    }
+    if (manualCoordinateResult.value.error === "longitude") {
+        return "sensorConfigDeclinationInvalidLongitude";
+    }
+    return "";
+});
+const magCoordinatesText = computed(() => {
+    if (!magCoordinates.value) {
+        return "—";
+    }
+    return `${magCoordinates.value.lat.toFixed(6)}, ${magCoordinates.value.lon.toFixed(6)}`;
+});
 
 function dismissDeclinationWarning() {
     declinationWarning.value = "";
@@ -1355,16 +1474,6 @@ function dismissDeclinationWarning() {
 
 function dismissDeclinationNote() {
     declinationNote.value = "";
-}
-
-/**
- * Acquire GPS coordinates from flight controller or IP geolocation.
- * @param {boolean} promptConsent - If true, prompt user for IP geolocation consent when no GPS fix.
- * @returns {Promise<{lat: number, lon: number}|null>}
- */
-async function acquireCoordinates(promptConsent) {
-    const gps = await gpsCoordinates();
-    return gps ?? ipCoordinates(promptConsent);
 }
 
 // A live GPS fix from the flight controller, or null if there's no fix.
@@ -1418,31 +1527,60 @@ async function ipCoordinates(promptConsent) {
     }
 }
 
-function applyDetectedDeclination(detected) {
-    if (magDeclination.value === 0 && detected !== 0) {
-        magDeclination.value = detected;
-        declinationNote.value = i18n.getMessage("sensorConfigDeclinationAutoSet", { value: detected });
-    } else if (magDeclination.value !== 0 && Math.abs(magDeclination.value - detected) > 1) {
-        declinationWarning.value = i18n.getMessage("sensorConfigDeclinationDrift", {
-            saved: magDeclination.value,
-            detected,
-        });
+function applyDeclinationFromCoordinates(coords) {
+    const result = computeDeclination(coords.lat, coords.lon);
+    if (!result) {
+        throw new Error("Magnetic model calculation failed");
+    }
+    magDeclination.value = roundOneDp(result.declination);
+    magInclination.value = roundOneDp(result.inclination);
+    magFieldStrength.value = result.fieldStrength;
+    magCoordinates.value = { lat: result.latitude, lon: result.longitude };
+    declinationWarning.value = "";
+    declinationNote.value = i18n.getMessage("sensorConfigDeclinationAutoSet", { value: magDeclination.value });
+    gui_log(i18n.getMessage("configurationMagDeclinationSet", { declination: magDeclination.value }));
+}
+
+function openDeclinationLocationDialog(errorCode) {
+    declinationLocationErrorCode.value = errorCode;
+    manualDeclinationLatitude.value = "";
+    manualDeclinationLongitude.value = "";
+    manualCoordinatesTouched.value = false;
+    showDeclinationLocationDialog.value = true;
+}
+
+async function detectDeclinationFromBrowser() {
+    const coords = await getBrowserCoordinates();
+    applyDeclinationFromCoordinates(coords);
+    showDeclinationLocationDialog.value = false;
+}
+
+async function autoSetDeclination() {
+    if (isFetchingDeclination.value) {
+        return;
+    }
+    isFetchingDeclination.value = true;
+    try {
+        await detectDeclinationFromBrowser();
+    } catch (error) {
+        openDeclinationLocationDialog(error.code || BrowserGeolocationErrorCode.UNAVAILABLE);
+    } finally {
+        isFetchingDeclination.value = false;
     }
 }
 
-async function tryAutoGeoReference() {
-    const coords = await acquireCoordinates(false);
-    if (!coords) {
+async function retryBrowserDeclination() {
+    if (isFetchingDeclination.value) {
         return;
     }
-
-    const result = computeDeclination(coords.lat, coords.lon);
-    if (!result) {
-        return;
+    isFetchingDeclination.value = true;
+    try {
+        await detectDeclinationFromBrowser();
+    } catch (error) {
+        openDeclinationLocationDialog(error.code || BrowserGeolocationErrorCode.UNAVAILABLE);
+    } finally {
+        isFetchingDeclination.value = false;
     }
-    magInclination.value = roundOneDp(result.inclination);
-    magFieldStrength.value = result.fieldStrength;
-    applyDetectedDeclination(roundOneDp(result.declination));
 }
 
 // Resolve the best geomagnetic reference (cached, else GPS, else IP) and reflect its
@@ -1469,30 +1607,38 @@ async function resolveGeoReference(promptConsent) {
     return geo;
 }
 
-async function autoSetDeclination() {
+async function useFlightControllerDeclination() {
     if (isFetchingDeclination.value) {
         return;
     }
     isFetchingDeclination.value = true;
     try {
-        const coords = await acquireCoordinates(true);
-        if (!coords) {
-            gui_log(i18n.getMessage("configurationMagDeclinationNoGps"));
-            return;
+        await MSP.promise(MSPCodes.MSP_RAW_GPS);
+        if (!fcStore.gpsData?.fix) {
+            throw Object.assign(new Error("Flight controller GPS has no fix"), { code: "gps-unavailable" });
         }
-
-        const result = computeDeclination(coords.lat, coords.lon);
-        if (!result) {
-            gui_log(i18n.getMessage("configurationMagDeclinationNoGps"));
-            return;
-        }
-        magDeclination.value = roundOneDp(result.declination);
-        magInclination.value = roundOneDp(result.inclination);
-        magFieldStrength.value = result.fieldStrength;
-        declinationWarning.value = "";
-        gui_log(i18n.getMessage("configurationMagDeclinationSet", { declination: magDeclination.value }));
+        applyDeclinationFromCoordinates({
+            lat: fcStore.gpsData.latitude / GPS_COORD_SCALE,
+            lon: fcStore.gpsData.longitude / GPS_COORD_SCALE,
+        });
+        showDeclinationLocationDialog.value = false;
+    } catch (error) {
+        openDeclinationLocationDialog(error.code || "gps-unavailable");
     } finally {
         isFetchingDeclination.value = false;
+    }
+}
+
+function applyManualDeclination() {
+    manualCoordinatesTouched.value = true;
+    if (!manualCoordinatesValid.value) {
+        return;
+    }
+    try {
+        applyDeclinationFromCoordinates(manualCoordinateResult.value.coords);
+        showDeclinationLocationDialog.value = false;
+    } catch {
+        openDeclinationLocationDialog(BrowserGeolocationErrorCode.UNAVAILABLE);
     }
 }
 
@@ -2358,9 +2504,9 @@ function setupMagSection() {
         if (cached) {
             magInclination.value = roundOneDp(cached.inclination);
             magFieldStrength.value = cached.fieldStrength;
-            applyDetectedDeclination(roundOneDp(cached.declination));
-        } else {
-            tryAutoGeoReference().catch(() => {});
+            if (Number.isFinite(cached.latitude) && Number.isFinite(cached.longitude)) {
+                magCoordinates.value = { lat: cached.latitude, lon: cached.longitude };
+            }
         }
     }
 

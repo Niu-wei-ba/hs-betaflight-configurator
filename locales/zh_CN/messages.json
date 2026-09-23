@@ -8004,11 +8004,50 @@
     "configurationMagFieldStrengthHelp": {
         "message": "您所在位置的地球磁场的总强度，以纳特斯拉 (nT) 表示。典型值介于 25,000 至 65,000 nT 之间"
     },
+    "configurationMagCoordinates": {
+        "message": "获取到的经纬度"
+    },
+    "configurationMagCoordinatesHelp": {
+        "message": "用于计算磁偏角的纬度和经度。"
+    },
     "sensorConfigMagDetect": {
         "message": "检测"
     },
     "sensorConfigMagUpdate": {
         "message": "更新"
+    },
+    "sensorConfigDeclinationLocationTitle": {
+        "message": "选择位置来源"
+    },
+    "sensorConfigDeclinationBrowserFailed": {
+        "message": "浏览器无法确定地面站位置。请选择其他来源或重试。"
+    },
+    "sensorConfigDeclinationBrowserUnsupported": {
+        "message": "当前浏览器不支持定位，请选择其他来源。"
+    },
+    "sensorConfigDeclinationBrowserDenied": {
+        "message": "浏览器定位权限被拒绝，请在浏览器设置中允许定位，或选择其他来源。"
+    },
+    "sensorConfigDeclinationBrowserTimeout": {
+        "message": "浏览器定位超时，请重试或选择其他来源。"
+    },
+    "sensorConfigDeclinationRetryBrowser": {
+        "message": "重试浏览器定位"
+    },
+    "sensorConfigDeclinationUseGps": {
+        "message": "使用飞控 GPS"
+    },
+    "sensorConfigDeclinationManualTitle": {
+        "message": "手动输入经纬度"
+    },
+    "sensorConfigDeclinationGpsUnavailable": {
+        "message": "飞控没有有效的 GPS 定位，请选择其他来源。"
+    },
+    "sensorConfigDeclinationInvalidLatitude": {
+        "message": "纬度无效（必须在 -90 到 90 之间）。"
+    },
+    "sensorConfigDeclinationInvalidLongitude": {
+        "message": "经度无效（必须在 -180 到 180 之间）。"
     },
     "sensorConfigDeclinationAutoSet": {
         "message": "在您的位置磁偏角自动检测为 {{value}}°。"

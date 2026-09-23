@@ -7995,11 +7995,50 @@
     "configurationMagFieldStrengthHelp": {
         "message": "The total intensity of the earth's magnetic field at your location in nanotesla (nT). Typical values range from 25,000 to 65,000 nT"
     },
+    "configurationMagCoordinates": {
+        "message": "Coordinates"
+    },
+    "configurationMagCoordinatesHelp": {
+        "message": "The latitude and longitude used to calculate the magnetic declination."
+    },
     "sensorConfigMagDetect": {
         "message": "Detect"
     },
     "sensorConfigMagUpdate": {
         "message": "Update"
+    },
+    "sensorConfigDeclinationLocationTitle": {
+        "message": "Choose location source"
+    },
+    "sensorConfigDeclinationBrowserFailed": {
+        "message": "The browser could not determine the ground-station location. Choose another source or try again."
+    },
+    "sensorConfigDeclinationBrowserUnsupported": {
+        "message": "This browser does not support location access. Choose another source."
+    },
+    "sensorConfigDeclinationBrowserDenied": {
+        "message": "Browser location access was denied. Allow it in the browser settings or choose another source."
+    },
+    "sensorConfigDeclinationBrowserTimeout": {
+        "message": "Browser location detection timed out. Try again or choose another source."
+    },
+    "sensorConfigDeclinationRetryBrowser": {
+        "message": "Retry browser location"
+    },
+    "sensorConfigDeclinationUseGps": {
+        "message": "Use flight controller GPS"
+    },
+    "sensorConfigDeclinationManualTitle": {
+        "message": "Enter coordinates manually"
+    },
+    "sensorConfigDeclinationGpsUnavailable": {
+        "message": "The flight controller has no valid GPS fix. Choose another source."
+    },
+    "sensorConfigDeclinationInvalidLatitude": {
+        "message": "Invalid latitude (must be between -90 and 90)."
+    },
+    "sensorConfigDeclinationInvalidLongitude": {
+        "message": "Invalid longitude (must be between -180 and 180)."
     },
     "sensorConfigDeclinationAutoSet": {
         "message": "Magnetic declination auto-detected as {{value}}° for your location."

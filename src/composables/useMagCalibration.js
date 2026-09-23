@@ -510,14 +510,20 @@ export function useMagCalibration() {
  *
  * @param {number} lat - Latitude in decimal degrees
  * @param {number} lon - Longitude in decimal degrees
- * @returns {{ declination: number, inclination: number, fieldStrength: number }}
+ * @returns {{ declination: number, inclination: number, fieldStrength: number, latitude: number, longitude: number }}
  */
 let lastGeoReference = null;
 
 export function computeDeclination(lat, lon) {
     try {
         const info = geomagnetism.model().point([lat, lon]);
-        const result = { declination: info.decl, inclination: info.incl, fieldStrength: Math.round(info.f) };
+        const result = {
+            declination: info.decl,
+            inclination: info.incl,
+            fieldStrength: Math.round(info.f),
+            latitude: lat,
+            longitude: lon,
+        };
         lastGeoReference = result;
         return result;
     } catch {

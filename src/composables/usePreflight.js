@@ -3,6 +3,7 @@ import geomagnetism from "geomagnetism";
 import SunCalc from "suncalc";
 import { get as getConfig, set as setConfig } from "../js/ConfigStorage";
 import { ispConnected } from "../js/utils/connection";
+import { getBrowserCoordinates } from "../js/utils/browserGeolocation";
 import { sortNotams, kmToNm } from "../js/notam/index.js";
 import { fetchFromFaa } from "../js/notam/faa.js";
 import { fetchFromOpenAip } from "../js/notam/openaip.js";
@@ -198,33 +199,6 @@ function getFogRisk(temp, dewPoint, humidity, windSpeed) {
         return { level: "moderate", label: "preflightFogLow", cssClass: "status-moderate" };
     }
     return { level: "good", label: "preflightFogUnlikely", cssClass: "status-good" };
-}
-
-function geolocateWithOptions(options) {
-    return new Promise((resolve, reject) => {
-        // prettier-ignore
-        navigator.geolocation.getCurrentPosition( // NOSONAR - user-initiated, required for preflight location
-            (position) => {
-                resolve({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                });
-            },
-            (err) => reject(new Error(err.message || "Geolocation failed")),
-            options,
-        );
-    });
-}
-
-async function browserGeolocation() {
-    if (!navigator.geolocation) {
-        throw new Error("Geolocation not supported");
-    }
-    try {
-        return await geolocateWithOptions({ enableHighAccuracy: true, timeout: 3000 });
-    } catch {
-        return geolocateWithOptions({ enableHighAccuracy: false, timeout: 3000 });
-    }
 }
 
 function isValidCoordinate(lat, lon) {
@@ -733,7 +707,8 @@ async function useGeolocation() {
     let coords;
     let source = "geolocation";
     try {
-        coords = await browserGeolocation();
+        const browserCoords = await getBrowserCoordinates();
+        coords = { latitude: browserCoords.lat, longitude: browserCoords.lon };
     } catch {
         if (!ispConnected()) {
             throw new Error("Geolocation failed and internet access is disabled");
