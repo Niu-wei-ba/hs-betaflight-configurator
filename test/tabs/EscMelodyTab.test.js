@@ -59,10 +59,8 @@ describe("EscMelodyTab", () => {
         clipboard.readText.mockReset();
         clipboard.writeText.mockReset();
         localStorage.clear();
-        vi.stubGlobal("URL", {
-            createObjectURL: vi.fn(() => "blob:esc-backup"),
-            revokeObjectURL: vi.fn(),
-        });
+        vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:esc-backup");
+        vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
         vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     });
 
