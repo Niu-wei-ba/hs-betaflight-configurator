@@ -9451,5 +9451,188 @@
     },
     "preflightForecastWeather": {
         "message": "Weather"
+    },
+    "tabPassiveTune": {
+        "message": "Blackbox Analysis"
+    },
+    "passiveTuneImportTitle": {
+        "message": "Analyze an ordinary flight log"
+    },
+    "passiveTuneDescription": {
+        "message": "Local, read-only analysis. No chirp sweep or flight controller connection required. Maximum file size: 64 MiB. Enable Expert Mode to access this preview."
+    },
+    "passiveTuneFile": {
+        "message": "Blackbox file"
+    },
+    "passiveTuneFlight": {
+        "message": "Flight in this file"
+    },
+    "passiveTuneAnalyze": {
+        "message": "Analyze selected flight"
+    },
+    "passiveTuneCancel": {
+        "message": "Cancel"
+    },
+    "passiveTuneUnknown": {
+        "message": "Unknown firmware"
+    },
+    "passiveTuneIndexing": {
+        "message": "Reading file and indexing flights…"
+    },
+    "passiveTuneStage_parsing": {
+        "message": "Decoding flight log"
+    },
+    "passiveTuneStage_spectral": {
+        "message": "Analyzing each axis"
+    },
+    "passiveTuneQualityTitle": {
+        "message": "Data quality"
+    },
+    "passiveTuneSampleRate": {
+        "message": "Measured sample rate"
+    },
+    "passiveTuneHeaderRate": {
+        "message": "Header sample rate"
+    },
+    "passiveTuneDuration": {
+        "message": "Duration"
+    },
+    "passiveTuneFrames": {
+        "message": "Valid main frames"
+    },
+    "passiveTuneExport": {
+        "message": "Export analysis JSON"
+    },
+    "passiveTuneDiagnosisOnly": {
+        "message": "Diagnosis only · no parameter changes"
+    },
+    "passiveTuneUsableBands": {
+        "message": "Supported frequency bands"
+    },
+    "passiveTuneWindows": {
+        "message": "Welch windows"
+    },
+    "passiveTuneInsufficient": {
+        "message": "Insufficient data"
+    },
+    "passiveTuneEvidence": {
+        "message": "View spectral evidence"
+    },
+    "passiveTuneNoiseUnknown": {
+        "message": "Noise risk has not been calibrated. The logged gyro spectrum does not prove motor temperature or filter safety."
+    },
+    "passiveTunePlot_magnitude": {
+        "message": "Tracking gain (dB)"
+    },
+    "passiveTunePlot_phase": {
+        "message": "Phase (°)"
+    },
+    "passiveTunePlot_coherence": {
+        "message": "Coherence (0–1)"
+    },
+    "passiveTunePlot_noise": {
+        "message": "Gyro PSD (dB / Hz)"
+    },
+    "passiveTunePlotNote": {
+        "message": "Frequency uses measured timestamps. Gain and phase show supported bins only. Coherence alone is not a quality guarantee; noise and flight state remain diagnostic."
+    },
+    "passiveTuneReason_READ_ONLY_MILESTONE": {
+        "message": "This preview cannot recommend or apply PID changes."
+    },
+    "passiveTuneReason_ALIASING_UNCERTAIN": {
+        "message": "The recording anti-aliasing path has not been verified."
+    },
+    "passiveTuneReason_FLIGHT_STATE_NOT_CLASSIFIED": {
+        "message": "Flight-state and throttle segmentation are not yet available."
+    },
+    "passiveTuneReason_TIMESTAMP_UNRELIABLE": {
+        "message": "Timestamps are not sufficiently uniform or reliable."
+    },
+    "passiveTuneReason_SAMPLE_RATE_HEADER_UNAVAILABLE": {
+        "message": "Header sampling metadata is incomplete; frequency uses timestamps."
+    },
+    "passiveTuneReason_SAMPLE_RATE_MISMATCH": {
+        "message": "Header and measured sample rates disagree."
+    },
+    "passiveTuneReason_FRAME_GAP": {
+        "message": "Discontinuities were found. FFT windows never cross them."
+    },
+    "passiveTuneReason_MISSING_AXIS_CHANNELS": {
+        "message": "This axis is missing setpoint or gyro data."
+    },
+    "passiveTuneReason_UNSUPPORTED_FIELD_SCALE": {
+        "message": "Firmware or field scaling is unknown; spectral analysis is disabled."
+    },
+    "passiveTuneReason_LOG_CORRUPTION_RECOVERED": {
+        "message": "Damaged regions were excluded and frame history reset."
+    },
+    "passiveTuneReason_INSUFFICIENT_WELCH_SUPPORT": {
+        "message": "Too few windows or independent time blocks support this estimate."
+    },
+    "passiveTuneReason_INSUFFICIENT_EXCITATION": {
+        "message": "No continuous frequency band has enough input activity and coherence."
+    },
+    "passiveTuneReason_FILE_SIZE_LIMIT": {
+        "message": "Choose a non-empty Blackbox file no larger than 64 MiB."
+    },
+    "passiveTuneReason_TOO_MANY_LOGS": {
+        "message": "This file contains too many internal logs."
+    },
+    "passiveTuneReason_HEADER_TOO_LARGE": {
+        "message": "The log header exceeds resource limits."
+    },
+    "passiveTuneReason_INVALID_LOG_HEADER": {
+        "message": "The log header is incomplete."
+    },
+    "passiveTuneReason_UNSUPPORTED_LOG_FORMAT": {
+        "message": "No supported Blackbox log format was found."
+    },
+    "passiveTuneReason_INVALID_FIELD_DEFINITION": {
+        "message": "Field definitions are incomplete or inconsistent."
+    },
+    "passiveTuneReason_UNSUPPORTED_FIELD_ENCODING": {
+        "message": "An unsupported field encoding was found."
+    },
+    "passiveTuneReason_UNSUPPORTED_FIELD_PREDICTOR": {
+        "message": "An unsupported field predictor was found."
+    },
+    "passiveTuneReason_UNSUPPORTED_SAMPLE_INTERVAL": {
+        "message": "Logging interval metadata is missing or unsupported."
+    },
+    "passiveTuneReason_LOG_SELECTION_REQUIRED": {
+        "message": "Select a valid flight within this file."
+    },
+    "passiveTuneReason_MISSING_PREDICTOR_BASE": {
+        "message": "A required predictor base is missing from the header."
+    },
+    "passiveTuneReason_DECODED_SIZE_LIMIT": {
+        "message": "Decoded data exceeds the memory budget. Select a smaller log."
+    },
+    "passiveTuneReason_EXCESSIVE_LOG_CORRUPTION": {
+        "message": "Too many damaged regions prevent reliable decoding."
+    },
+    "passiveTuneReason_INSUFFICIENT_LOG_DATA": {
+        "message": "This flight has too few valid frames."
+    },
+    "passiveTuneReason_INVALID_SPECTRAL_INPUT": {
+        "message": "Spectral inputs are invalid or inconsistent."
+    },
+    "passiveTuneReason_WORKER_FAILED": {
+        "message": "The analysis worker failed. Select the file again."
+    },
+    "passiveTuneReason_FILE_READ_FAILED": {
+        "message": "The file could not be read."
+    },
+    "passiveTuneReason_ANALYSIS_FAILED": {
+        "message": "Analysis failed. Choose another log or retry."
+    },
+    "passiveTuneReason_BANDWIDTH_NOT_ESTABLISHED": {
+        "message": "A supported low-frequency reference and bandwidth crossing have not been established."
+    },
+    "passiveTuneReason_INCOMPLETE_BAND": {
+        "message": "The recorded sample rate does not fully cover this frequency band."
+    },
+    "passiveTuneReason_UNSUPPORTED_EVENT": {
+        "message": "An unknown event interrupted the frame history."
     }
 }

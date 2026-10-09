@@ -9309,5 +9309,188 @@
     },
     "preflightForecastWeather": {
         "message": "天气"
+    },
+    "tabPassiveTune": {
+        "message": "普通日志分析"
+    },
+    "passiveTuneImportTitle": {
+        "message": "分析普通飞行日志"
+    },
+    "passiveTuneDescription": {
+        "message": "日志在本地分析，无需 Chirp 扫频或连接飞控。本版只提供诊断，不修改参数。文件上限 64 MiB。"
+    },
+    "passiveTuneFile": {
+        "message": "Blackbox 文件"
+    },
+    "passiveTuneFlight": {
+        "message": "文件内的单次飞行"
+    },
+    "passiveTuneAnalyze": {
+        "message": "分析所选飞行"
+    },
+    "passiveTuneCancel": {
+        "message": "取消"
+    },
+    "passiveTuneUnknown": {
+        "message": "未识别固件"
+    },
+    "passiveTuneIndexing": {
+        "message": "读取文件并查找飞行记录…"
+    },
+    "passiveTuneStage_parsing": {
+        "message": "解析飞行日志"
+    },
+    "passiveTuneStage_spectral": {
+        "message": "分析各轴频谱"
+    },
+    "passiveTuneQualityTitle": {
+        "message": "数据质量"
+    },
+    "passiveTuneSampleRate": {
+        "message": "实测采样率"
+    },
+    "passiveTuneHeaderRate": {
+        "message": "日志头采样率"
+    },
+    "passiveTuneDuration": {
+        "message": "记录时长"
+    },
+    "passiveTuneFrames": {
+        "message": "有效主帧"
+    },
+    "passiveTuneExport": {
+        "message": "导出分析 JSON"
+    },
+    "passiveTuneDiagnosisOnly": {
+        "message": "仅诊断 · 不修改参数"
+    },
+    "passiveTuneUsableBands": {
+        "message": "有数据支持的频段"
+    },
+    "passiveTuneWindows": {
+        "message": "有效 Welch 窗口"
+    },
+    "passiveTuneInsufficient": {
+        "message": "数据不足"
+    },
+    "passiveTuneEvidence": {
+        "message": "查看频谱证据"
+    },
+    "passiveTuneNoiseUnknown": {
+        "message": "噪声风险尚未标定。记录的 gyro 频谱不能证明电机温度或滤波安全。"
+    },
+    "passiveTunePlot_magnitude": {
+        "message": "跟踪增益（dB）"
+    },
+    "passiveTunePlot_phase": {
+        "message": "相位（°）"
+    },
+    "passiveTunePlot_coherence": {
+        "message": "相干性（0–1）"
+    },
+    "passiveTunePlot_noise": {
+        "message": "Gyro 功率谱（dB / Hz）"
+    },
+    "passiveTunePlotNote": {
+        "message": "频率轴来自实测时间戳。增益与相位只绘制有支持的频点。相干性不能单独证明质量；噪声与飞行状态仍仅用于诊断。"
+    },
+    "passiveTuneReason_READ_ONLY_MILESTONE": {
+        "message": "本版为只读分析，不生成或应用 PID 变化。"
+    },
+    "passiveTuneReason_ALIASING_UNCERTAIN": {
+        "message": "尚未验证日志记录前的抗混叠链路。"
+    },
+    "passiveTuneReason_FLIGHT_STATE_NOT_CLASSIFIED": {
+        "message": "飞行状态与油门工作点分段尚未实现。"
+    },
+    "passiveTuneReason_TIMESTAMP_UNRELIABLE": {
+        "message": "时间戳不够均匀或可靠，相关动态指标已关闭。"
+    },
+    "passiveTuneReason_SAMPLE_RATE_HEADER_UNAVAILABLE": {
+        "message": "日志头采样信息不完整，频率使用实测时间戳。"
+    },
+    "passiveTuneReason_SAMPLE_RATE_MISMATCH": {
+        "message": "日志头与实测采样率不一致，不能用于改参。"
+    },
+    "passiveTuneReason_FRAME_GAP": {
+        "message": "发现时间或状态断点，FFT 窗口不会跨越断点。"
+    },
+    "passiveTuneReason_MISSING_AXIS_CHANNELS": {
+        "message": "该轴缺少 setpoint 或 gyro 数据。"
+    },
+    "passiveTuneReason_UNSUPPORTED_FIELD_SCALE": {
+        "message": "固件或字段缩放未知，已关闭频谱分析。"
+    },
+    "passiveTuneReason_LOG_CORRUPTION_RECOVERED": {
+        "message": "已排除损坏区域并重建帧预测历史。"
+    },
+    "passiveTuneReason_INSUFFICIENT_WELCH_SUPPORT": {
+        "message": "有效窗口或独立时间块不足，不能得到可信频响。"
+    },
+    "passiveTuneReason_INSUFFICIENT_EXCITATION": {
+        "message": "没有满足输入激励与相干性条件的连续频段。"
+    },
+    "passiveTuneReason_FILE_SIZE_LIMIT": {
+        "message": "请选择非空且不超过 64 MiB 的 Blackbox 文件。"
+    },
+    "passiveTuneReason_TOO_MANY_LOGS": {
+        "message": "文件内飞行记录数量超过上限。"
+    },
+    "passiveTuneReason_HEADER_TOO_LARGE": {
+        "message": "日志头超过资源限制。"
+    },
+    "passiveTuneReason_INVALID_LOG_HEADER": {
+        "message": "日志头不完整。"
+    },
+    "passiveTuneReason_UNSUPPORTED_LOG_FORMAT": {
+        "message": "未找到支持的 Blackbox 日志格式。"
+    },
+    "passiveTuneReason_INVALID_FIELD_DEFINITION": {
+        "message": "字段定义不完整或不一致。"
+    },
+    "passiveTuneReason_UNSUPPORTED_FIELD_ENCODING": {
+        "message": "遇到不支持的字段编码。"
+    },
+    "passiveTuneReason_UNSUPPORTED_FIELD_PREDICTOR": {
+        "message": "遇到不支持的字段预测器。"
+    },
+    "passiveTuneReason_UNSUPPORTED_SAMPLE_INTERVAL": {
+        "message": "记录间隔元数据缺失或不受支持。"
+    },
+    "passiveTuneReason_LOG_SELECTION_REQUIRED": {
+        "message": "请选择文件内有效的单次飞行。"
+    },
+    "passiveTuneReason_MISSING_PREDICTOR_BASE": {
+        "message": "日志头缺少解码所需的预测基准值。"
+    },
+    "passiveTuneReason_DECODED_SIZE_LIMIT": {
+        "message": "解码数据超过内存预算，请选择较短日志。"
+    },
+    "passiveTuneReason_EXCESSIVE_LOG_CORRUPTION": {
+        "message": "损坏区域过多，无法可靠解码。"
+    },
+    "passiveTuneReason_INSUFFICIENT_LOG_DATA": {
+        "message": "该次飞行的有效帧过少。"
+    },
+    "passiveTuneReason_INVALID_SPECTRAL_INPUT": {
+        "message": "频谱输入数据无效或不一致。"
+    },
+    "passiveTuneReason_WORKER_FAILED": {
+        "message": "分析进程失败，请重新选择文件。"
+    },
+    "passiveTuneReason_FILE_READ_FAILED": {
+        "message": "无法读取文件。"
+    },
+    "passiveTuneReason_ANALYSIS_FAILED": {
+        "message": "分析失败，请重试或选择其他日志。"
+    },
+    "passiveTuneReason_BANDWIDTH_NOT_ESTABLISHED": {
+        "message": "尚未建立可信低频参考与带宽交越，本版不输出带宽。"
+    },
+    "passiveTuneReason_INCOMPLETE_BAND": {
+        "message": "记录采样率无法完整覆盖此频段。"
+    },
+    "passiveTuneReason_UNSUPPORTED_EVENT": {
+        "message": "未知事件中断了帧预测历史。"
     }
 }
