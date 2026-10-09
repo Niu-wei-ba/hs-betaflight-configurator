@@ -64,3 +64,33 @@ node node_modules/vite/bin/vite.js build
 ## 代码来源
 
 现有 `src/js/blackbox/datastream.js`、`decoders.js` 为 GPL Blackbox Viewer 移植；`fft.js` 标注 BSD-2-Clause。新 parser 的 predictor 与 logging schedule 按现有编码和 [Blackbox Explorer parser](https://github.com/betaflight/blackbox-log-viewer/blob/master/src/flightlog_parser.js) 的格式语义实现，保留 GPL-3.0-or-later 标识。数学核不复用现有 Chirp gain/filter 推荐器。后续发布继续遵守仓库现有许可与来源记录要求。
+
+## AI provider 配置
+
+「AI 配置与解读」支持 OpenAI 兼容的 `/models` 和 `/chat/completions` 接口，默认 Base URL 为 `https://8stoken.com/v1`。Key 不提供代码默认值。Base URL、Key 和选中的模型按用户要求保存在当前 origin 的 `localStorage["passiveTune.ai.v1"]`，页面 Key 输入框使用密码显示；保存会拉取模型，页面重新打开也会刷新。切换模型立即保存；清除配置会移除这项存储并取消当前请求。localStorage 不是加密凭据库，同源页面脚本可以读取它。
+
+用户点击「AI 解读分析」后发送经过筛选的确定性分析摘要，不发送原始 BBL、文件名、GPS、事件、raw headers、采样数组或 API Key 到聊天正文。结果显示为纯文本，记录所选与响应模型、Base URL 和日志 hash；重新分析/选择文件、切换模型、修改已保存配置会清除旧回答。Key 仅通过 Authorization 发送给配置的 provider（8sToken 经过本站 relay），不加入日志、报告或构建产物。AI 只解释证据，未开放具体 PID 候选或设备写入。
+
+2026-10-09 实测 `https://8stoken.com/v1/models` 可返回模型，但未提供浏览器 CORS，OPTIONS 返回 404。因此 Vite 开发和预览服务安装同源 `/__passive-ai/` relay。relay 仅接受 8sToken 的 `/v1/models` 与 `/v1/chat/completions`；拒绝其他主机、跨站 Origin、重定向，限制输入/输出和超时，不保存 Key。其他 provider 采用直接请求，须由 provider 允许浏览器 CORS。
+
+静态部署不会携带 Vite 中间件。8sToken 上线时须额外启动 Node 24 relay 并从前端同源反代；本轮未部署生产服务：
+
+```sh
+PASSIVE_AI_ORIGIN=https://your-frontend.example PASSIVE_AI_PORT=4182 node scripts/passive-ai/server.js
+```
+
+同源 Nginx 配置示例（保留原站点配置，路径不能改写）：
+
+```nginx
+location /__passive-ai/ {
+    proxy_pass http://127.0.0.1:4182;
+    proxy_set_header Host $host;
+    proxy_set_header Origin $http_origin;
+    proxy_read_timeout 95s;
+    client_max_body_size 128k;
+}
+```
+
+服务监听 loopback；不可把 relay 作为独立开放代理暴露。AI 配置不随原分析 JSON 导出。本轮新增 provider/存储/取消隔离/relay 12 项测试。
+
+浏览器验证：保存配置后取得 14 个模型，切换至 `claude-haiku-4-5-20251001`，刷新页面后 Key 与所选模型恢复且列表自动获取；导入公开真实日志后调用 chat completions，返回模型与所选模型一致。AI 解读作为参考单独展示，不作为确定性指标。

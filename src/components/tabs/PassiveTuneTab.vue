@@ -35,6 +35,7 @@
                 </p>
                 <p v-if="store.reasonCode" role="alert">{{ reason(store.reasonCode) }}</p>
             </UiBox>
+            <AiConfig :evidence="evidence" />
             <template v-if="store.result">
                 <UiBox :title="$t('passiveTuneQualityTitle')">
                     <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-3">
@@ -96,12 +97,15 @@ import { computed, onUnmounted } from "vue";
 import { useTranslation } from "i18next-vue";
 import BaseTab from "./BaseTab.vue";
 import UiBox from "../elements/UiBox.vue";
+import AiConfig from "./passive-tune/AiConfig.vue";
+import { aiEvidence } from "../../js/passive-tune/ai-provider.js";
 import SpectrumPlot from "./passive-tune/SpectrumPlot.vue";
 import { usePassiveTune } from "../../composables/usePassiveTune.js";
 import { AXES } from "../../js/passive-tune/analysis.js";
 
 const { store, loadFile, analyze, cancel, downloadReport } = usePassiveTune();
 const axes = AXES;
+const evidence = computed(() => aiEvidence(store.result, store.source));
 const busy = computed(() => ["indexing", "analyzing"].includes(store.state));
 const { t } = useTranslation();
 const format = (value) => (Number.isFinite(value) ? value.toFixed(1) : "—");

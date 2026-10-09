@@ -9634,5 +9634,77 @@
     },
     "passiveTuneReason_UNSUPPORTED_EVENT": {
         "message": "An unknown event interrupted the frame history."
+    },
+    "passiveAiTitle": {
+        "message": "AI configuration & explanation"
+    },
+    "passiveAiDescription": {
+        "message": "Base URL, key and model are stored in this browser’s localStorage. Saving fetches models automatically. AI explanation sends only analysis summaries, excluding raw logs, filenames and GPS. AI explains evidence without changing FC settings."
+    },
+    "passiveAiSave": {
+        "message": "Save & fetch models"
+    },
+    "passiveAiClear": {
+        "message": "Clear AI configuration"
+    },
+    "passiveAiModel": {
+        "message": "AI model"
+    },
+    "passiveAiNoModel": {
+        "message": "Save configuration to fetch models"
+    },
+    "passiveAiRefresh": {
+        "message": "Refresh models"
+    },
+    "passiveAiExplain": {
+        "message": "Explain analysis with AI"
+    },
+    "passiveAiUnsaved": {
+        "message": "Unsaved changes. AI uses the saved configuration."
+    },
+    "passiveAiLoadingModels": {
+        "message": "Fetching models…"
+    },
+    "passiveAiExplaining": {
+        "message": "Generating AI explanation…"
+    },
+    "passiveAiTruncated": {
+        "message": "The response reached its length limit and may be incomplete."
+    },
+    "passiveAiError_AI_INVALID_URL": {
+        "message": "Enter an HTTPS Base URL (HTTP is allowed for localhost), without credentials, query or fragment."
+    },
+    "passiveAiError_AI_KEY_REQUIRED": {
+        "message": "Enter a valid API key."
+    },
+    "passiveAiError_AI_STORAGE_FAILED": {
+        "message": "The browser could not save configuration. Check storage permissions."
+    },
+    "passiveAiError_AI_NETWORK_FAILED": {
+        "message": "Cannot reach the AI API. Check the network and provider CORS settings."
+    },
+    "passiveAiError_AI_AUTH_FAILED": {
+        "message": "The key is invalid or lacks permission. Check the configuration."
+    },
+    "passiveAiError_AI_RATE_LIMIT": {
+        "message": "The AI API is rate-limited or has insufficient quota. Try again later."
+    },
+    "passiveAiError_AI_RELAY_UNAVAILABLE": {
+        "message": "8sToken requires a same-origin relay. Use the dev/preview server or deploy the AI relay with the site."
+    },
+    "passiveAiError_AI_PROVIDER_FAILED": {
+        "message": "The AI provider request failed. Try again later."
+    },
+    "passiveAiError_AI_INVALID_RESPONSE": {
+        "message": "The AI API returned an incompatible response."
+    },
+    "passiveAiError_AI_NO_MODELS": {
+        "message": "No models were returned for this key. Check provider permissions."
+    },
+    "passiveAiError_AI_TIMEOUT": {
+        "message": "The AI request timed out. Retry or switch models."
+    },
+    "passiveAiReference": {
+        "message": "AI-generated reference explanation. Use the deterministic evidence as the source of truth."
     }
 }

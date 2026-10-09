@@ -10,6 +10,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { resolve } from "path";
 import ui from "@nuxt/ui/vite";
 import nuxtUiViteOptions from "./nuxt-ui.vite.js";
+import { passiveAiRelayPlugin } from "./scripts/passive-ai/relay.js";
 
 const commitHash = child.execSync("git rev-parse --short HEAD").toString().trim();
 
@@ -146,6 +147,7 @@ export default defineConfig({
         vue(),
         ui(nuxtUiViteOptions),
         serveLocalesPlugin(),
+        passiveAiRelayPlugin(),
         copy({
             targets: [
                 { src: "locales/**/*", dest: "src/dist/locales" },

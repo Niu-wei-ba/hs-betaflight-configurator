@@ -9492,5 +9492,77 @@
     },
     "passiveTuneReason_UNSUPPORTED_EVENT": {
         "message": "未知事件中断了帧预测历史。"
+    },
+    "passiveAiTitle": {
+        "message": "AI 配置与解读"
+    },
+    "passiveAiDescription": {
+        "message": "Base URL、Key 和模型保存在当前浏览器 localStorage。保存后自动获取模型；点击 AI 解读时只发送分析摘要，不发送原始日志、文件名或 GPS。AI 仅作解释，不修改飞控参数。"
+    },
+    "passiveAiSave": {
+        "message": "保存并获取模型"
+    },
+    "passiveAiClear": {
+        "message": "清除 AI 配置"
+    },
+    "passiveAiModel": {
+        "message": "AI 模型"
+    },
+    "passiveAiNoModel": {
+        "message": "请先保存配置获取模型"
+    },
+    "passiveAiRefresh": {
+        "message": "刷新模型列表"
+    },
+    "passiveAiExplain": {
+        "message": "AI 解读分析"
+    },
+    "passiveAiUnsaved": {
+        "message": "配置尚未保存，AI 将使用已保存的配置。"
+    },
+    "passiveAiLoadingModels": {
+        "message": "正在获取模型列表…"
+    },
+    "passiveAiExplaining": {
+        "message": "正在生成 AI 解读…"
+    },
+    "passiveAiTruncated": {
+        "message": "回答达到长度限制，内容可能不完整。"
+    },
+    "passiveAiError_AI_INVALID_URL": {
+        "message": "请输入 HTTPS Base URL（本地接口允许 HTTP），不要包含账号、查询参数或片段。"
+    },
+    "passiveAiError_AI_KEY_REQUIRED": {
+        "message": "请填写有效的 API Key。"
+    },
+    "passiveAiError_AI_STORAGE_FAILED": {
+        "message": "浏览器无法保存配置，请检查存储权限。"
+    },
+    "passiveAiError_AI_NETWORK_FAILED": {
+        "message": "无法连接 AI 接口，请检查网络与 provider 的跨域设置。"
+    },
+    "passiveAiError_AI_AUTH_FAILED": {
+        "message": "Key 无效或没有访问权限，请检查配置。"
+    },
+    "passiveAiError_AI_RATE_LIMIT": {
+        "message": "AI 接口限流或额度不足，请稍后重试。"
+    },
+    "passiveAiError_AI_RELAY_UNAVAILABLE": {
+        "message": "8sToken 需要同源转发，请使用开发/预览服务，或在站点部署 AI relay。"
+    },
+    "passiveAiError_AI_PROVIDER_FAILED": {
+        "message": "AI 服务请求失败，请稍后重试。"
+    },
+    "passiveAiError_AI_INVALID_RESPONSE": {
+        "message": "AI 接口返回的内容格式不兼容。"
+    },
+    "passiveAiError_AI_NO_MODELS": {
+        "message": "此 Key 未返回可用模型，请检查 provider 权限。"
+    },
+    "passiveAiError_AI_TIMEOUT": {
+        "message": "AI 请求超时，请重试或切换模型。"
+    },
+    "passiveAiReference": {
+        "message": "AI 生成的参考解读，请以确定性分析证据为准。"
     }
 }
