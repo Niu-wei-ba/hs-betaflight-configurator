@@ -1,5 +1,5 @@
 <template>
-    <UiBox :title="$t('passiveAiTitle')" collapsible :default-open="!ai.config.apiKey">
+    <UiBox :title="$t('passiveAiTitle')" collapsible :default-open="!ai.config.apiKey" class="min-h-6">
         <p>{{ $t("passiveAiDescription") }}</p>
         <form class="grid grid-cols-1 sm:grid-cols-2 gap-3 my-3" @submit.prevent="ai.save">
             <label class="flex flex-col gap-1">
