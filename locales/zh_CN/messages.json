@@ -9564,5 +9564,83 @@
     },
     "passiveAiReference": {
         "message": "AI 生成的参考解读，请以确定性分析证据为准。"
+    },
+    "passiveAiAnalyzeAndConclude": {
+        "message": "分析并生成 AI 结论"
+    },
+    "passiveAiConclusionTitle": {
+        "message": "AI 分析结论"
+    },
+    "passiveAiGeneratingConclusion": {
+        "message": "本地分析已完成，正在整理证据并生成 AI 结论…"
+    },
+    "passiveAiConclusionReady": {
+        "message": "证据已准备好，可以生成 AI 结论。"
+    },
+    "passiveAiConclusionNeedsConfig": {
+        "message": "本地分析已完成。请配置 AI 并获取模型列表，随后生成结论。"
+    },
+    "passiveAiConclusionBasis": {
+        "message": "查看结论依据"
+    },
+    "passiveAiNextSteps": {
+        "message": "下一步怎么做"
+    },
+    "passiveAiCannotDetermine": {
+        "message": "当前还不能判断什么"
+    },
+    "passiveAiPidNotDetermined": {
+        "message": "当前证据不足以给出具体 PID 改值，未修改任何飞控参数。"
+    },
+    "passiveAiRegenerate": {
+        "message": "重新生成 AI 结论"
+    },
+    "passiveAiGenerate": {
+        "message": "生成 AI 结论"
+    },
+    "passiveAiExportConclusion": {
+        "message": "导出 AI 结论"
+    },
+    "passiveAiViewPacket": {
+        "message": "查看发给 AI 的数据"
+    },
+    "passiveAiPacketDescription": {
+        "message": "以下是实际发送的结构化证据包：日志质量、部分数值配置、三轴频谱摘要、代表性频点和缺失项。包含日志哈希，不包含原始日志、文件名、GPS 或 Key。"
+    },
+    "passiveAiTechnicalDetails": {
+        "message": "高级详情：日志质量与频谱证据"
+    },
+    "passiveAiStatus_limited_evidence": {
+        "message": "可作有限诊断"
+    },
+    "passiveAiStatus_insufficient_evidence": {
+        "message": "证据不足"
+    },
+    "passiveAiEvidence_log-quality": {
+        "message": "日志质量与连续性检查"
+    },
+    "passiveAiEvidence_flight-configuration": {
+        "message": "日志头的部分数值配置"
+    },
+    "passiveAiEvidence_missing-measurements": {
+        "message": "当前缺失的测量项"
+    },
+    "passiveAiEvidence_axis-roll": {
+        "message": "横滚指令跟踪与频谱证据"
+    },
+    "passiveAiEvidence_axis-pitch": {
+        "message": "俯仰指令跟踪与频谱证据"
+    },
+    "passiveAiEvidence_axis-yaw": {
+        "message": "偏航指令跟踪与频谱证据"
+    },
+    "passiveAiError_AI_CONCLUSION_INVALID": {
+        "message": "模型结论格式或证据引用不符合要求，请重新生成。"
+    },
+    "passiveAiError_AI_TRUNCATED": {
+        "message": "模型回答被截断，未形成完整结论，请重新生成或切换模型。"
+    },
+    "passiveAiError_AI_EVIDENCE_LIMIT": {
+        "message": "证据包超过大小限制，无法发送。"
     }
 }

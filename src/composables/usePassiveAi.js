@@ -33,6 +33,7 @@ export function usePassiveAi(storage) {
     const ready = computed(() => !!config.apiKey && models.value.includes(config.model));
     let controller = null;
     let job = 0;
+    let lastRequestKind = "";
     function cancel() {
         job++;
         controller?.abort();
@@ -44,12 +45,18 @@ export function usePassiveAi(storage) {
         answer.value = null;
         error.value = "";
     }
+    function clearAnswer() {
+        answer.value = null;
+        if (state.value === "explaining") cancel();
+        if (lastRequestKind === "explaining") error.value = "";
+    }
     async function run(kind, request) {
         cancel();
         const current = ++job;
         const active = new AbortController();
         controller = active;
         state.value = kind;
+        lastRequestKind = kind;
         error.value = "";
         const timer = setTimeout(() => active.abort("timeout"), kind === "models" ? 20000 : 90000);
         try {
@@ -133,6 +140,8 @@ export function usePassiveAi(storage) {
                 source: evidence.source,
                 baseUrl: selected.baseUrl,
                 requestedModel: selected.model,
+                algorithmVersion: evidence.algorithmVersion,
+                generatedAt: new Date().toISOString(),
             };
     }
     return {
@@ -150,5 +159,6 @@ export function usePassiveAi(storage) {
         explain,
         cancel,
         invalidate,
+        clearAnswer,
     };
 }

@@ -1,0 +1,231 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+export const EVIDENCE_VERSION = "passive-ai-evidence-1.0";
+export const MAX_EVIDENCE_BYTES = 32768;
+const AXES = ["roll", "pitch", "yaw"];
+const number = (value) => (Number.isFinite(value) ? Math.round(value * 1e5) / 1e5 : null);
+const reasons = (values) =>
+    Array.isArray(values)
+        ? [...new Set(values.filter((value) => typeof value === "string" && /^[A-Z_]{1,64}$/.test(value)))].slice(0, 24)
+        : [];
+const MEANINGS = {
+    READ_ONLY_MILESTONE: "当前仅支持只读诊断，不能生成或应用参数改值。",
+    ALIASING_UNCERTAIN: "日志记录前的抗混叠链路未验证。",
+    FLIGHT_STATE_NOT_CLASSIFIED: "没有区分动作、飞行状态和油门工作点。",
+    FRAME_GAP: "存在时间或状态断点，频谱窗口未跨越断点；原因不能确定。",
+    TIMESTAMP_UNRELIABLE: "时间戳不可靠，此记录的频谱不应解释。",
+    SAMPLE_RATE_HEADER_UNAVAILABLE: "缺少日志头采样率，不能与实测采样率交叉验证。",
+    SAMPLE_RATE_MISMATCH: "实测采样率与日志头不一致。",
+    LOG_CORRUPTION_RECOVERED: "跳过了无法解码的区域，仅在有效主帧处恢复。",
+    INSUFFICIENT_EXCITATION: "没有同时满足输入激励、相干性等条件的连续频段，不能解释为性能差。",
+    INSUFFICIENT_WELCH_SUPPORT: "有效窗口和独立片段数量不足。",
+    MISSING_AXIS_CHANNELS: "缺少该轴所需的指令或陀螺仪通道。",
+    UNSUPPORTED_FIELD_SCALE: "字段缩放未知，不能推断幅度。",
+};
+
+/** Preserve full-band extrema while bounding the derived spectral evidence, never raw samples. */
+function trackingEvidence(charts, bands, rejected) {
+    const points = [];
+    if (!bands.length || !charts?.frequencies?.length || !charts.valid || !charts.magnitudeDb || !charts.phaseDeg || !charts.coherence || rejected) return { supportedPointCount: 0, gainRangeDb: null, peak: null, points: [] };
+    for (let i = 0; i < charts.frequencies.length; i++) {
+        const frequencyHz = charts.frequencies[i];
+        if (
+            !charts.valid[i] ||
+            !Number.isFinite(charts.magnitudeDb[i]) ||
+            !Number.isFinite(frequencyHz) ||
+            !bands.some(([low, high]) => frequencyHz >= low && frequencyHz <= high)
+        )
+            continue;
+        points.push({
+            frequencyHz: number(frequencyHz),
+            gainDb: number(charts.magnitudeDb[i]),
+            phaseDeg: number(charts.phaseDeg[i]),
+            coherence: number(charts.coherence[i]),
+        });
+    }
+    if (!points.length) return { supportedPointCount: 0, gainRangeDb: null, peak: null, points: [] };
+    const minimum = points.reduce((a, b) => (a.gainDb < b.gainDb ? a : b));
+    const peak = points.reduce((a, b) => (a.gainDb > b.gainDb ? a : b));
+    const selected = new Set([points.indexOf(minimum), points.indexOf(peak)]);
+    for (let k = 0; k < Math.min(46, points.length); k++)
+        selected.add(Math.round((k * (points.length - 1)) / Math.max(1, Math.min(46, points.length) - 1)));
+    return {
+        supportedPointCount: points.length,
+        gainRangeDb: { min: minimum.gainDb, max: peak.gainDb },
+        peak,
+        points: [...selected].sort((a, b) => a - b).map((i) => points[i]),
+    };
+}
+
+function flightConfiguration(headers = {}) {
+    const numeric = (key, length = 1) => {
+        const raw = headers[key];
+        if (typeof raw !== "string" || raw.length > 128 || !/^\d+(?:\.\d+)?(?:,\d+(?:\.\d+)?)*$/.test(raw)) return null;
+        const values = raw.split(",").map(Number);
+        if (values.length !== length || values.some((value) => !Number.isFinite(value) || value > 1e7)) return null;
+        return length === 1 ? values[0] : values;
+    };
+    const filters = {};
+    for (const key of [
+        "gyro_lpf1_static_hz",
+        "gyro_lpf2_static_hz",
+        "dterm_lpf1_static_hz",
+        "dterm_lpf2_static_hz",
+        "dyn_notch_min_hz",
+        "dyn_notch_max_hz",
+        "dyn_notch_count",
+        "rpm_filter_harmonics",
+        "rpm_filter_min_hz",
+    ])
+        filters[key] = numeric(key);
+    for (const key of ["gyro_lpf1_dyn_hz", "dterm_lpf1_dyn_hz"]) filters[key] = numeric(key, 2);
+    return {
+        evidenceId: "flight-configuration",
+        source: "log_header_numeric_allowlist",
+        completeness: "partial",
+        pid: Object.fromEntries(
+            AXES.map((axis) => {
+                const values = numeric(`${axis}PID`, 3);
+                return [axis, values ? { p: values[0], i: values[1], d: values[2] } : null];
+            }),
+        ),
+        dMin: numeric("d_min", 3),
+        filterSettings: filters,
+        pidLoopTimeUs:
+            numeric("looptime") !== null && numeric("pid_process_denom") !== null
+                ? number(numeric("looptime") * numeric("pid_process_denom"))
+                : null,
+        warning: "仅为日志头中的部分设置，不是完整配置快照，也不能证明设置合理。",
+    };
+}
+
+/** Explicit allowlist: no arbitrary headers, filenames, locations, events, credentials or raw sample arrays. */
+export function aiEvidence(result, source) {
+    if (!result || !source?.sha256) return null;
+    const timing = result.timing || {};
+    const rejected = timing.status === "rejected";
+    const spans = (timing.spans || []).filter(
+        (span) =>
+            Number.isInteger(span.start) &&
+            Number.isInteger(span.end) &&
+            span.start >= 0 &&
+            span.end > span.start &&
+            span.end <= result.sampleCount,
+    );
+    const usedSamples = spans.reduce((count, span) => count + span.end - span.start, 0);
+    const allReasons = new Set(reasons(result.reasonCodes));
+    const axes = AXES.map((axis, index) => {
+        const value = result.axes?.[axis] || {};
+        const frequency = value.frequency;
+        const rawBands = rejected
+            ? []
+            : (frequency?.usableBandsHz || [])
+                .filter(
+                    (band) =>
+                        Array.isArray(band) &&
+                          band.length === 2 &&
+                          band.every(Number.isFinite) &&
+                          band[0] >= 0 &&
+                          band[1] >= band[0],
+                )
+                .slice(0, 24);
+        const bands = rawBands.map((band) => band.map(number));
+        const axisReasons = reasons(value.reasonCodes);
+        axisReasons.forEach((code) => allReasons.add(code));
+        return {
+            axis,
+            evidenceId: `axis-${axis}`,
+            availability: bands.length ? "limited_evidence" : "insufficient_evidence",
+            supportedFrequencyBandsHz: bands,
+            welchWindowCount: number(frequency?.windowCount),
+            independentBlockCount: number(frequency?.independentBlockCount),
+            commandRmsDegPerSecond: number(frequency?.inputRms),
+            estimatedControlBandwidthHz: null,
+            tracking: trackingEvidence(value.charts, rawBands, rejected),
+            gyroSignal: {
+                source: `gyroADC[${index}]`,
+                unit: "deg/s",
+                includesCommandResponse: true,
+                rmsBands: (value.noise?.gyroBands || [])
+                    .slice(0, 3)
+                    .map((band) => ({
+                        lowHz: number(band.lowHz),
+                        highHz: number(band.highHz),
+                        rms: number(band.value),
+                        unavailableReason: reasons([band.reasonCode])[0] || null,
+                    })),
+                vibrationRisk: "not_assessed",
+                dtermChannelPresent: value.noise ? value.noise.dtermAvailable === true : null,
+            },
+            reasonCodes: axisReasons,
+        };
+    });
+    const packet = {
+        schemaVersion: EVIDENCE_VERSION,
+        algorithmVersion: typeof result.algorithmVersion === "string" ? result.algorithmVersion.slice(0, 64) : null,
+        source: {
+            sha256: source.sha256,
+            logIndex: result.logIndex,
+            betaflightVersion: result.firmware?.match(/Betaflight\s+([\d.]+(?:-[\w.]+)?)/)?.[1] || null,
+        },
+        scope: {
+            mode: "read_only",
+            applyAllowed: false,
+            purpose: "解释现有证据与下一步记录建议，不能确定整机调参质量或输出具体参数改值。",
+        },
+        definitions: {
+            supportedFrequencyBandsHz: "可用于有限诊断的有数据支持频段，不是控制带宽，也不是性能合格范围。",
+            trackingGainDb: "gyro/指令的被动传递函数幅度估计；0 dB 约为幅度一致，正值表示更大，不等于已检测到回弹。",
+            gyroRms: "记录的 gyro 信号幅度，包含动作响应，不能全部称为噪声。",
+            welchWindows: "有重叠的统计窗口，不是独立飞行次数、评分或精度保证。",
+        },
+        logQuality: {
+            evidenceId: "log-quality",
+            timingStatus: timing.status || "unknown",
+            sampleCount: number(result.sampleCount),
+            durationSeconds: number(result.durationSeconds),
+            sampleRateMeasuredHz: number(timing.sampleRateMeasuredHz),
+            sampleRateHeaderHz: number(timing.sampleRateHeaderHz),
+            headerMismatchPct: number(timing.mismatchPct),
+            timestampJitterMadPct: number(timing.jitterPct),
+            gapCount: number(timing.gaps),
+            invalidIntervalCount: number(timing.invalidIntervals),
+            corruptRegionCount: number(result.corruptRegions),
+            continuousSpanCount: spans.length,
+            continuousSamples: usedSamples,
+            continuousSampleCoveragePct:
+                result.sampleCount > 0 ? number((100 * usedSamples) / result.sampleCount) : null,
+            reasonCodes: reasons(timing.reasonCodes),
+        },
+        axes,
+        flightConfiguration: flightConfiguration(result.configAtFlight?.rawHeaders),
+        spectralSupportCriteria: {
+            minimumWelchWindows: 6,
+            minimumIndependentBlocks: 3,
+            minimumCommandRmsDegPerSecond: 0.5,
+            minimumCoherence: 0.6,
+            calibration: "engineering_candidates_not_dataset_calibrated",
+        },
+        missingMeasurements: {
+            evidenceId: "missing-measurements",
+            items: [
+                "step_response",
+                "overshoot",
+                "settling_time",
+                "flight_state_and_throttle_groups",
+                "motor_saturation",
+                "rpm_noise",
+                "verified_antialiasing",
+                "motor_temperature",
+                "complete_configuration_snapshot",
+            ],
+            consequence: "不能确定是否跟手、是否回弹、滤波安全、温度或 PID 应改多少。",
+        },
+        reasons: [...new Set([...allReasons, ...reasons(timing.reasonCodes)])].map((code) => ({
+            code,
+            meaning: MEANINGS[code] || "该项诊断能力受限，不能作为参数调整依据。",
+        })),
+    };
+    if (new TextEncoder().encode(JSON.stringify(packet)).length > MAX_EVIDENCE_BYTES)
+        throw new Error("AI_EVIDENCE_LIMIT");
+    return packet;
+}

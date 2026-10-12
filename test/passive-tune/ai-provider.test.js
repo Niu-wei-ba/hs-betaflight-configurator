@@ -9,6 +9,7 @@ import {
     providerRequest,
     saveAiConfig,
 } from "../../src/js/passive-tune/ai-provider.js";
+import { aiConclusion } from "./ai-fixtures.js";
 import { usePassiveAi } from "../../src/composables/usePassiveAi.js";
 const config = { baseUrl: "https://8stoken.com/v1", apiKey: "test-key", model: "model-a" };
 const response = (data) => ({ ok: true, json: async () => data });
@@ -23,7 +24,10 @@ const storage = () => {
 
 describe("AI provider and persisted configuration", () => {
     beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
-    afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
     it("normalizes API roots and rejects unsafe or ambiguous URLs", () => {
         expect(normalizeBaseUrl(" https://8stoken.com/ ")).toBe(config.baseUrl);
         expect(normalizeBaseUrl("https://other.example/api/v1/")).toBe("https://other.example/api/v1");
@@ -54,7 +58,9 @@ describe("AI provider and persisted configuration", () => {
         ).toThrow("AI_STORAGE_FAILED");
     });
     it("keeps the page usable when browser storage access is denied", async () => {
-        vi.spyOn(window, "localStorage", "get").mockImplementation(() => { throw new Error("denied"); });
+        vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+            throw new Error("denied");
+        });
         const ai = usePassiveAi();
         Object.assign(ai.draft, config);
         await ai.save();
@@ -95,7 +101,18 @@ describe("AI provider and persisted configuration", () => {
         fetch.mockResolvedValue(
             response({
                 model: "actual-model",
-                choices: [{ message: { content: "read-only explanation" }, finish_reason: "length" }],
+                choices: [
+                    {
+                        message: {
+                            content: JSON.stringify({
+                                ...aiConclusion(),
+                                overallStatus: "insufficient_evidence",
+                                axes: aiConclusion().axes.map((axis) => ({ ...axis, status: "insufficient_evidence" })),
+                            }),
+                        },
+                        finish_reason: "stop",
+                    },
+                ],
             }),
         );
         const answer = await explainEvidence(config, evidence);
@@ -103,7 +120,23 @@ describe("AI provider and persisted configuration", () => {
         expect(body).toMatchObject({ model: "model-a", stream: false });
         expect(JSON.stringify(body)).not.toMatch(/private\.bbl|rawHeaders|hidden|samples|gps/);
         expect(body.messages[0].content).toContain("不得声称参数已应用");
-        expect(answer).toMatchObject({ model: "actual-model", truncated: true });
+        expect(answer).toMatchObject({ model: "actual-model", conclusion: { pidDecision: "not_determined" } });
+    });
+    it("rejects truncated answers instead of presenting partial text as a conclusion", async () => {
+        fetch.mockResolvedValue(
+            response({ choices: [{ message: { content: "partial JSON" }, finish_reason: "length" }] }),
+        );
+        await expect(explainEvidence(config, {})).rejects.toThrow("AI_TRUNCATED");
+    });
+    it("preserves model-discovery errors when new local evidence arrives", async () => {
+        const local = storage();
+        saveAiConfig(local, config);
+        const ai = usePassiveAi(local);
+        fetch.mockResolvedValue({ ok: false, status: 401 });
+        await ai.refreshModels();
+        ai.clearAnswer();
+        expect(ai.error.value).toBe("AI_AUTH_FAILED");
+        expect(ai.ready.value).toBe(false);
     });
     it("refreshes models after save, persists switching, and clears configuration", async () => {
         const local = storage();

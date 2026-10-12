@@ -9706,5 +9706,83 @@
     },
     "passiveAiReference": {
         "message": "AI-generated reference explanation. Use the deterministic evidence as the source of truth."
+    },
+    "passiveAiAnalyzeAndConclude": {
+        "message": "Analyze & generate AI conclusions"
+    },
+    "passiveAiConclusionTitle": {
+        "message": "AI analysis conclusions"
+    },
+    "passiveAiGeneratingConclusion": {
+        "message": "Local analysis complete. Generating AI conclusions from the evidence…"
+    },
+    "passiveAiConclusionReady": {
+        "message": "Evidence is ready. Generate AI conclusions below."
+    },
+    "passiveAiConclusionNeedsConfig": {
+        "message": "Local analysis complete. Configure AI and fetch models to generate conclusions."
+    },
+    "passiveAiConclusionBasis": {
+        "message": "View supporting evidence"
+    },
+    "passiveAiNextSteps": {
+        "message": "What to do next"
+    },
+    "passiveAiCannotDetermine": {
+        "message": "What cannot yet be determined"
+    },
+    "passiveAiPidNotDetermined": {
+        "message": "Current evidence cannot determine specific PID changes. No FC settings were changed."
+    },
+    "passiveAiRegenerate": {
+        "message": "Regenerate AI conclusions"
+    },
+    "passiveAiGenerate": {
+        "message": "Generate AI conclusions"
+    },
+    "passiveAiExportConclusion": {
+        "message": "Export AI conclusions"
+    },
+    "passiveAiViewPacket": {
+        "message": "View data sent to AI"
+    },
+    "passiveAiPacketDescription": {
+        "message": "This is the actual evidence packet: log quality, partial numeric configuration, axis spectrum summaries, representative spectral points and missing measurements. Includes a log hash, excluding raw logs, filenames, GPS and keys."
+    },
+    "passiveAiTechnicalDetails": {
+        "message": "Advanced: log quality & spectrum evidence"
+    },
+    "passiveAiStatus_limited_evidence": {
+        "message": "Limited diagnostic evidence"
+    },
+    "passiveAiStatus_insufficient_evidence": {
+        "message": "Insufficient evidence"
+    },
+    "passiveAiEvidence_log-quality": {
+        "message": "Log quality & continuity checks"
+    },
+    "passiveAiEvidence_flight-configuration": {
+        "message": "Partial numeric log-header configuration"
+    },
+    "passiveAiEvidence_missing-measurements": {
+        "message": "Missing measurements"
+    },
+    "passiveAiEvidence_axis-roll": {
+        "message": "Roll tracking & spectrum evidence"
+    },
+    "passiveAiEvidence_axis-pitch": {
+        "message": "Pitch tracking & spectrum evidence"
+    },
+    "passiveAiEvidence_axis-yaw": {
+        "message": "Yaw tracking & spectrum evidence"
+    },
+    "passiveAiError_AI_CONCLUSION_INVALID": {
+        "message": "The model conclusion has an invalid format or evidence reference. Regenerate it."
+    },
+    "passiveAiError_AI_TRUNCATED": {
+        "message": "The model response was truncated. Regenerate it or switch models."
+    },
+    "passiveAiError_AI_EVIDENCE_LIMIT": {
+        "message": "The evidence packet exceeds the size limit."
     }
 }

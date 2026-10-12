@@ -9,7 +9,7 @@
                         <span>{{ $t("passiveTuneFile") }}</span>
                         <input type="file" accept=".bbl,.BBL,.bfl,.BFL,.txt,.TXT" :disabled="busy" @change="pickFile" />
                     </label>
-                    <UButton v-if="busy" type="button" color="neutral" variant="outline" @click="cancel">{{
+                    <UButton v-if="busy" type="button" color="neutral" variant="outline" @click="cancelAnalysis">{{
                         $t("passiveTuneCancel")
                     }}</UButton>
                 </div>
@@ -25,8 +25,8 @@
                             </option>
                         </select>
                     </label>
-                    <UButton type="button" :disabled="busy" @click="analyze">
-                        {{ $t("passiveTuneAnalyze") }}
+                    <UButton type="button" :disabled="busy" @click="analyzeWithAi">
+                        {{ $t(ai.config.apiKey ? "passiveAiAnalyzeAndConclude" : "passiveTuneAnalyze") }}
                     </UButton>
                 </div>
                 <p v-if="busy" role="status" aria-live="polite">
@@ -35,8 +35,18 @@
                 </p>
                 <p v-if="store.reasonCode" role="alert">{{ reason(store.reasonCode) }}</p>
             </UiBox>
-            <AiConfig :evidence="evidence" />
-            <template v-if="store.result">
+            <AiConfig :ai="ai" @cancel="flow.cancel" />
+            <AiConclusion
+                v-if="evidence"
+                :ai="ai"
+                :evidence="evidence"
+                :pending="flow.pending.value"
+                :dirty="aiDirty"
+                @generate="flow.generate"
+                @cancel="flow.cancel"
+            />
+            <details v-if="store.result" class="space-y-4">
+                <summary class="cursor-pointer font-semibold">{{ $t("passiveAiTechnicalDetails") }}</summary>
                 <UiBox :title="$t('passiveTuneQualityTitle')">
                     <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-3">
                         <div>
@@ -87,16 +97,19 @@
                         {{ $t("passiveTuneNoiseUnknown") }}
                     </p>
                 </UiBox>
-            </template>
+            </details>
         </div>
     </BaseTab>
 </template>
 
 <script setup>
-import { computed, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 import { useTranslation } from "i18next-vue";
 import BaseTab from "./BaseTab.vue";
 import UiBox from "../elements/UiBox.vue";
+import AiConclusion from "./passive-tune/AiConclusion.vue";
+import { usePassiveAi } from "../../composables/usePassiveAi.js";
+import { usePassiveConclusionFlow } from "../../composables/usePassiveConclusionFlow.js";
 import AiConfig from "./passive-tune/AiConfig.vue";
 import { aiEvidence } from "../../js/passive-tune/ai-provider.js";
 import SpectrumPlot from "./passive-tune/SpectrumPlot.vue";
@@ -104,8 +117,15 @@ import { usePassiveTune } from "../../composables/usePassiveTune.js";
 import { AXES } from "../../js/passive-tune/analysis.js";
 
 const { store, loadFile, analyze, cancel, downloadReport } = usePassiveTune();
+const ai = usePassiveAi();
 const axes = AXES;
 const evidence = computed(() => aiEvidence(store.result, store.source));
+const aiDirty = computed(() => ai.draft.baseUrl !== ai.config.baseUrl || ai.draft.apiKey !== ai.config.apiKey);
+const flow = usePassiveConclusionFlow(
+    ai,
+    () => evidence.value,
+    () => aiDirty.value,
+);
 const busy = computed(() => ["indexing", "analyzing"].includes(store.state));
 const { t } = useTranslation();
 const format = (value) => (Number.isFinite(value) ? value.toFixed(1) : "—");
@@ -114,10 +134,33 @@ const bands = (values) =>
         ? values.map(([low, high]) => `${format(low)}–${format(high)} Hz`).join(", ")
         : t("passiveTuneInsufficient");
 const reason = (code) => t(`passiveTuneReason_${code}`);
+function cancelAnalysis() {
+    flow.cancel();
+    cancel();
+}
+function analyzeWithAi() {
+    analyze();
+    flow.arm();
+}
+watch(
+    () => store.selectedLog,
+    () => {
+        flow.reset();
+        store.result = null;
+    },
+);
+onMounted(ai.refreshModels);
 function pickFile(event) {
     const file = event.target.files?.[0];
-    if (file) loadFile(file);
+    if (file) {
+        flow.reset();
+        loadFile(file);
+    }
     event.target.value = "";
 }
-onUnmounted(cancel);
+onUnmounted(() => {
+    flow.reset();
+    ai.cancel();
+    cancel();
+});
 </script>

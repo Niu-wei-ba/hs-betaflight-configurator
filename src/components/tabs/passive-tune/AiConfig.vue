@@ -1,5 +1,5 @@
 <template>
-    <UiBox :title="$t('passiveAiTitle')">
+    <UiBox :title="$t('passiveAiTitle')" collapsible :default-open="!ai.config.apiKey">
         <p>{{ $t("passiveAiDescription") }}</p>
         <form class="grid grid-cols-1 sm:grid-cols-2 gap-3 my-3" @submit.prevent="ai.save">
             <label class="flex flex-col gap-1">
@@ -49,13 +49,7 @@
                 @click="ai.refreshModels"
                 >{{ $t("passiveAiRefresh") }}</UButton
             >
-            <UButton
-                type="button"
-                :disabled="!evidence || !ai.ready.value || busy || dirty"
-                @click="ai.explain(evidence)"
-                >{{ $t("passiveAiExplain") }}</UButton
-            >
-            <UButton v-if="busy" type="button" color="neutral" variant="outline" @click="ai.cancel">{{
+            <UButton v-if="busy" type="button" color="neutral" variant="outline" @click="$emit('cancel')">{{
                 $t("passiveTuneCancel")
             }}</UButton>
         </div>
@@ -64,25 +58,14 @@
             {{ $t(ai.state.value === "models" ? "passiveAiLoadingModels" : "passiveAiExplaining") }}
         </p>
         <p v-if="ai.error.value" role="alert">{{ $t(`passiveAiError_${ai.error.value}`) }}</p>
-        <div v-if="ai.answer.value" class="mt-3">
-            <p class="text-sm">{{ $t("passiveAiReference") }}</p>
-            <p class="text-sm">{{ ai.answer.value.model }} · {{ $t("passiveTuneDiagnosisOnly") }}</p>
-            <p v-if="ai.answer.value.truncated" role="status">{{ $t("passiveAiTruncated") }}</p>
-            <div class="whitespace-pre-wrap break-words mt-2" data-testid="passive-ai-answer">
-                {{ ai.answer.value.text }}
-            </div>
-        </div>
     </UiBox>
 </template>
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from "vue";
+import { computed } from "vue";
 import UiBox from "../../elements/UiBox.vue";
-import { usePassiveAi } from "../../../composables/usePassiveAi.js";
-const props = defineProps({ evidence: { type: Object, default: null } });
-const ai = usePassiveAi();
+defineEmits(["cancel"]);
+const props = defineProps({ ai: { type: Object, required: true } });
+const ai = props.ai;
 const busy = computed(() => ai.state.value !== "idle");
 const dirty = computed(() => ai.draft.baseUrl !== ai.config.baseUrl || ai.draft.apiKey !== ai.config.apiKey);
-watch(() => props.evidence, ai.invalidate);
-onMounted(ai.refreshModels);
-onUnmounted(ai.cancel);
 </script>
