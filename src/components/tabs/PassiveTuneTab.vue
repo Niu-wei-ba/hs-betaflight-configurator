@@ -36,6 +36,7 @@
                 <p v-if="store.reasonCode" role="alert">{{ reason(store.reasonCode) }}</p>
             </UiBox>
             <AiConfig :ai="ai" @cancel="flow.cancel" />
+            <p v-if="evidenceState.error" role="alert">{{ $t(`passiveAiError_${evidenceState.error}`) }}</p>
             <AiConclusion
                 v-if="evidence"
                 :ai="ai"
@@ -83,6 +84,22 @@
                             <dd>{{ store.result.timing.explicitOnlyBoundaryCount }}</dd>
                         </div>
                     </dl>
+                    <p class="text-sm">
+                        {{ $t("passiveQualityParsedCoverage") }}: {{ parsedCoverage.toFixed(5) }}% ·
+                        {{ $t("passiveQualityTimestampCoverage") }}:
+                        {{ store.result.timing.estimatedTimelineCoveragePct?.toFixed(5) ?? "—" }}%
+                    </p>
+                    <p class="text-sm">{{ $t("passiveQualityCoverageMeaning") }}</p>
+                    <details v-if="store.result.timing.boundaryRecords?.length" class="my-2">
+                        <summary>{{ $t("passiveQualityBoundaryTimes") }}</summary>
+                        <ul class="list-disc pl-5">
+                            <li v-for="boundary in store.result.timing.boundaryRecords" :key="boundary.sampleIndex">
+                                {{ boundary.timeRangeSeconds.map((v) => v.toFixed(4)).join("–") }} s ·
+                                {{ $t(`passiveBoundary_${boundary.kind}`) }} ·
+                                {{ boundary.sources.map((v) => $t(`passiveBoundary_${v}`)).join(" / ") }}
+                            </li>
+                        </ul>
+                    </details>
                     <ul class="list-disc pl-5">
                         <li v-for="code in store.result.reasonCodes" :key="code">{{ reason(code) }}</li>
                     </ul>
@@ -149,12 +166,30 @@ async function revealEvidence(id) {
 }
 const ai = usePassiveAi();
 const axes = AXES;
-const evidence = computed(() => aiEvidence(store.result, store.source));
+const evidenceState = computed(() => {
+    try {
+        return { packet: aiEvidence(store.result, store.source), error: null };
+    } catch (error) {
+        return { packet: null, error: error.message === "AI_EVIDENCE_LIMIT" ? error.message : "AI_INVALID_RESPONSE" };
+    }
+});
+const evidence = computed(() => evidenceState.value.packet);
+const parsedCoverage = computed(() =>
+    store.result
+        ? (100 * store.result.timing.spans.reduce((n, span) => n + span.end - span.start, 0)) / store.result.sampleCount
+        : 0,
+);
 const aiDirty = computed(() => ai.draft.baseUrl !== ai.config.baseUrl || ai.draft.apiKey !== ai.config.apiKey);
 const flow = usePassiveConclusionFlow(
     ai,
     () => evidence.value,
     () => aiDirty.value,
+);
+watch(
+    () => evidenceState.value.error,
+    (error) => {
+        if (error) flow.cancel();
+    },
 );
 const busy = computed(() => ["indexing", "analyzing"].includes(store.state));
 const { t } = useTranslation();

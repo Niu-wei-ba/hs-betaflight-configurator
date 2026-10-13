@@ -279,7 +279,9 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
     if (![1, 2].includes(dataVersion)) fail("UNSUPPORTED_LOG_FORMAT");
     const names = defs.I.names;
     const selected = names.filter((n) =>
-        /^(time|loopIteration|setpoint\[[0-3]\]|gyroADC\[[0-2]\]|axisD\[[0-2]\]|motor\[[0-7]\])$/.test(n),
+        /^(time|loopIteration|setpoint\[[0-3]\]|gyroADC\[[0-2]\]|axis[PIFD]\[[0-2]\]|gyroUnfilt\[[0-2]\]|motor\[[0-7]\])$/.test(
+            n,
+        ),
     );
     const indices = selected.map((n) => names.indexOf(n));
     const columns = new Columns(selected);
@@ -326,10 +328,17 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
                 }
                 if (type === "S") {
                     const fields = Object.fromEntries(def.names.map((name, i) => [name, frame[i]]));
-                    const keys = ["flightModeFlags", "failsafePhase", "rxSignalReceived", "rxFlightChannelsValid"];
-                    if (!previousState || keys.some((key) => fields[key] !== previousState[key])) {
+                    const keys = [
+                        "flightModeFlags",
+                        "stateFlags",
+                        "failsafePhase",
+                        "rxSignalReceived",
+                        "rxFlightChannelsValid",
+                    ];
+                    {
+                        const changed = previousState && keys.some((key) => fields[key] !== previousState[key]);
                         if (states.length >= 10000) fail("DECODED_SIZE_LIMIT");
-                        if (previousState) breaks.add(columns.length);
+                        if (changed) breaks.add(columns.length);
                         states.push({
                             sampleIndex: columns.length,
                             timeBeforeUs: lastTime,
@@ -394,7 +403,7 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
     const scale = resolution === "1" ? 0.1 : 1;
     if (scaleKnown) {
         for (const [name, channel] of Object.entries(channels)) {
-            if (/^(gyroADC|setpoint)\[[0-2]\]$/.test(name))
+            if (/^(gyroADC|gyroUnfilt|setpoint)\[[0-2]\]$/.test(name))
                 for (let i = 0; i < channel.length; i++) channel[i] *= scale;
         }
     }

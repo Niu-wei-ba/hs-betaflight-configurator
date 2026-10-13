@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { AXIS_NAMES, POLICY, quantile } from "./policy.js";
 import { throttleWindow } from "./throttle.js";
+import { eventDiagnostics } from "./control-metrics.js";
 import { observedStep } from "./step-metrics.js";
 
 const lowerBound = (time, value, lo, hi) => {
@@ -84,8 +85,10 @@ export function detectActions(log, spans) {
                 const throttle = throttleWindow(log.throttle, start, end);
                 const confounds = [];
                 confounds.push("FLIGHT_STATE_UNKNOWN");
+                if (!span.stateKnown) confounds.push("STATE_CONTEXT_UNKNOWN");
                 if (span.stateFlags?.failsafePhase > 0) confounds.push("FAILSAFE_CONTEXT");
-                if (span.stateFlags?.rxSignalReceived === 0 || span.stateFlags?.rxFlightChannelsValid === 0) confounds.push("RX_SIGNAL_INVALID");
+                if (span.stateFlags?.rxSignalReceived === 0 || span.stateFlags?.rxFlightChannelsValid === 0)
+                    confounds.push("RX_SIGNAL_INVALID");
                 if (throttle.group === "changing_throttle") confounds.push("CHANGING_THROTTLE");
                 if (["unknown", "invalid"].includes(throttle.group)) confounds.push("THROTTLE_CONTEXT_UNKNOWN");
                 for (let other = 0; other < 3; other++)
@@ -129,6 +132,7 @@ export function detectActions(log, spans) {
                     periodUs: span.periodUs,
                     configEpoch: span.configEpoch,
                     stateKnown: span.stateKnown,
+                    recordedState: span.stateFlags,
                     inputEligibility: eligible ? "eligible" : "ineligible",
                     contextStatus: confounds.length ? "confounded" : "isolated",
                     reasonCodes: reasons,
@@ -137,6 +141,7 @@ export function detectActions(log, spans) {
                     stopToHold: Math.abs(x1) < 15 && Math.abs(x0) >= POLICY.minAmplitude,
                     truncated: end < span.end && end === clusters[k + 1]?.start,
                 };
+                event.diagnostics = eventDiagnostics(log, axisIndex, event);
                 event.metrics = eligible ? observedStep(time, output, event) : null;
                 records.push(event);
             }

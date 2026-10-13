@@ -25,7 +25,10 @@ export function actionSummary(value) {
         eligibleCount: n(value.eligibleCount),
         independentCount: n(value.independentCount),
         rejectedCount: n(value.rejectedCount),
-        confoundedCount: n(value.confoundedCount),
+        candidateConfoundedCount: n(value.candidateConfoundedCount),
+        eligibleConfoundedCount: n(value.eligibleConfoundedCount),
+        trackingEligibleCount: n(value.trackingEligibleCount),
+        mixedManeuverCount: n(value.mixedManeuverCount),
         unconfirmedCount: n(value.unconfirmedCount),
         unconfirmedFraction: n(value.unconfirmedFraction),
         notReachedCount: n(value.notReachedCount),
@@ -48,6 +51,48 @@ export function trackingSummary(value) {
         durationSeconds: n(value.durationSeconds),
         coverageStatus: value.durationSeconds >= 0.25 ? "covered" : "short_fragment",
         delayAligned: false,
+    };
+}
+export function controlSummary(control) {
+    if (!control) return null;
+    return {
+        status: control.status,
+        unit: "logged_pid_output",
+        terms: Object.fromEntries(
+            Object.entries(control.terms).map(([key, value]) => [
+                key,
+                value
+                    ? {
+                        mean: n(value.mean),
+                        rms: n(value.rms),
+                        absolutePeak: n(value.absolutePeak),
+                        endMinusStart: n(value.endMinusStart),
+                        durationSeconds: n(value.durationSeconds),
+                    }
+                    : null,
+            ]),
+        ),
+        pErrorCorrelation: n(control.pErrorCorrelation),
+        ffCommandDerivativeCorrelation: n(control.ffCommandDerivativeCorrelation),
+        parameterDecision: "not_determined",
+    };
+}
+export function spectrumSummary(value) {
+    if (!value) return null;
+    const bands = (list) =>
+        list?.map((band) => ({
+            lowHz: n(band.lowHz),
+            highHz: n(band.highHz),
+            rms: n(band.value),
+            reasonCode: band.reasonCode ?? null,
+        })) ?? null;
+    return {
+        dtermUnit: "logged_pid_output",
+        gyroUnit: "deg/s",
+        dtermBands: bands(value.dtermBands),
+        unfilteredGyroBands: bands(value.unfilteredGyroBands),
+        filteredGyroBands: bands(value.filteredGyroBands),
+        meaning: "band_activity_not_filter_safety_or_rpm_effectiveness",
     };
 }
 function eventSummary(event) {
@@ -74,6 +119,24 @@ function eventSummary(event) {
         amplitudeDegPerSecond: n(Math.abs(event.delta)),
         transitionMs: n(event.transitionMs),
         throttleGroup: event.throttle.group,
+        throttle: {
+            meanPct: n(event.throttle.meanPct),
+            minPct: n(event.throttle.minPct),
+            maxPct: n(event.throttle.maxPct),
+        },
+        eventType: event.diagnostics?.eventType ?? null,
+        context: event.diagnostics?.context ?? null,
+        eligibility: event.diagnostics?.eligibility ?? null,
+        tracking: trackingSummary(event.diagnostics?.tracking),
+        control: controlSummary(event.diagnostics?.control),
+        output: event.diagnostics
+            ? {
+                status: event.diagnostics.output.status,
+                nearUpperFraction: n(event.diagnostics.output.nearUpperFraction),
+                longestUpperMs: n(event.diagnostics.output.longestUpperMs),
+            }
+            : null,
+        lagEstimate: event.diagnostics?.lagEstimate ?? null,
         reasonCodes: Object.keys(counts(Object.fromEntries(event.reasonCodes.map((code) => [code, 1])))),
         confounds: Object.keys(counts(Object.fromEntries(event.confounds.map((code) => [code, 1])))),
         metrics: m
@@ -101,6 +164,19 @@ export function motionEvidence(result) {
             eligible.find((event) => event.metrics.settlingTime.status === "right_censored"),
             values.find((event) => !event.metrics),
         ];
+        for (const kind of ["continuous_tracking", "mixed_maneuver"]) {
+            const relevant = values.filter(
+                (event) => event.diagnostics?.eventType === kind && event.diagnostics.eligibility.tracking,
+            );
+            choices.push(
+                relevant[Math.floor(relevant.length / 2)],
+                relevant.reduce(
+                    (a, b) =>
+                        !a || b.diagnostics.tracking.rmsDegPerSecond > a.diagnostics.tracking.rmsDegPerSecond ? b : a,
+                    null,
+                ),
+            );
+        }
         for (const event of choices) if (event) selected.set(event.eventId, eventSummary(event));
     }
     return {
@@ -131,7 +207,7 @@ export function motionEvidence(result) {
             longestUpperMs: n(result.output.longestUpperMs),
             meaning: "motor_command_near_logged_output_bounds_not_physical_thrust",
         },
-        trackingGroups: result.motion.trackingGroups.slice(0, 15).map((group) => ({
+        trackingGroups: result.motion.trackingGroups.map((group) => ({
             evidenceId: group.evidenceId,
             axis: group.axis,
             throttleGroup: group.throttleGroup,
@@ -141,7 +217,6 @@ export function motionEvidence(result) {
         })),
         actionGroups: [...result.motion.actionGroups]
             .sort((a, b) => b.independentCount - a.independentCount)
-            .slice(0, 15)
             .map((group) => ({
                 evidenceId: group.evidenceId,
                 axis: group.axis,
@@ -154,11 +229,12 @@ export function motionEvidence(result) {
             })),
         representatives: [...selected.values()],
         selection: {
-            rule: "per_axis_typical_worst_unconfirmed_rejected",
+            rule: "all_group_summaries_per_axis_typical_worst_tracking_mixed_step",
+            omittedEstimates: Math.max(0, result.estimates.filter((item) => item.status === "limited").length - 9),
             trackingGroupsTotal: result.motion.trackingGroups.length,
             actionGroupsTotal: result.motion.actionGroups.length,
-            omittedTrackingGroups: Math.max(0, result.motion.trackingGroups.length - 15),
-            omittedActionGroups: Math.max(0, result.motion.actionGroups.length - 15),
+            omittedTrackingGroups: 0,
+            omittedActionGroups: 0,
             omittedRepresentatives: 0,
         },
         estimates: result.estimates

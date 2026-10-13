@@ -53,7 +53,7 @@ describe("versioned context and BBL state", () => {
             [64, 1],
             [80, 1],
         ]);
-        expect(usableSpans[1].stateKnown).toBe(false);
+        expect(usableSpans[1].stateKnown).toBe(true);
         expect(usableSpans[2].stateKnown).toBe(true);
     });
     it("does not scale mixer throttle by high-resolution angular scaling or infer its range", () => {
@@ -224,7 +224,7 @@ describe("source-bound derived evidence and AI 1.1", () => {
                     kind: "estimated_response",
                     text: "有支持频段的有限频响估计。",
                     evidenceIds: ["axis-roll"],
-                    metricRefs: ["axis-roll.tracking.peak.gainDb"],
+                    metricRefs: ["axis-roll.tracking.maxObservedGain.gainDb"],
                 },
                 {
                     kind: "limitation",
@@ -243,14 +243,17 @@ describe("source-bound derived evidence and AI 1.1", () => {
         answer.findings[1].metricRefs = ["motion-coverage.output.unknownBound"];
         expect(() => parseConclusion(JSON.stringify(answer), packet)).toThrow("AI_CONCLUSION_INVALID");
     });
-    it("bounds group detail without losing global coverage, rejection or censoring counts", () => {
+    it("retains every group and explicitly rejects packets whose mandatory summaries exceed the budget", () => {
         const result = analyzeLog(stepLog({ gain: 0.7 }), 0);
         result.motion.actionGroups = Array.from({ length: 200 }, (_, i) => ({
             ...result.motion.actionGroups[0],
             evidenceId: `actions-roll-extra-${i}`,
         }));
+        expect(() => aiEvidence(result, aiSource)).toThrow("AI_EVIDENCE_LIMIT");
+        result.motion.actionGroups = result.motion.actionGroups.slice(0, 60);
         const packet = aiEvidence(result, aiSource);
-        expect(packet.motion.selection.omittedActionGroups).toBeGreaterThanOrEqual(185);
+        expect(packet.motion.actionGroups).toHaveLength(60);
+        expect(packet.motion.selection.omittedActionGroups).toBe(0);
         expect(packet.axes[0].observedActions.unconfirmedCount).toBe(1);
         expect(packet.axes[0].observedActions.settlingTimeMs.p90).toBeNull();
         expect(packet.motion.throttle.totalSeconds).toBeGreaterThan(0);

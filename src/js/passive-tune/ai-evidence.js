@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { motionEvidence, actionSummary, trackingSummary } from "./ai-motion-evidence.js";
+import {
+    motionEvidence,
+    actionSummary,
+    trackingSummary,
+    controlSummary,
+    spectrumSummary,
+} from "./ai-motion-evidence.js";
 export const EVIDENCE_VERSION = "passive-ai-evidence-1.1";
-export const MAX_EVIDENCE_BYTES = 32768;
+export const MAX_EVIDENCE_BYTES = 98304;
 const AXES = ["roll", "pitch", "yaw"];
 const number = (value) => (Number.isFinite(value) ? Math.round(value * 1e5) / 1e5 : null);
 const reasons = (values) =>
@@ -12,7 +18,8 @@ const MEANINGS = {
     READ_ONLY_MILESTONE: "当前仅支持只读诊断，不能生成或应用参数改值。",
     ALIASING_UNCERTAIN: "日志记录前的抗混叠链路未验证。",
     FLIGHT_STATE_NOT_CLASSIFIED: "没有区分动作、飞行状态和油门工作点。",
-    FRAME_GAP: "存在时间或状态断点，频谱窗口未跨越断点；原因不能确定。",
+    FRAME_GAP: "存在实测时间不连续，窗口未跨越断点；不能据此确定故障原因。",
+    ANALYSIS_BOUNDARY: "存在状态、配置或解析分段边界，不等于时间戳断档；具体来源见boundaryRecords。",
     TIMESTAMP_UNRELIABLE: "时间戳不可靠，此记录的频谱不应解释。",
     SAMPLE_RATE_HEADER_UNAVAILABLE: "缺少日志头采样率，不能与实测采样率交叉验证。",
     SAMPLE_RATE_MISMATCH: "实测采样率与日志头不一致。",
@@ -166,7 +173,13 @@ export function aiEvidence(result, source) {
             },
             reasonCodes: axisReasons,
             ...(result.motion
-                ? { observedTracking: trackingSummary(value.tracking), observedActions: actionSummary(value.actions) }
+                ? {
+                    observedTracking: trackingSummary(value.tracking),
+                    observedActions: actionSummary(value.actions),
+                    capabilities: value.capabilities,
+                    control: controlSummary(value.control),
+                    controlSpectrum: spectrumSummary(value.controlSpectrum),
+                }
                 : {}),
         };
     });
@@ -205,8 +218,13 @@ export function aiEvidence(result, source) {
             corruptRegionCount: number(result.corruptRegions),
             continuousSpanCount: spans.length,
             continuousSamples: usedSamples,
-            continuousSampleCoveragePct:
+            parsedSampleContinuousCoveragePct:
                 result.sampleCount > 0 ? number((100 * usedSamples) / result.sampleCount) : null,
+            estimatedTimelineCoveragePct: number(timing.estimatedTimelineCoveragePct),
+            estimatedMissingSamples: number(timing.estimatedMissingSamples),
+            coverageMeaning: "parsed_sample_coverage_and_timestamp_based_estimate_not_capture_completeness",
+            boundaryRecords: timing.boundaryRecords ?? [],
+            omittedBoundaryRecords: timing.omittedBoundaryRecords ?? 0,
             reasonCodes: reasons(timing.reasonCodes),
         },
         axes,
@@ -264,16 +282,57 @@ export function aiEvidence(result, source) {
         packet.motion.axesMissingStep = packet.axes
             .filter((axis) => !axis.observedActions?.eligibleCount)
             .map((axis) => axis.axis);
-        // Reduce detail in a deterministic order. Coverage/rejections/censoring stay intact.
+        for (const axis of packet.axes) {
+            const peak = axis.tracking.peak;
+            axis.tracking.maxObservedGain = peak
+                ? {
+                    ...peak,
+                    atSupportedBandEdge: axis.supportedFrequencyBandsHz.some(
+                        ([low, high]) =>
+                            Math.abs(peak.frequencyHz - low) < 1e-4 || Math.abs(peak.frequencyHz - high) < 1e-4,
+                    ),
+                    excitationQualified: true,
+                    meaning: "maximum_within_supported_points_not_confirmed_resonance",
+                }
+                : null;
+            delete axis.tracking.peak;
+        }
+        packet.definitions.diagnostics =
+            "阶跃资格、跟踪资格和控制项可用性独立；多轴和斜坡动作仍可观测，不能直接归因单个PID参数。";
+        packet.definitions.lagEstimate =
+            "局部0至100ms、5ms网格相关搜索；有限估计，边界或歧义时valueMs=null，不是固定延迟，不用于消除原始误差。";
+        packet.definitions.controlTerms =
+            "PID记录输出单位；均值/RMS/峰值与FF-指令变化率相关仅说明活动或关联，不确定参数因果。";
+        // Retain every group summary. Trim only optional details fairly, or fail explicitly.
+        packet.motion.selection.originalRepresentativeFrequencyPoints = packet.axes.reduce(
+            (count, axis) => count + axis.tracking.points.length,
+            0,
+        );
+        packet.motion.selection.sentRepresentativeFrequencyPoints =
+            packet.motion.selection.originalRepresentativeFrequencyPoints;
         const byteLength = () => new TextEncoder().encode(JSON.stringify(packet)).length;
-        for (const axis of packet.axes)
-            axis.tracking.points = axis.tracking.points.filter((_, i, list) => i % 3 === 0 || i === list.length - 1);
-        for (const key of ["representatives", "actionGroups", "trackingGroups", "estimates"]) {
-            while (byteLength() > MAX_EVIDENCE_BYTES && packet.motion[key].length) {
-                packet.motion[key].pop();
-                const counter = `omitted${key[0].toUpperCase()}${key.slice(1)}`;
-                packet.motion.selection[counter] = (packet.motion.selection[counter] ?? 0) + 1;
-            }
+        if (byteLength() > MAX_EVIDENCE_BYTES)
+            for (const axis of packet.axes)
+                axis.tracking.points = axis.tracking.points.filter(
+                    (_, i, list) => i % 3 === 0 || i === list.length - 1,
+                );
+        packet.motion.selection.sentRepresentativeFrequencyPoints = packet.axes.reduce(
+            (count, axis) => count + axis.tracking.points.length,
+            0,
+        );
+        while (byteLength() > MAX_EVIDENCE_BYTES && packet.motion.estimates.length) {
+            packet.motion.estimates.pop();
+            packet.motion.selection.omittedEstimates++;
+        }
+        while (byteLength() > MAX_EVIDENCE_BYTES) {
+            const byAxis = AXES.map((axis) => packet.motion.representatives.filter((item) => item.axis === axis));
+            const largest = byAxis.reduce((a, b) => (a.length >= b.length ? a : b));
+            if (largest.length <= 1) break;
+            const index = packet.motion.representatives.findIndex(
+                (item) => item.evidenceId === largest.at(-1).evidenceId,
+            );
+            packet.motion.representatives.splice(index, 1);
+            packet.motion.selection.omittedRepresentatives++;
         }
     }
     if (new TextEncoder().encode(JSON.stringify(packet)).length > MAX_EVIDENCE_BYTES)

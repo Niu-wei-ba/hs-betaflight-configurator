@@ -28,6 +28,7 @@ export function makeLog({
     outputs,
     extraChannels = {},
     slowFrames = new Map(),
+    slowFields = ["flightModeFlags", "failsafePhase", "rxSignalReceived", "rxFlightChannelsValid"],
     events = new Map(),
 } = {}) {
     const names = [
@@ -65,10 +66,10 @@ export function makeLog({
     ];
     if (slowFrames.size)
         headers.push(
-            "H Field S name:flightModeFlags,failsafePhase,rxSignalReceived,rxFlightChannelsValid",
-            "H Field S signed:0,0,0,0",
-            "H Field S predictor:0,0,0,0",
-            "H Field S encoding:1,1,1,1",
+            `H Field S name:${slowFields.join(",")}`,
+            `H Field S signed:${slowFields.map(() => 0).join(",")}`,
+            `H Field S predictor:${slowFields.map(() => 0).join(",")}`,
+            `H Field S encoding:${slowFields.map(() => 1).join(",")}`,
         );
     const body = [];
     let previous = null;

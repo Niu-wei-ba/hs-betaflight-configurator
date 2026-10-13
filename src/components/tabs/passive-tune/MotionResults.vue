@@ -7,10 +7,14 @@
                 <div v-for="axis in axes" :id="`axis-${axis}`" :key="axis" class="coverage-cell">
                     <h3>{{ $t(`autotuneAxis${axis[0].toUpperCase()}${axis.slice(1)}`) }}</h3>
                     <strong
-                        >{{ result.axes[axis].actions.eligibleCount
+                        >{{ result.axes[axis].actions.trackingEligibleCount
                         }}<small> / {{ result.axes[axis].actions.candidateCount }}</small></strong
                     >
-                    <p>{{ $t("passiveAnalysisEligibleCandidates") }}</p>
+                    <p>{{ $t("passiveAnalysisTrackingCandidates") }}</p>
+                    <p>
+                        {{ $t("passiveAnalysisStepCount") }}: {{ result.axes[axis].actions.eligibleCount }} ·
+                        {{ $t("passiveAnalysisMixedCount") }}: {{ result.axes[axis].actions.mixedManeuverCount }}
+                    </p>
                     <p>
                         {{ $t("passiveAnalysisRms") }} <b>{{ fmt(result.axes[axis].tracking?.rmsDegPerSecond) }}</b> °/s
                     </p>
@@ -88,7 +92,12 @@
                                     )
                                 }}
                             </td>
-                            <td>{{ fmt(group.tracking?.durationSeconds) }} s <span v-if="group.tracking?.durationSeconds < 0.25" class="text-dimmed">· {{ $t('passiveAnalysisTooFew') }}</span></td>
+                            <td>
+                                {{ fmt(group.tracking?.durationSeconds) }} s
+                                <span v-if="group.tracking?.durationSeconds < 0.25" class="text-dimmed"
+                                    >· {{ $t("passiveAnalysisTooFew") }}</span
+                                >
+                            </td>
                             <td>{{ fmt(group.tracking?.rmsDegPerSecond) }} °/s</td>
                             <td>{{ fmt(group.tracking?.maeDegPerSecond) }} °/s</td>
                             <td>{{ fmt(group.tracking?.absoluteErrorP95DegPerSecond) }} °/s</td>
@@ -121,6 +130,7 @@
                             <th>{{ $t("passiveAnalysisType") }}</th>
                             <th>{{ $t("passiveAnalysisAmplitude") }}</th>
                             <th>{{ $t("passiveAnalysisEligibility") }}</th>
+                            <th>{{ $t("passiveAnalysisRms") }}</th>
                             <th>{{ $t("passiveAnalysisRise") }}</th>
                             <th>{{ $t("passiveAnalysisOvershoot") }}</th>
                             <th>{{ $t("passiveAnalysisSettling") }}</th>
@@ -141,10 +151,13 @@
                                     $t(
                                         event.inputEligibility === "eligible"
                                             ? "passiveAnalysisEligible"
-                                            : "passiveAnalysisRejected",
+                                            : event.diagnostics?.eligibility.tracking
+                                              ? "passiveAnalysisTrackingOnly"
+                                              : "passiveAnalysisRejected",
                                     )
                                 }}
                             </td>
+                            <td>{{ fmt(event.diagnostics?.tracking?.rmsDegPerSecond) }} °/s</td>
                             <td>{{ fmt(event.metrics?.riseTime?.value) }} ms</td>
                             <td>{{ fmt(event.metrics?.overshoot?.value) }}%</td>
                             <td>
@@ -172,7 +185,12 @@
                     </li>
                 </ul>
             </details>
-            <div v-if="selectedEvent" ref="detail" class="selected-evidence mt-4 p-4" data-testid="passive-action-evidence">
+            <div
+                v-if="selectedEvent"
+                ref="detail"
+                class="selected-evidence mt-4 p-4"
+                data-testid="passive-action-evidence"
+            >
                 <h3 class="font-semibold">
                     {{ $t("passiveAnalysisActionDetail") }} · {{ fmt(selectedEvent.timeStartSeconds) }}–{{
                         fmt(selectedEvent.timeEndSeconds)
@@ -184,6 +202,16 @@
                     {{ $t("passiveAnalysisThrottle") }} {{ groupLabel(selectedEvent.throttle.group) }} ·
                     {{ $t("passiveAnalysisEpoch") }} {{ selectedEvent.configEpoch }}
                 </p>
+                <p class="my-2">
+                    {{ $t("passiveAnalysisRms") }}: {{ fmt(selectedEvent.diagnostics?.tracking?.rmsDegPerSecond) }} °/s
+                    · {{ $t("passiveAnalysisMae") }}:
+                    {{ fmt(selectedEvent.diagnostics?.tracking?.maeDegPerSecond) }} °/s
+                </p>
+                <p>
+                    {{ $t("passiveAnalysisLocalLag") }}: {{ fmt(selectedEvent.diagnostics?.lagEstimate?.valueMs) }} ms ·
+                    {{ $t("passiveAnalysisLagMeaning") }}
+                </p>
+                <ControlTerms :control="selectedEvent.diagnostics?.control" />
                 <ul class="list-disc pl-5">
                     <li v-for="code in [...selectedEvent.reasonCodes, ...selectedEvent.confounds]" :key="code">
                         {{ $t(`passiveAnalysisReason_${code}`) }}
@@ -196,6 +224,11 @@
                 <ResponsePlot v-if="curve?.eventId === selectedEvent.eventId" :curve="curve" />
             </div>
         </UiBox>
+        <UiBox :title="$t('passiveControlTitle')"
+            ><ControlTerms
+                :control="result.axes[selectedAxis].control"
+                :spectrum="result.axes[selectedAxis].controlSpectrum"
+        /></UiBox>
         <UiBox :title="$t('passiveAnalysisDistributionTitle')">
             <p class="text-sm">{{ $t("passiveAnalysisDistributionMeaning") }}</p>
             <div class="overflow-auto">
@@ -213,7 +246,8 @@
                     <tbody>
                         <tr v-for="group in actionGroups.slice(0, 60)" :key="group.evidenceId" :id="group.evidenceId">
                             <td>
-                                {{ groupLabel(group.throttleGroup) }} · {{ $t("passiveAnalysisEpoch") }} {{ group.configEpoch }}
+                                {{ groupLabel(group.throttleGroup) }} · {{ $t("passiveAnalysisEpoch") }}
+                                {{ group.configEpoch }}
                             </td>
                             <td>{{ $t(`passiveAnalysisDirection_${group.direction}`) }}</td>
                             <td>{{ group.independentCount }}</td>
@@ -259,6 +293,7 @@
 import { computed, ref, watch, nextTick } from "vue";
 import { useTranslation } from "i18next-vue";
 import UiBox from "../../elements/UiBox.vue";
+import ControlTerms from "./ControlTerms.vue";
 import ResponsePlot from "./ResponsePlot.vue";
 const props = defineProps({
     result: { type: Object, required: true },
@@ -274,8 +309,16 @@ const selectedAxis = ref("roll"),
     selectedEvent = ref(null);
 const detail = ref(null);
 const { t } = useTranslation();
-const groupLabel = (group) => ["unknown", "invalid", "changing_throttle"].includes(group) ? t(`passiveAnalysisGroup_${group}`) : `${group}%`;
-const fmt = (value) => !Number.isFinite(value) ? "—" : value !== 0 && Math.abs(value) < 0.01 ? value < 0 ? ">-0.01" : "<0.01" : value.toFixed(value !== 0 && Math.abs(value) < 0.1 ? 2 : 1);
+const groupLabel = (group) =>
+    ["unknown", "invalid", "changing_throttle"].includes(group) ? t(`passiveAnalysisGroup_${group}`) : `${group}%`;
+const fmt = (value) =>
+    !Number.isFinite(value)
+        ? "—"
+        : value !== 0 && Math.abs(value) < 0.01
+            ? value < 0
+                ? ">-0.01"
+                : "<0.01"
+            : value.toFixed(value !== 0 && Math.abs(value) < 0.1 ? 2 : 1);
 const filtered = computed(() =>
     props.result.motion.records.filter(
         (event) => event.axis === selectedAxis.value && (!eligibleOnly.value || event.inputEligibility === "eligible"),
@@ -294,11 +337,14 @@ const estimates = computed(() =>
 watch([selectedAxis, eligibleOnly], () => {
     page.value = 0;
 });
-watch(() => props.curve, async (curve) => {
-    if (curve?.eventId !== selectedEvent.value?.eventId) return;
-    await nextTick();
-    detail.value?.scrollIntoView({ behavior: "smooth", block: "center" });
-});
+watch(
+    () => props.curve,
+    async (curve) => {
+        if (curve?.eventId !== selectedEvent.value?.eventId) return;
+        await nextTick();
+        detail.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+    },
+);
 watch(
     () => props.result,
     () => {
@@ -408,8 +454,16 @@ tr.selected {
 .inspect-button {
     border-bottom: 1px solid #f2a900;
 }
-.action-table { max-height: 380px; overflow: auto; }
-.action-table th { position: sticky; top: 0; background: var(--ui-bg); z-index: 1; }
+.action-table {
+    max-height: 380px;
+    overflow: auto;
+}
+.action-table th {
+    position: sticky;
+    top: 0;
+    background: var(--ui-bg);
+    z-index: 1;
+}
 .selected-evidence,
 .estimate-panel {
     border: 1px solid var(--ui-border);

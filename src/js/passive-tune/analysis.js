@@ -8,9 +8,10 @@ import { detectActions } from "./actions.js";
 import { aggregateLog } from "./aggregate.js";
 import { outputMetrics } from "./tracking-metrics.js";
 import { estimateResponse } from "./deconvolution.js";
+import { controlMetrics } from "./control-metrics.js";
 import { POLICY } from "./policy.js";
 
-export const ALGORITHM_VERSION = "passive-core-0.3.0";
+export const ALGORITHM_VERSION = "passive-core-0.4.0";
 export const AXES = ["roll", "pitch", "yaw"];
 
 /** First read-only milestone: no PID candidate or device transport dependency. */
@@ -40,6 +41,7 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
         let frequency = null;
         let noise = null;
         let charts = null;
+        let controlSpectrum = null;
         if (input && output && log.scaleKnown && usableSpans.length) {
             const commonRateSpans = usableSpans.filter((span) => Math.abs(span.sampleRateHz - fs) / fs < 0.02);
             const spectrum = welchSpectra(input, output, fs, commonRateSpans, size);
@@ -62,6 +64,26 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
                 dtermAvailable: !!log.channels[`axisD[${index}]`],
                 dtermRisk: "unknown",
             };
+            const dterm = log.channels[`axisD[${index}]`],
+                rawGyro = log.channels[`gyroUnfilt[${index}]`];
+            const bands = [
+                [0, 100],
+                [100, 200],
+                [200, 400],
+            ];
+            const bandsFor = (signal) => {
+                if (!signal) return null;
+                const localSpectrum = welchSpectra(signal, signal, fs, commonRateSpans, size);
+                return bands.map(([low, high]) => ({ lowHz: low, highHz: high, ...bandRms(localSpectrum, low, high) }));
+            };
+            controlSpectrum = {
+                dtermUnit: "logged_pid_output",
+                gyroUnit: "deg/s",
+                dtermBands: bandsFor(dterm),
+                unfilteredGyroBands: bandsFor(rawGyro),
+                filteredGyroBands: noise.gyroBands,
+                meaning: "recorded_band_activity_not_filter_safety_or_rpm_effectiveness",
+            };
             charts = {
                 frequencies: spectrum.frequencies,
                 magnitudeDb: tf.magnitudeDb,
@@ -78,6 +100,15 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
             noise,
             charts,
             tracking: aggregate.axes[axis].tracking,
+            control: controlMetrics(log, index, usableSpans),
+            controlSpectrum,
+            capabilities: {
+                tracking: !!aggregate.axes[axis].tracking,
+                stepResponse: aggregate.axes[axis].actions.eligibleCount > 0,
+                pidTerms: ["P", "I", "D", "F"].some((term) => !!log.channels[`axis${term}[${index}]`]),
+                gyroComparison: !!log.channels[`gyroUnfilt[${index}]`],
+                vibrationSafety: false,
+            },
             actions: aggregate.axes[axis].actions,
             recommendation: { changes: [], applyAllowed: false },
         };
@@ -114,7 +145,7 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
     onProgress("aggregating", 1);
     const { windows: _windows, ...throttleSummary } = throttle;
     const result = {
-        schemaVersion: "0.3.0",
+        schemaVersion: "0.4.0",
         algorithmVersion: ALGORITHM_VERSION,
         logIndex,
         firmware: log.firmware,
@@ -138,7 +169,11 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
             actionGroups: aggregate.actionGroups,
         },
         estimates,
-        estimationCoverage: { totalGroups: estimationGroups.length, processedGroups: Math.min(15, estimationGroups.length), omittedGroups: Math.max(0, estimationGroups.length - 15) },
+        estimationCoverage: {
+            totalGroups: estimationGroups.length,
+            processedGroups: Math.min(15, estimationGroups.length),
+            omittedGroups: Math.max(0, estimationGroups.length - 15),
+        },
         applyAllowed: false,
         reasonCodes: [
             "READ_ONLY_MILESTONE",

@@ -2,7 +2,7 @@
 /** Each source capability is independent of the angular-unit adapter. */
 export function normalizeLog(log) {
     const header = log.headers;
-    const verified = /^Betaflight\s+(?:4\.5\.\d+|2025\.12\.\d+)(?:[\s(-]|$)/.test(log.firmware ?? "");
+    const verified = /^Betaflight\s+(?:4\.5\.\d+|2025\.12\.\d+|2026\.6\.\d+)(?:[\s(-]|$)/.test(log.firmware ?? "");
     const features = /^-?\d+$/.test(header.features ?? "") ? Number(header.features) : null;
     const featureKnown = Number.isInteger(features) && features >= -2147483648 && features <= 4294967295;
     const non3d = verified && featureKnown && !((features >>> 0) & 4096);

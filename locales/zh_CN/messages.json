@@ -9641,7 +9641,7 @@
         "message": "模型回答被截断，未形成完整结论，请重新生成或切换模型。"
     },
     "passiveAiError_AI_EVIDENCE_LIMIT": {
-        "message": "证据包超过大小限制，无法发送。"
+        "message": "完整分组摘要超过 96 KiB，未发送。本地分析仍可用；不会截断 JSON 或隐藏分组。"
     },
     "passiveAnalysisCoverage": {
         "message": "数据覆盖与三轴摘要"
@@ -9951,5 +9951,125 @@
     },
     "passiveAnalysisTotalBoundaries": {
         "message": "分析边界总数"
+    },
+    "passiveAnalysisTrackingCandidates": {
+        "message": "可作跟踪分析 / 全部候选"
+    },
+    "passiveAnalysisStepCount": {
+        "message": "合格近似阶跃"
+    },
+    "passiveAnalysisMixedCount": {
+        "message": "多轴机动"
+    },
+    "passiveAnalysisTrackingOnly": {
+        "message": "仅跟踪 / 控制项观测"
+    },
+    "passiveAnalysisLocalLag": {
+        "message": "局部相关滞后估计"
+    },
+    "passiveAnalysisLagMeaning": {
+        "message": "有限窗口估计；— 表示样本不足或相关搜索有歧义，不是固定系统延迟"
+    },
+    "passiveControlTitle": {
+        "message": "控制项活动与 Gyro 频段对比"
+    },
+    "passiveControlMeaning": {
+        "message": "P/I/D/FF 使用日志控制器输出单位。活动幅度或相关性不等于参数应增减；— 表示该字段未记录或指标不可用。"
+    },
+    "passiveControlTerm": {
+        "message": "控制项"
+    },
+    "passiveControlMean": {
+        "message": "时间加权均值"
+    },
+    "passiveControlPeak": {
+        "message": "绝对峰值"
+    },
+    "passiveControlChange": {
+        "message": "单个连续窗首尾变化"
+    },
+    "passiveControlFfCorrelation": {
+        "message": "FF 与指令变化率的零时移相关系数"
+    },
+    "passiveControlSpectrum": {
+        "message": "查看 D 与滤波前后 Gyro 频段 RMS"
+    },
+    "passiveControlSpectrumMeaning": {
+        "message": "D 使用控制器输出单位；Gyro 使用 °/s。频段活动包含运动成分，不证明振动风险、滤波安全或 RPM 滤波效果。"
+    },
+    "passiveControlRawGyro": {
+        "message": "未滤波 Gyro RMS"
+    },
+    "passiveControlFilteredGyro": {
+        "message": "已滤波 Gyro RMS"
+    },
+    "passiveAiPacketSize": {
+        "message": "完整证据包大小"
+    },
+    "passiveAiPacketGroups": {
+        "message": "跟踪分组已发送 / 总数；动作分组已发送 / 总数"
+    },
+    "passiveAiPacketOmissions": {
+        "message": "省略的代表片段 / 估计细节"
+    },
+    "passiveAiDownloadPacket": {
+        "message": "下载完整 AI 输入 JSON"
+    },
+    "passiveAnalysisReason_STATE_CONTEXT_UNKNOWN": {
+        "message": "该窗口缺少有效状态字段记录；不等于记录了异常状态"
+    },
+    "passiveTuneReason_ANALYSIS_BOUNDARY": {
+        "message": "存在状态、配置或解析分段边界；不等于时间戳断档。"
+    },
+    "passiveAnalysisControlUnit": {
+        "message": "控制项活动（日志输出单位）"
+    },
+    "passiveAnalysisControlCorrelation": {
+        "message": "控制项相关系数"
+    },
+    "passiveAnalysisTrackingCount": {
+        "message": "可作跟踪分析的动作数"
+    },
+    "passiveControlPCorrelation": {
+        "message": "P 与指令减 Gyro 误差的零时移相关系数"
+    },
+    "passiveAiPacketFrequencyPoints": {
+        "message": "代表频点已发送 / 所选频点"
+    },
+    "passiveQualityParsedCoverage": {
+        "message": "已解析数据中的连续样本占比"
+    },
+    "passiveQualityTimestampCoverage": {
+        "message": "按时间戳估计的样本覆盖率"
+    },
+    "passiveQualityCoverageMeaning": {
+        "message": "两者都不能证明原始采集完整；不可观察的数据损失仍未知。"
+    },
+    "passiveQualityBoundaryTimes": {
+        "message": "查看分段边界两侧时间与来源"
+    },
+    "passiveBoundary_timestamp_discontinuity": {
+        "message": "时间戳不连续"
+    },
+    "passiveBoundary_explicit_boundary": {
+        "message": "明确的分析分段边界"
+    },
+    "passiveBoundary_slow_state_record": {
+        "message": "状态字段记录"
+    },
+    "passiveBoundary_corruption_resynchronization": {
+        "message": "损坏 / 恢复同步"
+    },
+    "passiveBoundary_configuration_change": {
+        "message": "配置变化"
+    },
+    "passiveBoundary_logging_resume": {
+        "message": "日志恢复记录"
+    },
+    "passiveBoundary_logged_event": {
+        "message": "日志事件"
+    },
+    "passiveBoundary_explicit_parser_boundary": {
+        "message": "解析边界"
     }
 }

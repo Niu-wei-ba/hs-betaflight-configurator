@@ -30,6 +30,8 @@ export function validateTiming(timeUs, headerRateHz = null, breakIndices = []) {
     let gaps = 0;
     let temporalGapCount = 0;
     let explicitOnlyBoundaryCount = 0;
+    let estimatedMissingSamples = 0;
+    const boundaryRecords = [];
     const finish = (end) => {
         if (end - start >= 4) spans.push({ start, end });
     };
@@ -37,8 +39,15 @@ export function validateTiming(timeUs, headerRateHz = null, breakIndices = []) {
         const dt = timeUs[i] - timeUs[i - 1];
         const temporalGap = !Number.isFinite(dt) || Math.abs(dt - periodUs) > tolerance;
         if (temporalGap) temporalGapCount++;
+        if (dt > periodUs + tolerance) estimatedMissingSamples += Math.max(0, Math.round(dt / periodUs) - 1);
         else if (breaks.has(i)) explicitOnlyBoundaryCount++;
         if (breaks.has(i) || temporalGap) {
+            if (boundaryRecords.length < 256)
+                boundaryRecords.push({
+                    sampleIndex: i,
+                    timeRangeSeconds: [(timeUs[i - 1] - timeUs[0]) / 1e6, (timeUs[i] - timeUs[0]) / 1e6],
+                    kind: temporalGap ? "timestamp_discontinuity" : "explicit_boundary",
+                });
             finish(i);
             start = i;
             gaps++;
@@ -49,7 +58,8 @@ export function validateTiming(timeUs, headerRateHz = null, breakIndices = []) {
     if (invalidIntervals || jitterPct > 1 || !spans.length) reasonCodes.push("TIMESTAMP_UNRELIABLE");
     if (mismatchPct === null) reasonCodes.push("SAMPLE_RATE_HEADER_UNAVAILABLE");
     else if (mismatchPct > 1.5) reasonCodes.push("SAMPLE_RATE_MISMATCH");
-    if (gaps) reasonCodes.push("FRAME_GAP");
+    if (temporalGapCount) reasonCodes.push("FRAME_GAP");
+    if (explicitOnlyBoundaryCount) reasonCodes.push("ANALYSIS_BOUNDARY");
     return {
         status: reasonCodes.includes("TIMESTAMP_UNRELIABLE") ? "rejected" : reasonCodes.length ? "warning" : "valid",
         sampleRateMeasuredHz: fs,
@@ -61,6 +71,10 @@ export function validateTiming(timeUs, headerRateHz = null, breakIndices = []) {
         temporalGapCount,
         explicitOnlyBoundaryCount,
         invalidIntervals,
+        estimatedMissingSamples,
+        estimatedTimelineCoveragePct: (100 * timeUs.length) / (timeUs.length + estimatedMissingSamples),
+        boundaryRecords,
+        omittedBoundaryRecords: Math.max(0, gaps - boundaryRecords.length),
         spans,
         reasonCodes,
     };

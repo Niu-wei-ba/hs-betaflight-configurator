@@ -10093,5 +10093,125 @@
     },
     "passiveAnalysisTotalBoundaries": {
         "message": "Analysis boundaries"
+    },
+    "passiveAnalysisTrackingCandidates": {
+        "message": "Tracking observations / candidates"
+    },
+    "passiveAnalysisStepCount": {
+        "message": "Qualified near steps"
+    },
+    "passiveAnalysisMixedCount": {
+        "message": "Multi-axis maneuvers"
+    },
+    "passiveAnalysisTrackingOnly": {
+        "message": "Tracking / control observation only"
+    },
+    "passiveAnalysisLocalLag": {
+        "message": "Local correlation lag estimate"
+    },
+    "passiveAnalysisLagMeaning": {
+        "message": "Limited window estimate; — means unavailable or ambiguous, not a fixed system delay"
+    },
+    "passiveControlTitle": {
+        "message": "Control-term activity and gyro band comparison"
+    },
+    "passiveControlMeaning": {
+        "message": "P/I/D/FF use logged controller output units. Activity and association do not determine parameter changes; — means unavailable."
+    },
+    "passiveControlTerm": {
+        "message": "Term"
+    },
+    "passiveControlMean": {
+        "message": "Time-weighted mean"
+    },
+    "passiveControlPeak": {
+        "message": "Absolute peak"
+    },
+    "passiveControlChange": {
+        "message": "Single-window end minus start"
+    },
+    "passiveControlFfCorrelation": {
+        "message": "Zero-lag FF / command derivative correlation"
+    },
+    "passiveControlSpectrum": {
+        "message": "D and pre/post-filter gyro band RMS"
+    },
+    "passiveControlSpectrumMeaning": {
+        "message": "D uses controller output units; gyro uses deg/s. Activity includes motion and does not establish vibration risk, filter safety or RPM-filter effectiveness."
+    },
+    "passiveControlRawGyro": {
+        "message": "Unfiltered gyro RMS"
+    },
+    "passiveControlFilteredGyro": {
+        "message": "Filtered gyro RMS"
+    },
+    "passiveAiPacketSize": {
+        "message": "Complete evidence packet bytes"
+    },
+    "passiveAiPacketGroups": {
+        "message": "Tracking groups sent / total; action groups sent / total"
+    },
+    "passiveAiPacketOmissions": {
+        "message": "Omitted representative clips / estimate details"
+    },
+    "passiveAiDownloadPacket": {
+        "message": "Download complete AI input JSON"
+    },
+    "passiveAnalysisReason_STATE_CONTEXT_UNKNOWN": {
+        "message": "No valid state fields for this window; not evidence of an abnormal state"
+    },
+    "passiveTuneReason_ANALYSIS_BOUNDARY": {
+        "message": "State, configuration or parser boundary; not a timestamp gap."
+    },
+    "passiveAnalysisControlUnit": {
+        "message": "Control activity (logged output units)"
+    },
+    "passiveAnalysisControlCorrelation": {
+        "message": "Control-term correlation"
+    },
+    "passiveAnalysisTrackingCount": {
+        "message": "Tracking-eligible events"
+    },
+    "passiveControlPCorrelation": {
+        "message": "Zero-lag P / setpoint-minus-gyro correlation"
+    },
+    "passiveAiPacketFrequencyPoints": {
+        "message": "Representative frequency points sent / selected"
+    },
+    "passiveQualityParsedCoverage": {
+        "message": "Continuous samples within parsed data"
+    },
+    "passiveQualityTimestampCoverage": {
+        "message": "Timestamp-based coverage estimate"
+    },
+    "passiveQualityCoverageMeaning": {
+        "message": "Neither percentage proves complete capture; unobserved data losses remain unknown."
+    },
+    "passiveQualityBoundaryTimes": {
+        "message": "Times on both sides of analysis boundaries"
+    },
+    "passiveBoundary_timestamp_discontinuity": {
+        "message": "Timestamp discontinuity"
+    },
+    "passiveBoundary_explicit_boundary": {
+        "message": "Explicit analysis boundary"
+    },
+    "passiveBoundary_slow_state_record": {
+        "message": "Recorded state fields"
+    },
+    "passiveBoundary_corruption_resynchronization": {
+        "message": "Corruption / resynchronization"
+    },
+    "passiveBoundary_configuration_change": {
+        "message": "Configuration change"
+    },
+    "passiveBoundary_logging_resume": {
+        "message": "Logging resumed"
+    },
+    "passiveBoundary_logged_event": {
+        "message": "Logged event"
+    },
+    "passiveBoundary_explicit_parser_boundary": {
+        "message": "Parser boundary"
     }
 }

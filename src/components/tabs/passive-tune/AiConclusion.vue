@@ -95,6 +95,25 @@
         <details class="mt-2">
             <summary class="cursor-pointer">{{ $t("passiveAiViewPacket") }}</summary>
             <p class="text-sm my-2">{{ $t("passiveAiPacketDescription") }}</p>
+            <p class="text-sm my-2" data-testid="passive-ai-packet-coverage">
+                {{ $t("passiveAiPacketSize") }}: {{ packetBytes }} bytes · {{ $t("passiveAiPacketGroups") }}:
+                {{ evidence.motion?.trackingGroups.length ?? 0 }} /
+                {{ evidence.motion?.selection.trackingGroupsTotal ?? 0 }} ·
+                {{ evidence.motion?.actionGroups.length ?? 0 }} /
+                {{ evidence.motion?.selection.actionGroupsTotal ?? 0 }}
+            </p>
+            <p class="text-sm">
+                {{ $t("passiveAiPacketOmissions") }}: {{ evidence.motion?.selection.omittedRepresentatives ?? 0 }} ·
+                {{ evidence.motion?.selection.omittedEstimates ?? 0 }}
+            </p>
+            <p v-if="evidence.motion" class="text-sm">
+                {{ $t("passiveAiPacketFrequencyPoints") }}:
+                {{ evidence.motion.selection.sentRepresentativeFrequencyPoints }} /
+                {{ evidence.motion.selection.originalRepresentativeFrequencyPoints }}
+            </p>
+            <button type="button" class="underline my-2" @click="downloadPacket">
+                {{ $t("passiveAiDownloadPacket") }}
+            </button>
             <pre class="text-xs whitespace-pre-wrap break-all max-h-80 overflow-auto">{{
                 JSON.stringify(evidence, null, 2)
             }}</pre>
@@ -117,6 +136,7 @@ defineEmits(["generate", "cancel", "evidence"]);
 const ai = props.ai;
 const { t } = useTranslation();
 const busy = computed(() => ai.state.value !== "idle");
+const packetBytes = computed(() => new TextEncoder().encode(JSON.stringify(props.evidence)).length);
 const conclusion = computed(() => ai.answer.value?.conclusion);
 function evidenceLabel(id) {
     if (
@@ -129,10 +149,16 @@ function evidenceLabel(id) {
 }
 function metricText(ref) {
     const value = metricReferences(props.evidence).get(ref);
+    const term = ref.match(/control\.terms\.([PIFD])\.(rms|mean|absolutePeak|endMinusStart)$/);
+    if (term)
+        return `${term[1] === "F" ? "FF" : term[1]} ${term[2]}: ${Number.isFinite(value) ? value.toFixed(2) : "—"} (${t("passiveAnalysisControlUnit")})`;
     const descriptors = [
         [/\.gapCount$/, "TimeGaps", "", 1],
         [/\.explicitOnlyBoundaryCount$/, "ExplicitBoundaries", "", 1],
         [/\.boundaryCount$/, "TotalBoundaries", "", 1],
+        [/pErrorCorrelation|ffCommandDerivativeCorrelation/, "ControlCorrelation", "", 1],
+        [/lagEstimate\.valueMs/, "LocalLag", "ms", 1],
+        [/trackingEligibleCount/, "TrackingCount", "", 1],
         [/nearUpperFraction/, "OutputUpper", "%", 100],
         [/longestUpperMs/, "OutputRun", "ms", 1],
         [/tailGainEstimate/, "TailGain", "", 1],
@@ -159,6 +185,14 @@ function supportedBands(axis) {
     return values.length
         ? values.map(([low, high]) => `${low.toFixed(1)}–${high.toFixed(1)} Hz`).join(", ")
         : t("passiveTuneInsufficient");
+}
+function downloadPacket() {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(props.evidence, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "passive-ai-evidence.json";
+    link.click();
+    URL.revokeObjectURL(url);
 }
 function download() {
     const report = conclusionReport(props.evidence, ai.answer.value);

@@ -9,7 +9,7 @@ describe("LLM evidence packet", () => {
         expect(packet.logQuality).toMatchObject({
             corruptRegionCount: 1,
             continuousSpanCount: 2,
-            continuousSampleCoveragePct: 90,
+            parsedSampleContinuousCoveragePct: 90,
             timestampJitterMadPct: 0,
         });
         expect(packet.axes[0].tracking).toMatchObject({
