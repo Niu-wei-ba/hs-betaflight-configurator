@@ -189,6 +189,11 @@ describe("source-bound derived evidence and AI 1.1", () => {
             findings: [{ kind: "estimated_response", text: "有支持频段的有限频响估计。", evidenceIds: ["axis-roll"], metricRefs: ["axis-roll.tracking.peak.gainDb"] },
                 { kind: "limitation", text: "覆盖汇总。", evidenceIds: ["motion-coverage"], metricRefs: ["motion-coverage.candidateCount"] }] };
         expect(parseConclusion(JSON.stringify(answer), packet).findings).toHaveLength(2);
+        answer.cannotDetermine = Array.from({ length: 7 }, (_, i) => `缺失事项${i}`);
+        expect(parseConclusion(JSON.stringify(answer), packet).cannotDetermine).toHaveLength(7);
+        answer.cannotDetermine = Array.from({ length: 11 }, (_, i) => `缺失事项${i}`);
+        expect(() => parseConclusion(JSON.stringify(answer), packet)).toThrow("AI_CONCLUSION_INVALID");
+        answer.cannotDetermine = aiConclusion().cannotDetermine;
         answer.findings[1].metricRefs = ["motion-coverage.output.unknownBound"];
         expect(() => parseConclusion(JSON.stringify(answer), packet)).toThrow("AI_CONCLUSION_INVALID");
     });
