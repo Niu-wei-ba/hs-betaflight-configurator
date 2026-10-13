@@ -297,6 +297,8 @@ export function aiEvidence(result, source) {
                 : null;
             delete axis.tracking.peak;
         }
+        packet.definitions.stepEligibility =
+            "rejectedCount是仅阶跃输入不合格数，拒绝原因在reasonCounts；confoundCounts是混杂标签，不代表所有诊断不可用。未知飞行状态/油门变化不直接取消阶跃输入资格。trackingEligibleCount单独表示可作跟踪观测的数量。";
         packet.definitions.diagnostics =
             "阶跃资格、跟踪资格和控制项可用性独立；多轴和斜坡动作仍可观测，不能直接归因单个PID参数。";
         packet.definitions.lagEstimate =
