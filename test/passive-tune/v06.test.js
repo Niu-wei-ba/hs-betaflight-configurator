@@ -8,6 +8,8 @@ import { aiEvidence, MAX_EVIDENCE_BYTES } from "../../src/js/passive-tune/ai-evi
 import { analyzeLog } from "../../src/js/passive-tune/analysis.js";
 import { makeLog } from "./fixtures.js";
 import { aiSource } from "./ai-fixtures.js";
+import { aiConclusion } from "./ai-fixtures.js";
+import { parseConclusion } from "../../src/js/passive-tune/ai-conclusion.js";
 
 function phaseLog(command, gyro = command) {
     return {
@@ -39,6 +41,21 @@ const event = {
     diagnostics: { contextLimitations: [] },
 };
 describe("V0.6 contextual evidence", () => {
+    it("supports group motor links only when the explicit target exists and proves that bound category", () => {
+        const r = analyzeLog(makeLog({ samples: 1800, fs: 1000, input: n => n < 300 ? 0 : n < 800 ? 100 : 0,
+            extraHeaders: ["H features:0", "H motorOutput:1000,2000"], extraChannels: { "setpoint[3]": () => 300, "motor[0]": () => 1000 } }), 0);
+        const p = aiEvidence(r, aiSource), group = p.evidence.trackingGroups[0];
+        const answer = { ...aiConclusion(), schemaVersion: "passive-ai-conclusion-1.2",
+            axes: p.summary.axisAssessments.map(a => ({ axis: a.axis, status: a.availability, conclusion: "只描述当前观测。", evidenceIds: [a.evidenceId], limitations: ["状态未确认"] })),
+            findings: [{ kind: "possible_explanation", text: "指令边界接近可能限制局部响应，仍需验证。", evidenceIds: [group.evidenceId],
+                metricRefs: [`${group.evidenceId}.boundaryAssociation.jointFractionOfValidTime`], explanationCategory: "lower_command_constraint", limitations: ["不能证明真实推力不足"], verification: "对比已有记录的同类动作和配置。" }] };
+        expect(() => parseConclusion(JSON.stringify(answer), p)).not.toThrow();
+        const motor = p.evidence.motorConstraints.find(m => m.evidenceId === group.outputEvidenceId);
+        motor.output.nearLowerFraction = 0;
+        expect(() => parseConclusion(JSON.stringify(answer), p)).toThrow("AI_CONCLUSION_INVALID");
+        motor.output.nearLowerFraction = 1; group.outputEvidenceId = "unlisted-motor-evidence";
+        expect(() => parseConclusion(JSON.stringify(answer), p)).toThrow("AI_CONCLUSION_INVALID");
+    });
     it("traces continued return input without treating it as missing data or observing before the platform", () => {
         const log = phaseLog((i) => (i < 10 ? -50 : i < 20 ? -40 : i < 40 ? (i - 40) * 2 : 0));
         const p = actionPhases(log, 0, event).phases,
