@@ -270,7 +270,7 @@
                                 {{ $t("passiveAnalysisPhaseCurve") }}
                             </button>
                             <p>
-                                {{ fmt(phase.timeRangeSeconds[0]) }}–{{ fmt(phase.timeRangeSeconds[1]) }} s ·
+                                {{ precise(phase.timeRangeSeconds[0]) }}–{{ precise(phase.timeRangeSeconds[1]) }} s ·
                                 {{ $t("passiveAnalysisRms") }} {{ fmt(phase.tracking?.rmsDegPerSecond) }} °/s
                             </p>
                             <p>{{ $t('passiveAnalysisOutputLower') }}: {{ fmt(phase.output?.nearLowerFraction == null ? null : phase.output.nearLowerFraction*100) }}%</p>
@@ -284,8 +284,8 @@
                                 {{ $t("passiveAnalysisDecayRatio") }}: {{ fmt(phase.residual.tailToInitialRmsRatio) }}
                             </p>
                             <p v-if="phase.stopTiming" data-testid="passive-stop-timing">
-                                {{ $t("passiveContextContinuedInput") }} {{ fmt(phase.stopTiming.continuedInputMs) }} ms ·
-                                {{ $t("passiveContextStopPlatform") }} {{ fmt(phase.stopTiming.confirmedStopPlatformStartSeconds) }} s
+                                {{ $t("passiveContextContinuedInput") }} {{ precise(phase.stopTiming.continuedInputMs) }} ms ·
+                                {{ $t("passiveContextStopPlatform") }} {{ precise(phase.stopTiming.confirmedStopPlatformStartSeconds) }} s
                             </p>
                             <p v-if="phase.trackingErrorResidual">
                                 {{ $t("passiveContextStopCommand") }} {{ fmt(phase.command?.mean) }} / {{ fmt(phase.command?.rms) }} °/s ·
@@ -429,6 +429,7 @@ const fmt = (value) =>
                 ? ">-0.01"
                 : "<0.01"
             : value.toFixed(value !== 0 && Math.abs(value) < 0.1 ? 2 : 1);
+const precise = value => Number.isFinite(value) ? value.toFixed(3) : "—";
 const filtered = computed(() =>
     props.result.motion.records.filter(
         (event) => event.axis === selectedAxis.value && (!eligibleOnly.value || event.inputEligibility === "eligible"),
