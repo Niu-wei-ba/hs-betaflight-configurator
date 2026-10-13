@@ -10,6 +10,8 @@ export const usePassiveTuneStore = defineStore("passiveTune", () => {
     const reasonCode = ref(null);
     const stage = ref("parsing");
     const progress = ref(0);
+    const evidenceCurve = shallowRef(null);
+    const evidenceLoading = ref(false);
     function reset() {
         state.value = "idle";
         logs.value = [];
@@ -18,6 +20,20 @@ export const usePassiveTuneStore = defineStore("passiveTune", () => {
         selectedLog.value = 0;
         reasonCode.value = null;
         progress.value = 0;
+        evidenceCurve.value = null;
+        evidenceLoading.value = false;
     }
-    return { state, logs, result, source, selectedLog, reasonCode, stage, progress, reset };
+    return {
+        state,
+        logs,
+        result,
+        source,
+        selectedLog,
+        reasonCode,
+        stage,
+        progress,
+        evidenceCurve,
+        evidenceLoading,
+        reset,
+    };
 });

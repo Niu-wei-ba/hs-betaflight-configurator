@@ -47,6 +47,28 @@ describe("Worker orchestration", () => {
         old.onerror();
         expect(tune.store.state).toBe("indexing");
     });
+    it("discards stale curve replies and binds details to the current analysis job", async () => {
+        const tune = usePassiveTune();
+        await tune.loadFile(file());
+        const worker = MockWorker.instances[0];
+        const indexJob = worker.postMessage.mock.calls[0][0].jobId;
+        worker.respond({ type: "INDEXED", jobId: indexJob, logs: [{ index: 0 }], sha256: "hash" });
+        tune.analyze();
+        const jobId = worker.postMessage.mock.calls[1][0].jobId;
+        worker.respond({ type: "RESULT", jobId, result: { motion: { records: [{ eventId: "a" }, { eventId: "b" }] } } });
+        tune.inspectEvidence("a");
+        const first = worker.postMessage.mock.calls[2][0];
+        tune.inspectEvidence("b");
+        const second = worker.postMessage.mock.calls[3][0];
+        worker.respond({ type: "EVIDENCE_RESULT", jobId, requestId: first.requestId, curve: { eventId: "a" } });
+        expect(tune.store.evidenceCurve).toBeNull();
+        worker.respond({ type: "EVIDENCE_RESULT", jobId, requestId: second.requestId, curve: { eventId: "b" } });
+        expect(tune.store.evidenceCurve).toEqual({ eventId: "b" });
+        expect(tune.store.evidenceLoading).toBe(false);
+        tune.cancel();
+        worker.respond({ type: "EVIDENCE_RESULT", jobId, requestId: second.requestId, curve: { eventId: "b" } });
+        expect(tune.store.evidenceCurve).toBeNull();
+    });
     it("ignores a cancelled file read and rejects empty or oversized inputs", async () => {
         const tune = usePassiveTune();
         let resolve;

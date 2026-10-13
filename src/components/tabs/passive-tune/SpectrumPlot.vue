@@ -45,16 +45,25 @@ const range = computed(() => {
     );
     return finite.length ? { min: Math.min(...finite) - 1, max: Math.max(...finite) + 1 } : { min: -10, max: 10 };
 });
-const maximumHz = computed(() => Math.max(2, props.charts.frequencies[props.charts.frequencies.length - 1]));
-const x = (hz) => 56 + (Math.log10(Math.max(1, hz)) / Math.log10(maximumHz.value)) * 569;
-const ticks = computed(() => [1, 10, 100, 1000].filter((hz) => hz <= maximumHz.value).map((hz) => ({ hz, x: x(hz) })));
+const frequencyRange = computed(() => {
+    const supported = Array.from(props.charts.frequencies).filter((hz, i) => hz > 0 && Number.isFinite(hz) &&
+        (["noise", "coherence"].includes(selected.value) || props.charts.valid[i]));
+    if (!supported.length) return { min: 1, max: 10 };
+    const min = Math.max(0.01, supported[0] * 0.85), max = Math.max(min * 2, supported.at(-1) * 1.15);
+    return { min, max };
+});
+const x = (hz) => 56 + ((Math.log10(hz) - Math.log10(frequencyRange.value.min)) / Math.log10(frequencyRange.value.max / frequencyRange.value.min)) * 569;
+const ticks = computed(() => Array.from({ length: 5 }, (_, i) => {
+    const hz = frequencyRange.value.min * (frequencyRange.value.max / frequencyRange.value.min) ** (i / 4);
+    return { hz: Number(hz.toPrecision(2)), x: x(hz) };
+}));
 const path = computed(() => {
     let drawing = false;
     let output = "";
     values.value.forEach((value, i) => {
         const hz = props.charts.frequencies[i];
         const available = selected.value === "noise" || selected.value === "coherence" || props.charts.valid[i];
-        if (hz < 1 || !Number.isFinite(value) || !available) {
+        if (hz < frequencyRange.value.min || hz > frequencyRange.value.max || !Number.isFinite(value) || !available) {
             drawing = false;
             return;
         }

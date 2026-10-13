@@ -9784,5 +9784,293 @@
     },
     "passiveAiError_AI_EVIDENCE_LIMIT": {
         "message": "The evidence packet exceeds the size limit."
+    },
+    "passiveAnalysisCoverage": {
+        "message": "Coverage and axis summary"
+    },
+    "passiveAnalysisScope": {
+        "message": "These measurements describe this recording. Valid input does not mean good response; flight state may be unknown."
+    },
+    "passiveAnalysisPartial": {
+        "message": "Action limit reached; statistics cover only the processed portion."
+    },
+    "passiveAnalysisEligibleCandidates": {
+        "message": "Qualified near steps / all candidates"
+    },
+    "passiveAnalysisRms": {
+        "message": "Tracking error RMS"
+    },
+    "passiveAnalysisMae": {
+        "message": "Mean absolute error"
+    },
+    "passiveAnalysisP95": {
+        "message": "Absolute error p95 (approx.)"
+    },
+    "passiveAnalysisNotConfirmed": {
+        "message": "Not confirmed settled in window"
+    },
+    "passiveAnalysisOutputUpper": {
+        "message": "Time with motor command near upper bound"
+    },
+    "passiveAnalysisOutputMeaning": {
+        "message": "This does not establish thrust saturation or motor temperature"
+    },
+    "passiveAnalysisThrottleTitle": {
+        "message": "Throttle coverage and operating points"
+    },
+    "passiveAnalysisThrottleMeaning": {
+        "message": "Groups use logged mixer throttle, not stick position, thrust or power."
+    },
+    "passiveAnalysisThrottleUnavailable": {
+        "message": "Verified mixer throttle is unavailable. Angular analysis remains available; standard throttle groups are disabled."
+    },
+    "passiveAnalysisUnknownCoverage": {
+        "message": "Unknown / invalid throttle time"
+    },
+    "passiveAnalysisAxis": {
+        "message": "Axis"
+    },
+    "passiveAnalysisThrottle": {
+        "message": "Mixer throttle"
+    },
+    "passiveAnalysisEpoch": {
+        "message": "Configuration epoch"
+    },
+    "passiveAnalysisDuration": {
+        "message": "Valid time"
+    },
+    "passiveAnalysisStateRecorded": {
+        "message": "State flags recorded"
+    },
+    "passiveAnalysisStateUnknown": {
+        "message": "State unknown"
+    },
+    "passiveAnalysisNoStableGroups": {
+        "message": "No continuous operating-point windows available."
+    },
+    "passiveAnalysisGroupLimit": {
+        "message": "Configuration epochs remain separate. Errors are not delay-aligned. Differences in throttle, direction or amplitude do not establish PID causality."
+    },
+    "passiveAnalysisActionsTitle": {
+        "message": "Action candidates and observed response"
+    },
+    "passiveAnalysisActionMeaning": {
+        "message": "Input shape and observation conditions determine eligibility. Poor tracking, overshoot and unsettled responses remain in the results."
+    },
+    "passiveAnalysisOnlyEligible": {
+        "message": "Qualified near steps only"
+    },
+    "passiveAnalysisCandidates": {
+        "message": "candidates"
+    },
+    "passiveAnalysisPrevious": {
+        "message": "Previous"
+    },
+    "passiveAnalysisNext": {
+        "message": "Next"
+    },
+    "passiveAnalysisTime": {
+        "message": "Start time"
+    },
+    "passiveAnalysisType": {
+        "message": "Input type"
+    },
+    "passiveAnalysisAmplitude": {
+        "message": "Command change"
+    },
+    "passiveAnalysisEligibility": {
+        "message": "Eligibility"
+    },
+    "passiveAnalysisRise": {
+        "message": "10–90% rise time"
+    },
+    "passiveAnalysisOvershoot": {
+        "message": "Angular-rate overshoot"
+    },
+    "passiveAnalysisSettling": {
+        "message": "Settling time"
+    },
+    "passiveAnalysisEvidence": {
+        "message": "Evidence"
+    },
+    "passiveAnalysisEligible": {
+        "message": "Eligible input"
+    },
+    "passiveAnalysisRejected": {
+        "message": "Step metrics unavailable"
+    },
+    "passiveAnalysisUnconfirmed": {
+        "message": "Not confirmed"
+    },
+    "passiveAnalysisViewCurve": {
+        "message": "View action curve"
+    },
+    "passiveAnalysisNoActions": {
+        "message": "No candidates match this filter."
+    },
+    "passiveAnalysisRejectedReasons": {
+        "message": "Why candidates lack step metrics (reasons can overlap)"
+    },
+    "passiveAnalysisActionDetail": {
+        "message": "Observed action evidence"
+    },
+    "passiveAnalysisTransition": {
+        "message": "Input transition"
+    },
+    "passiveAnalysisCensoredMeaning": {
+        "message": "Settling was not confirmed; this observation duration is not a measured settling time:"
+    },
+    "passiveAnalysisLoadingCurve": {
+        "message": "Loading local curve…"
+    },
+    "passiveAnalysisDistributionTitle": {
+        "message": "Action groups and response distributions"
+    },
+    "passiveAnalysisDistributionMeaning": {
+        "message": "Direction, throttle and configuration remain separate. Distributions require at least five independent actions; this is not an accuracy guarantee."
+    },
+    "passiveAnalysisDirection": {
+        "message": "Direction"
+    },
+    "passiveAnalysisIndependent": {
+        "message": "Independent actions / blocks"
+    },
+    "passiveAnalysisTooFew": {
+        "message": "Too few samples"
+    },
+    "passiveAnalysisEstimateTitle": {
+        "message": "Advanced: deconvolution response estimate"
+    },
+    "passiveAnalysisEstimateMeaning": {
+        "message": "Estimated only for continuous, stable operating points with sufficient excitation. This is not an observed step and does not establish steady-state gain."
+    },
+    "passiveAnalysisNoEstimate": {
+        "message": "No estimates meet the window, excitation and independent-support requirements."
+    },
+    "passiveAnalysisWindows": {
+        "message": "accepted windows"
+    },
+    "passiveAnalysisCommand": {
+        "message": "Command"
+    },
+    "passiveAnalysisActual": {
+        "message": "Measured angular rate"
+    },
+    "passiveAnalysisEstimated": {
+        "message": "Estimated response"
+    },
+    "passiveAnalysisPlotHint": {
+        "message": "Move pointer to inspect values"
+    },
+    "passiveAnalysisResponsePlot": {
+        "message": "Command and angular-rate response plot"
+    },
+    "passiveAnalysisTimeMs": {
+        "message": "Time relative to onset / ms"
+    },
+    "passiveAnalysisObservedCaption": {
+        "message": "Local peaks are preserved. Metrics use full-resolution data; shading marks the input transition."
+    },
+    "passiveAnalysisEstimateCaption": {
+        "message": "Local linear, band-limited estimate; tail is not forced to unity."
+    },
+    "passiveAnalysisViewGroup": {
+        "message": "View group evidence"
+    },
+    "passiveAnalysisLimitedRows": {
+        "message": "Showing the first 60 groups. Export for complete results."
+    },
+    "passiveAnalysisType_near_step": {
+        "message": "Near step"
+    },
+    "passiveAnalysisType_ramp": {
+        "message": "Ramp"
+    },
+    "passiveAnalysisType_reversal": {
+        "message": "Reversal"
+    },
+    "passiveAnalysisType_mixed_input": {
+        "message": "Mixed input"
+    },
+    "passiveAnalysisType_steady_command": {
+        "message": "Steady command"
+    },
+    "passiveAnalysisType_unknown": {
+        "message": "Unknown"
+    },
+    "passiveAnalysisDirection_positive": {
+        "message": "Positive"
+    },
+    "passiveAnalysisDirection_negative": {
+        "message": "Negative"
+    },
+    "passiveAnalysisReason_PRE_PLATFORM_UNSTABLE": {
+        "message": "Insufficient or unstable pre-input plateau"
+    },
+    "passiveAnalysisReason_POST_PLATFORM_INSUFFICIENT": {
+        "message": "Insufficient or unstable post-input hold"
+    },
+    "passiveAnalysisReason_ACTION_TOO_SMALL": {
+        "message": "Command change too small"
+    },
+    "passiveAnalysisReason_INPUT_TOO_SLOW": {
+        "message": "Input transition too slow for a near step"
+    },
+    "passiveAnalysisReason_FLIGHT_STATE_UNKNOWN": {
+        "message": "Flight state is not established"
+    },
+    "passiveAnalysisReason_CHANGING_THROTTLE": {
+        "message": "Throttle changed or crossed groups"
+    },
+    "passiveAnalysisReason_THROTTLE_CONTEXT_UNKNOWN": {
+        "message": "Throttle context unknown or invalid"
+    },
+    "passiveAnalysisReason_CROSS_AXIS_CONTEXT_UNKNOWN": {
+        "message": "Other-axis input unavailable"
+    },
+    "passiveAnalysisReason_MULTI_AXIS_INPUT": {
+        "message": "Substantial simultaneous input on other axes"
+    },
+    "passiveTuneStage_normalizing": {
+        "message": "Validating units and time boundaries"
+    },
+    "passiveTuneStage_throttle": {
+        "message": "Computing throttle coverage"
+    },
+    "passiveTuneStage_actions": {
+        "message": "Detecting input actions"
+    },
+    "passiveTuneStage_metrics": {
+        "message": "Computing response metrics"
+    },
+    "passiveTuneStage_estimating": {
+        "message": "Estimating closed-loop response"
+    },
+    "passiveTuneStage_aggregating": {
+        "message": "Aggregating evidence and groups"
+    },
+    "passiveTuneReason_FLIGHT_STATE_UNKNOWN": {
+        "message": "Flight state is not established"
+    },
+    "passiveTuneReason_ACTION_RESOURCE_LIMIT": {
+        "message": "Action limit reached; statistics cover only the processed portion."
+    },
+    "passiveAnalysisGroup_unknown": {
+        "message": "Unknown throttle"
+    },
+    "passiveAnalysisGroup_invalid": {
+        "message": "Invalid throttle"
+    },
+    "passiveAnalysisGroup_changing_throttle": {
+        "message": "Changing throttle"
+    },
+    "passiveAnalysisReason_INPUT_REVERSAL": {
+        "message": "Command reverses direction; analyzed separately"
+    },
+    "passiveAnalysisReason_FAILSAFE_CONTEXT": {
+        "message": "Logged failsafe context"
+    },
+    "passiveAnalysisReason_RX_SIGNAL_INVALID": {
+        "message": "Logged receiver signal or channel validity issue"
     }
 }

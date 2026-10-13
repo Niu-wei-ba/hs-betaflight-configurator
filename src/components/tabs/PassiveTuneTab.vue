@@ -44,6 +44,15 @@
                 :dirty="aiDirty"
                 @generate="flow.generate"
                 @cancel="flow.cancel"
+                @evidence="revealEvidence"
+            />
+            <MotionResults
+                v-if="store.result?.motion"
+                ref="motionResults"
+                :result="store.result"
+                :curve="store.evidenceCurve"
+                :loading="store.evidenceLoading"
+                @inspect="inspectEvidence"
             />
             <details v-if="store.result" class="space-y-4">
                 <summary class="cursor-pointer font-semibold">{{ $t("passiveAiTechnicalDetails") }}</summary>
@@ -103,7 +112,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, watch, ref, nextTick } from "vue";
+import MotionResults from "./passive-tune/MotionResults.vue";
 import { useTranslation } from "i18next-vue";
 import BaseTab from "./BaseTab.vue";
 import UiBox from "../elements/UiBox.vue";
@@ -116,7 +126,17 @@ import SpectrumPlot from "./passive-tune/SpectrumPlot.vue";
 import { usePassiveTune } from "../../composables/usePassiveTune.js";
 import { AXES } from "../../js/passive-tune/analysis.js";
 
-const { store, loadFile, analyze, cancel, downloadReport } = usePassiveTune();
+const { store, loadFile, analyze, cancel, downloadReport, inspectEvidence } = usePassiveTune();
+const motionResults = ref(null);
+async function revealEvidence(id) {
+    motionResults.value?.reveal(id);
+    await nextTick();
+    const target =
+        document.getElementById(id) ??
+        document.querySelector('[data-testid="passive-action-evidence"]') ??
+        document.querySelector('[data-testid="passive-motion-results"]');
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 const ai = usePassiveAi();
 const axes = AXES;
 const evidence = computed(() => aiEvidence(store.result, store.source));

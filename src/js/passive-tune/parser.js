@@ -209,20 +209,29 @@ function decodeFrame(stream, def, ctx) {
 
 function decodeEvent(stream) {
     const type = stream.readByte();
+    const payload = {};
     if (type === 255) {
         const text = new TextDecoder().decode(stream.data.subarray(stream.pos, stream.pos + 11));
         if (text !== "End of log\0") fail("TRUNCATED_FRAME");
         stream.pos += 11;
-    } else if (type === 14 || type === 30) {
-        stream.readUnsignedVB();
-        stream.readUnsignedVB();
-    } else if (type === 0 || type === 15) stream.readUnsignedVB();
+    } else if (type === 14) {
+        payload.loopIteration = stream.readUnsignedVB();
+        payload.timeUs = stream.readUnsignedVB();
+    } else if (type === 30) {
+        payload.flags = stream.readUnsignedVB();
+        payload.previousFlags = stream.readUnsignedVB();
+    } else if (type === 0) payload.timeUs = stream.readUnsignedVB();
+    else if (type === 15) payload.reason = stream.readUnsignedVB();
     else if (type === 13) {
         const adjustment = stream.readByte();
-        if (adjustment & 128) for (let i = 0; i < 4; i++) stream.readByte();
-        else stream.readSignedVB();
+        payload.function = adjustment & 127;
+        if (adjustment & 128) {
+            const bytes = Uint8Array.from({ length: 4 }, () => stream.readByte());
+            const value = new DataView(bytes.buffer).getFloat32(0, true);
+            payload.value = Number.isFinite(value) ? value : null;
+        } else payload.value = stream.readSignedVB();
     } else fail("UNSUPPORTED_EVENT");
-    return type;
+    return { type, payload };
 }
 
 class Columns {
@@ -230,12 +239,14 @@ class Columns {
         this.names = names;
         this.length = 0;
         this.blocks = [];
-        this.limit = Math.min(1000000, Math.floor((64 * 1024 * 1024) / (names.length * 8)));
+        this.types = names.map((name) => (["time", "loopIteration"].includes(name) ? Float64Array : Float32Array));
+        const bytesPerFrame = this.types.reduce((sum, Type) => sum + Type.BYTES_PER_ELEMENT, 0);
+        this.limit = Math.min(1000000, Math.floor((64 * 1024 * 1024) / (8192 * bytesPerFrame)) * 8192);
     }
     push(frame) {
         if (this.length >= this.limit) fail("DECODED_SIZE_LIMIT");
         const offset = this.length % 8192;
-        if (!offset) this.blocks.push(this.names.map(() => new Float64Array(8192)));
+        if (!offset) this.blocks.push(this.types.map((Type) => new Type(8192)));
         const block = this.blocks[this.blocks.length - 1];
         this.names.forEach((_, i) => {
             block[i][offset] = frame[i];
@@ -245,15 +256,13 @@ class Columns {
     finish() {
         const result = Object.create(null);
         this.names.forEach((name, i) => {
-            const array =
-                name === "time" || name === "loopIteration"
-                    ? new Float64Array(this.length)
-                    : new Float32Array(this.length);
+            const array = new this.types[i](this.length);
             this.blocks.forEach((block, b) =>
                 array.set(block[i].subarray(0, Math.min(8192, this.length - b * 8192)), b * 8192),
             );
             result[name] = array;
         });
+        this.blocks = [];
         return result;
     }
 }
@@ -280,6 +289,8 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
     const ctx = { headers, dataVersion, previous: null, previous2: null, lastMainTime: 0, iterationIncrement: 1 };
     const breaks = new Set([0]);
     const events = [];
+    const states = [];
+    let previousState = null;
     let corruptRegions = 0;
     let lastTime = null;
     let epoch = 0;
@@ -290,10 +301,13 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
             if (type === "E") {
                 const event = decodeEvent(stream);
                 if (events.length >= 10000) fail("DECODED_SIZE_LIMIT");
-                events.push({ type: event, sampleIndex: columns.length });
-                if ([13, 14, 15, 30].includes(event)) breaks.add(columns.length);
-                if (event === 14) ctx.previous = ctx.previous2 = null;
-                if (event === 255) break;
+                events.push({ ...event, sampleIndex: columns.length, timeBeforeUs: lastTime });
+                if ([13, 14, 15, 30].includes(event.type)) breaks.add(columns.length);
+                if (event.type === 14) {
+                    ctx.previous = ctx.previous2 = null;
+                    previousState = null;
+                }
+                if (event.type === 255) break;
                 if (stream.pos < stream.end && !FRAME_TYPES.has(data[stream.pos])) fail("INVALID_FRAME_BOUNDARY");
             } else {
                 const def = defs[type];
@@ -309,6 +323,23 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
                 const frame = decodeFrame(stream, def, frameCtx);
                 if (stream.pos - frameStart > 2048 || (stream.pos < stream.end && !FRAME_TYPES.has(data[stream.pos]))) {
                     fail("INVALID_FRAME_BOUNDARY");
+                }
+                if (type === "S") {
+                    const fields = Object.fromEntries(def.names.map((name, i) => [name, frame[i]]));
+                    const keys = ["flightModeFlags", "failsafePhase", "rxSignalReceived", "rxFlightChannelsValid"];
+                    if (!previousState || keys.some((key) => fields[key] !== previousState[key])) {
+                        if (states.length >= 10000) fail("DECODED_SIZE_LIMIT");
+                        if (previousState) breaks.add(columns.length);
+                        states.push({
+                            sampleIndex: columns.length,
+                            timeBeforeUs: lastTime,
+                            valid: true,
+                            fields: Object.fromEntries(
+                                keys.filter((key) => Object.hasOwn(fields, key)).map((key) => [key, fields[key]]),
+                            ),
+                        });
+                        previousState = fields;
+                    }
                 }
                 if (main) {
                     const rawTime = frame[timeIndex];
@@ -344,6 +375,9 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
             corruptRegions++;
             if (corruptRegions > 1000) fail("EXCESSIVE_LOG_CORRUPTION");
             ctx.previous = ctx.previous2 = null;
+            previousState = null;
+            if (states.length >= 10000) fail("DECODED_SIZE_LIMIT");
+            states.push({ sampleIndex: columns.length, timeBeforeUs: lastTime, valid: false, fields: {} });
             breaks.add(columns.length);
             // Only an independently encoded I frame can restore predictor history.
             stream.pos = frameStart + 1;
@@ -365,7 +399,7 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
         }
     }
     return {
-        schemaVersion: "0.2.0",
+        schemaVersion: "0.3.0",
         logIndex,
         firmware: revision || null,
         headers,
@@ -374,6 +408,7 @@ export function parseLog(data, logIndex, onProgress = () => {}) {
         sampleCount: columns.length,
         breakIndices: [...breaks].sort((a, b) => a - b),
         events,
+        states,
         corruptRegions,
         scaleKnown,
         capabilities: { gyroUnit: scaleKnown ? "deg/s" : "unknown", dtermUnit: "logged-unit", apply: false },

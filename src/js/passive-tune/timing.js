@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 export function median(values) {
     if (!values.length) return null;
-    const sorted = [...values].sort((a, b) => a - b);
+    const sorted = Float64Array.from(values).sort();
     const middle = Math.floor(sorted.length / 2);
     return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
@@ -9,13 +9,15 @@ export function median(values) {
 /** Never close gaps by concatenating samples or using the PID loop frequency. */
 export function validateTiming(timeUs, headerRateHz = null, breakIndices = []) {
     const breaks = new Set(breakIndices);
-    const intervals = [];
+    const intervalBuffer = new Float64Array(Math.max(0, timeUs.length - 1));
+    let intervalCount = 0;
     let invalidIntervals = 0;
     for (let i = 1; i < timeUs.length; i++) {
         const dt = timeUs[i] - timeUs[i - 1];
         if (!Number.isFinite(dt) || dt <= 0) invalidIntervals++;
-        else if (!breaks.has(i)) intervals.push(dt);
+        else if (!breaks.has(i)) intervalBuffer[intervalCount++] = dt;
     }
+    const intervals = intervalBuffer.subarray(0, intervalCount);
     const periodUs = median(intervals);
     if (!(periodUs > 0))
         return { status: "rejected", sampleRateMeasuredHz: null, spans: [], reasonCodes: ["TIMESTAMP_UNRELIABLE"] };

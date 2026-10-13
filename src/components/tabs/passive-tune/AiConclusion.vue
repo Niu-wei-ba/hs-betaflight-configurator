@@ -30,9 +30,38 @@
                             <li v-for="item in axis.limitations" :key="item">{{ item }}</li>
                         </ul>
                         <p>{{ $t("passiveTuneUsableBands") }}: {{ supportedBands(axis.axis) }}</p>
-                        <p v-for="id in axis.evidenceIds" :key="id">{{ $t(`passiveAiEvidence_${id}`) }}</p>
+                        <button
+                            v-for="id in axis.evidenceIds"
+                            :key="id"
+                            type="button"
+                            class="block underline my-1"
+                            @click="$emit('evidence', id)"
+                        >
+                            {{ evidenceLabel(id) }}
+                        </button>
                     </details>
                 </div>
+            </div>
+            <div v-if="conclusion.findings?.length" class="space-y-3 my-3">
+                <article
+                    v-for="(finding, index) in conclusion.findings"
+                    :key="index"
+                    class="border-l-2 border-amber-500 pl-3"
+                >
+                    <p>{{ finding.text }}</p>
+                    <p v-for="metricRef in finding.metricRefs" :key="metricRef" class="text-sm tabular-nums">
+                        {{ metricText(metricRef) }}
+                    </p>
+                    <button
+                        v-for="id in finding.evidenceIds"
+                        :key="id"
+                        type="button"
+                        class="underline text-sm mr-3"
+                        @click="$emit('evidence', id)"
+                    >
+                        {{ evidenceLabel(id) }}
+                    </button>
+                </article>
             </div>
             <h3 class="font-semibold">{{ $t("passiveAiNextSteps") }}</h3>
             <ol class="list-decimal pl-5">
@@ -77,17 +106,49 @@ import { computed } from "vue";
 import { useTranslation } from "i18next-vue";
 import UiBox from "../../elements/UiBox.vue";
 import { conclusionReport } from "../../../js/passive-tune/ai-conclusion.js";
+import { metricReferences } from "../../../js/passive-tune/ai-motion-evidence.js";
 const props = defineProps({
     ai: { type: Object, required: true },
     evidence: { type: Object, required: true },
     pending: { type: Boolean, default: false },
     dirty: { type: Boolean, default: false },
 });
-defineEmits(["generate", "cancel"]);
+defineEmits(["generate", "cancel", "evidence"]);
 const ai = props.ai;
 const { t } = useTranslation();
 const busy = computed(() => ai.state.value !== "idle");
 const conclusion = computed(() => ai.answer.value?.conclusion);
+function evidenceLabel(id) {
+    if (
+        ["log-quality", "flight-configuration", "missing-measurements", "axis-roll", "axis-pitch", "axis-yaw"].includes(
+            id,
+        )
+    )
+        return t(`passiveAiEvidence_${id}`);
+    return t(id.startsWith("event-") ? "passiveAnalysisViewCurve" : "passiveAnalysisViewGroup");
+}
+function metricText(ref) {
+    const value = metricReferences(props.evidence).get(ref);
+    const type = /rmsDegPerSecond/.test(ref)
+        ? "Rms"
+        : /maeDegPerSecond/.test(ref)
+            ? "Mae"
+            : /absoluteErrorP95/.test(ref)
+                ? "P95"
+                : /riseTime/.test(ref)
+                    ? "Rise"
+                    : /overshoot/.test(ref)
+                        ? "Overshoot"
+                        : /unconfirmedFraction/.test(ref)
+                            ? "NotConfirmed"
+                            : /settlingTime/.test(ref)
+                                ? "Settling"
+                                : "Evidence";
+    const fraction = /Fraction/.test(ref);
+    const unit =
+        fraction || /overshoot/.test(ref) ? "%" : /Time|Ms/.test(ref) ? "ms" : /DegPerSecond/.test(ref) ? "°/s" : "";
+    return `${t(`passiveAnalysis${type}`)}: ${(value * (fraction ? 100 : 1)).toFixed(2)} ${unit}`;
+}
 function supportedBands(axis) {
     const values = props.evidence.axes.find((item) => item.axis === axis).supportedFrequencyBandsHz;
     return values.length

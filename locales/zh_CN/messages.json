@@ -9642,5 +9642,293 @@
     },
     "passiveAiError_AI_EVIDENCE_LIMIT": {
         "message": "证据包超过大小限制，无法发送。"
+    },
+    "passiveAnalysisCoverage": {
+        "message": "数据覆盖与三轴摘要"
+    },
+    "passiveAnalysisScope": {
+        "message": "以下数值描述本次记录。动作有效不代表响应良好，未知飞行状态不等于正常飞行。"
+    },
+    "passiveAnalysisPartial": {
+        "message": "候选动作超过资源上限，动作统计仅覆盖已处理部分。"
+    },
+    "passiveAnalysisEligibleCandidates": {
+        "message": "合格近似阶跃 / 全部候选"
+    },
+    "passiveAnalysisRms": {
+        "message": "跟踪误差 RMS"
+    },
+    "passiveAnalysisMae": {
+        "message": "平均绝对误差"
+    },
+    "passiveAnalysisP95": {
+        "message": "绝对误差 p95（近似）"
+    },
+    "passiveAnalysisNotConfirmed": {
+        "message": "观察窗内未确认稳定"
+    },
+    "passiveAnalysisOutputUpper": {
+        "message": "电机指令接近上限时间占比"
+    },
+    "passiveAnalysisOutputMeaning": {
+        "message": "此项不代表真实推力饱和或电机温度"
+    },
+    "passiveAnalysisThrottleTitle": {
+        "message": "油门覆盖与工作点对比"
+    },
+    "passiveAnalysisThrottleMeaning": {
+        "message": "分组依据记录的混控油门，百分比不是原始摇杆、推力或功率。"
+    },
+    "passiveAnalysisThrottleUnavailable": {
+        "message": "缺少可信的混控油门来源，保留角速度分析，关闭标准油门分组。"
+    },
+    "passiveAnalysisUnknownCoverage": {
+        "message": "未知 / 异常油门时间"
+    },
+    "passiveAnalysisAxis": {
+        "message": "查看轴"
+    },
+    "passiveAnalysisThrottle": {
+        "message": "混控油门"
+    },
+    "passiveAnalysisEpoch": {
+        "message": "配置段"
+    },
+    "passiveAnalysisDuration": {
+        "message": "有效时间"
+    },
+    "passiveAnalysisStateRecorded": {
+        "message": "有状态记录"
+    },
+    "passiveAnalysisStateUnknown": {
+        "message": "状态未知"
+    },
+    "passiveAnalysisNoStableGroups": {
+        "message": "没有足够的连续工作点窗口。"
+    },
+    "passiveAnalysisGroupLimit": {
+        "message": "不同配置段分别显示。误差未做最佳时移；油门、方向和动作幅度不同的结果不能直接归因于 PID。"
+    },
+    "passiveAnalysisActionsTitle": {
+        "message": "动作候选与实际响应"
+    },
+    "passiveAnalysisActionMeaning": {
+        "message": "先判断指令形态和观察条件，再计算响应；超调大、跟踪慢或未稳定的合格动作仍保留。"
+    },
+    "passiveAnalysisOnlyEligible": {
+        "message": "只看合格近似阶跃"
+    },
+    "passiveAnalysisCandidates": {
+        "message": "个候选"
+    },
+    "passiveAnalysisPrevious": {
+        "message": "上一页"
+    },
+    "passiveAnalysisNext": {
+        "message": "下一页"
+    },
+    "passiveAnalysisTime": {
+        "message": "起始时间"
+    },
+    "passiveAnalysisType": {
+        "message": "输入形态"
+    },
+    "passiveAnalysisAmplitude": {
+        "message": "指令变化"
+    },
+    "passiveAnalysisEligibility": {
+        "message": "分析资格"
+    },
+    "passiveAnalysisRise": {
+        "message": "10–90%到达时间"
+    },
+    "passiveAnalysisOvershoot": {
+        "message": "角速度超调"
+    },
+    "passiveAnalysisSettling": {
+        "message": "稳定时间"
+    },
+    "passiveAnalysisEvidence": {
+        "message": "证据"
+    },
+    "passiveAnalysisEligible": {
+        "message": "输入合格"
+    },
+    "passiveAnalysisRejected": {
+        "message": "不适用阶跃指标"
+    },
+    "passiveAnalysisUnconfirmed": {
+        "message": "未确认稳定"
+    },
+    "passiveAnalysisViewCurve": {
+        "message": "查看动作曲线"
+    },
+    "passiveAnalysisNoActions": {
+        "message": "此筛选条件下没有动作候选。"
+    },
+    "passiveAnalysisRejectedReasons": {
+        "message": "为什么候选不能算阶跃（原因可重叠）"
+    },
+    "passiveAnalysisActionDetail": {
+        "message": "实际动作证据"
+    },
+    "passiveAnalysisTransition": {
+        "message": "指令变化用时"
+    },
+    "passiveAnalysisCensoredMeaning": {
+        "message": "记录窗口内未确认稳定，不能把以下观察时长当作真实稳定时间："
+    },
+    "passiveAnalysisLoadingCurve": {
+        "message": "正在读取本地曲线…"
+    },
+    "passiveAnalysisDistributionTitle": {
+        "message": "动作分组与响应分布"
+    },
+    "passiveAnalysisDistributionMeaning": {
+        "message": "方向、油门和配置段分开。至少5个独立动作才展示组内分布；这不是精度保证。"
+    },
+    "passiveAnalysisDirection": {
+        "message": "方向"
+    },
+    "passiveAnalysisIndependent": {
+        "message": "独立动作 / 窗口"
+    },
+    "passiveAnalysisTooFew": {
+        "message": "样本不足"
+    },
+    "passiveAnalysisEstimateTitle": {
+        "message": "高级：反卷积估计响应"
+    },
+    "passiveAnalysisEstimateMeaning": {
+        "message": "仅在连续、稳定工作点且输入激励充分时估计。它不是实际阶跃动作，不能替代实测指标或证明稳态增益。"
+    },
+    "passiveAnalysisNoEstimate": {
+        "message": "没有满足窗口长度、激励和独立支持条件的估计数据。"
+    },
+    "passiveAnalysisWindows": {
+        "message": "个有效窗口"
+    },
+    "passiveAnalysisCommand": {
+        "message": "指令"
+    },
+    "passiveAnalysisActual": {
+        "message": "实际角速度"
+    },
+    "passiveAnalysisEstimated": {
+        "message": "估计响应"
+    },
+    "passiveAnalysisPlotHint": {
+        "message": "移动指针查看记录值"
+    },
+    "passiveAnalysisResponsePlot": {
+        "message": "指令与角速度响应图"
+    },
+    "passiveAnalysisTimeMs": {
+        "message": "相对动作起点 / ms"
+    },
+    "passiveAnalysisObservedCaption": {
+        "message": "曲线保留局部峰值；统计使用全分辨率数据。阴影为指令变化区。"
+    },
+    "passiveAnalysisEstimateCaption": {
+        "message": "局部线性、带限估计，未强制尾部归一化。"
+    },
+    "passiveAnalysisViewGroup": {
+        "message": "查看对应分组证据"
+    },
+    "passiveAnalysisLimitedRows": {
+        "message": "当前展示前60组，完整结果可导出。"
+    },
+    "passiveAnalysisType_near_step": {
+        "message": "近似阶跃"
+    },
+    "passiveAnalysisType_ramp": {
+        "message": "斜坡输入"
+    },
+    "passiveAnalysisType_reversal": {
+        "message": "反向输入"
+    },
+    "passiveAnalysisType_mixed_input": {
+        "message": "多轴混合"
+    },
+    "passiveAnalysisType_steady_command": {
+        "message": "稳定指令"
+    },
+    "passiveAnalysisType_unknown": {
+        "message": "未知"
+    },
+    "passiveAnalysisDirection_positive": {
+        "message": "正向"
+    },
+    "passiveAnalysisDirection_negative": {
+        "message": "负向"
+    },
+    "passiveAnalysisReason_PRE_PLATFORM_UNSTABLE": {
+        "message": "输入前平台不足或不稳定"
+    },
+    "passiveAnalysisReason_POST_PLATFORM_INSUFFICIENT": {
+        "message": "后输入保持不足或不稳定"
+    },
+    "passiveAnalysisReason_ACTION_TOO_SMALL": {
+        "message": "指令变化幅度不足"
+    },
+    "passiveAnalysisReason_INPUT_TOO_SLOW": {
+        "message": "输入变化过慢，不作为近似阶跃"
+    },
+    "passiveAnalysisReason_FLIGHT_STATE_UNKNOWN": {
+        "message": "缺少可确认的飞行状态"
+    },
+    "passiveAnalysisReason_CHANGING_THROTTLE": {
+        "message": "油门明显变化或跨组"
+    },
+    "passiveAnalysisReason_THROTTLE_CONTEXT_UNKNOWN": {
+        "message": "油门工况未知或异常"
+    },
+    "passiveAnalysisReason_CROSS_AXIS_CONTEXT_UNKNOWN": {
+        "message": "其他轴指令信息不足"
+    },
+    "passiveAnalysisReason_MULTI_AXIS_INPUT": {
+        "message": "其他轴同时存在明显输入"
+    },
+    "passiveTuneStage_normalizing": {
+        "message": "核对单位与时间边界"
+    },
+    "passiveTuneStage_throttle": {
+        "message": "计算油门覆盖"
+    },
+    "passiveTuneStage_actions": {
+        "message": "检测输入动作"
+    },
+    "passiveTuneStage_metrics": {
+        "message": "计算响应指标"
+    },
+    "passiveTuneStage_estimating": {
+        "message": "估计闭环响应"
+    },
+    "passiveTuneStage_aggregating": {
+        "message": "整理证据与分组"
+    },
+    "passiveTuneReason_FLIGHT_STATE_UNKNOWN": {
+        "message": "缺少可确认的飞行状态"
+    },
+    "passiveTuneReason_ACTION_RESOURCE_LIMIT": {
+        "message": "候选动作超过资源上限，动作统计仅覆盖已处理部分。"
+    },
+    "passiveAnalysisGroup_unknown": {
+        "message": "油门未知"
+    },
+    "passiveAnalysisGroup_invalid": {
+        "message": "油门异常"
+    },
+    "passiveAnalysisGroup_changing_throttle": {
+        "message": "油门变化段"
+    },
+    "passiveAnalysisReason_INPUT_REVERSAL": {
+        "message": "指令跨越正负方向，作为反向输入单独分析"
+    },
+    "passiveAnalysisReason_FAILSAFE_CONTEXT": {
+        "message": "记录中出现失控保护状态"
+    },
+    "passiveAnalysisReason_RX_SIGNAL_INVALID": {
+        "message": "记录中接收信号或通道有效性异常"
     }
 }

@@ -24,6 +24,11 @@ export function makeLog({
     extraHeaders = [],
     explicitP = String(divider),
     grouped = false,
+    inputs,
+    outputs,
+    extraChannels = {},
+    slowFrames = new Map(),
+    events = new Map(),
 } = {}) {
     const names = [
         "loopIteration",
@@ -32,6 +37,8 @@ export function makeLog({
         ...[0, 1, 2].map((i) => `gyroADC[${i}]`),
     ];
     if (grouped) names.push("axisI[0]", "axisI[1]", "axisI[2]");
+    const extraNames = Object.keys(extraChannels);
+    names.push(...extraNames);
     const predictorsI = Array(names.length).fill(0);
     const predictorsP = [6, 2, ...Array(names.length - 2).fill(1)];
     const encI = [1, 1, ...Array(names.length - 2).fill(0)];
@@ -56,16 +63,28 @@ export function makeLog({
         `H Field P encoding:${encP.join(",")}`,
         ...extraHeaders,
     ];
+    if (slowFrames.size)
+        headers.push(
+            "H Field S name:flightModeFlags,failsafePhase,rxSignalReceived,rxFlightChannelsValid",
+            "H Field S signed:0,0,0,0",
+            "H Field S predictor:0,0,0,0",
+            "H Field S encoding:1,1,1,1",
+        );
     const body = [];
     let previous = null;
     let previous2 = null;
     let timeOffset = 0;
     for (let n = 0; n < samples; n++) {
+        if (slowFrames.has(n)) body.push(83, ...slowFrames.get(n).flatMap(encodeUnsigned));
+        if (events.has(n)) body.push(...events.get(n));
         timeOffset += gaps.get(n) ?? 0;
         const x = Math.round((input?.(n) ?? 100 * Math.sin(n / 13)) * (highResolution ? 10 : 1));
         const y = Math.round((output?.(n) ?? x / (highResolution ? 10 : 1)) * (highResolution ? 10 : 1));
-        const frame = [n * divider, Math.round(100000 + (n * 1000000) / fs + timeOffset), x, x, x, y, y, y];
+        const xs = inputs ? inputs.map((fn) => Math.round(fn(n) * (highResolution ? 10 : 1))) : [x, x, x];
+        const ys = outputs ? outputs.map((fn) => Math.round(fn(n) * (highResolution ? 10 : 1))) : [y, y, y];
+        const frame = [n * divider, Math.round(100000 + (n * 1000000) / fs + timeOffset), ...xs, ...ys];
         if (grouped) frame.push(0, 0, 0);
+        frame.push(...extraNames.map((name) => Math.round(extraChannels[name](n))));
         const intra = frame[0] % 32 === 0;
         body.push(intra ? 73 : 80);
         if (intra) {
@@ -73,8 +92,12 @@ export function makeLog({
             previous2 = frame;
         } else {
             body.push(...encodeSigned(frame[1] - (previous2 ? 2 * previous[1] - previous2[1] : previous[1])));
-            for (let i = 2; i < 8; i++) body.push(...encodeSigned(frame[i] - previous[i]));
-            if (grouped) body.push(0); // TAG2_3S32: three zero residuals.
+            for (let i = 2; i < frame.length; i++) {
+                if (grouped && i === 8) {
+                    body.push(0);
+                    i += 2;
+                } else body.push(...encodeSigned(frame[i] - previous[i]));
+            }
             previous2 = previous;
         }
         previous = frame;

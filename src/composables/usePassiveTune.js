@@ -7,8 +7,10 @@ export function usePassiveTune() {
     const store = usePassiveTuneStore();
     let worker = null;
     let jobId = 0;
+    let curveRequest = 0;
     function cancel() {
         jobId++;
+        curveRequest++;
         worker?.terminate();
         worker = null;
         store.reset();
@@ -43,6 +45,9 @@ export function usePassiveTune() {
                 } else if (data.type === "RESULT") {
                     store.result = data.result;
                     store.state = "done";
+                } else if (data.type === "EVIDENCE_RESULT" && data.requestId === curveRequest) {
+                    store.evidenceCurve = data.curve;
+                    store.evidenceLoading = false;
                 } else if (data.type === "FAILED") failed(data.reasonCode);
             };
             worker.onerror = () => {
@@ -61,11 +66,22 @@ export function usePassiveTune() {
         )
             return;
         store.result = null;
+        store.evidenceCurve = null;
+        store.evidenceLoading = false;
+        curveRequest++;
         store.reasonCode = null;
         store.progress = 0;
         store.stage = "parsing";
         store.state = "analyzing";
         worker.postMessage({ type: "ANALYZE", jobId: ++jobId, logIndex: store.selectedLog });
+    }
+    function inspectEvidence(evidenceId) {
+        if (!worker || !store.result) return;
+        const event = store.result.motion?.records.find((item) => item.eventId === evidenceId);
+        if (!event) return;
+        store.evidenceCurve = null;
+        store.evidenceLoading = true;
+        worker.postMessage({ type: "GET_EVIDENCE", jobId, requestId: ++curveRequest, evidenceId });
     }
     function downloadReport() {
         if (!store.result || !store.source?.sha256) return;
@@ -79,5 +95,5 @@ export function usePassiveTune() {
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-    return { store, loadFile, analyze, cancel, downloadReport };
+    return { store, loadFile, analyze, cancel, downloadReport, inspectEvidence };
 }

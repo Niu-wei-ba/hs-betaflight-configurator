@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-export const EVIDENCE_VERSION = "passive-ai-evidence-1.0";
+import { motionEvidence, actionSummary, trackingSummary } from "./ai-motion-evidence.js";
+export const EVIDENCE_VERSION = "passive-ai-evidence-1.1";
 export const MAX_EVIDENCE_BYTES = 32768;
 const AXES = ["roll", "pitch", "yaw"];
 const number = (value) => (Number.isFinite(value) ? Math.round(value * 1e5) / 1e5 : null);
@@ -25,7 +26,16 @@ const MEANINGS = {
 /** Preserve full-band extrema while bounding the derived spectral evidence, never raw samples. */
 function trackingEvidence(charts, bands, rejected) {
     const points = [];
-    if (!bands.length || !charts?.frequencies?.length || !charts.valid || !charts.magnitudeDb || !charts.phaseDeg || !charts.coherence || rejected) return { supportedPointCount: 0, gainRangeDb: null, peak: null, points: [] };
+    if (
+        !bands.length ||
+        !charts?.frequencies?.length ||
+        !charts.valid ||
+        !charts.magnitudeDb ||
+        !charts.phaseDeg ||
+        !charts.coherence ||
+        rejected
+    )
+        return { supportedPointCount: 0, gainRangeDb: null, peak: null, points: [] };
     for (let i = 0; i < charts.frequencies.length; i++) {
         const frequencyHz = charts.frequencies[i];
         if (
@@ -102,7 +112,7 @@ function flightConfiguration(headers = {}) {
 export function aiEvidence(result, source) {
     if (!result || !source?.sha256) return null;
     const timing = result.timing || {};
-    const rejected = timing.status === "rejected";
+    const rejected = timing.status === "rejected" && !timing.localAnalysisAvailable;
     const spans = (timing.spans || []).filter(
         (span) =>
             Number.isInteger(span.start) &&
@@ -134,7 +144,7 @@ export function aiEvidence(result, source) {
         return {
             axis,
             evidenceId: `axis-${axis}`,
-            availability: bands.length ? "limited_evidence" : "insufficient_evidence",
+            availability: bands.length || value.tracking ? "limited_evidence" : "insufficient_evidence",
             supportedFrequencyBandsHz: bands,
             welchWindowCount: number(frequency?.windowCount),
             independentBlockCount: number(frequency?.independentBlockCount),
@@ -145,22 +155,23 @@ export function aiEvidence(result, source) {
                 source: `gyroADC[${index}]`,
                 unit: "deg/s",
                 includesCommandResponse: true,
-                rmsBands: (value.noise?.gyroBands || [])
-                    .slice(0, 3)
-                    .map((band) => ({
-                        lowHz: number(band.lowHz),
-                        highHz: number(band.highHz),
-                        rms: number(band.value),
-                        unavailableReason: reasons([band.reasonCode])[0] || null,
-                    })),
+                rmsBands: (value.noise?.gyroBands || []).slice(0, 3).map((band) => ({
+                    lowHz: number(band.lowHz),
+                    highHz: number(band.highHz),
+                    rms: number(band.value),
+                    unavailableReason: reasons([band.reasonCode])[0] || null,
+                })),
                 vibrationRisk: "not_assessed",
                 dtermChannelPresent: value.noise ? value.noise.dtermAvailable === true : null,
             },
             reasonCodes: axisReasons,
+            ...(result.motion
+                ? { observedTracking: trackingSummary(value.tracking), observedActions: actionSummary(value.actions) }
+                : {}),
         };
     });
     const packet = {
-        schemaVersion: EVIDENCE_VERSION,
+        schemaVersion: result.motion ? EVIDENCE_VERSION : "passive-ai-evidence-1.0",
         algorithmVersion: typeof result.algorithmVersion === "string" ? result.algorithmVersion.slice(0, 64) : null,
         source: {
             sha256: source.sha256,
@@ -225,6 +236,44 @@ export function aiEvidence(result, source) {
             meaning: MEANINGS[code] || "该项诊断能力受限，不能作为参数调整依据。",
         })),
     };
+    if (result.motion) {
+        packet.motion = motionEvidence(result);
+        packet.definitions.observedResponse =
+            "实际有限速度输入动作的观测响应，以指令目标归一化，不将gyro尾部强制缩放为1。";
+        packet.definitions.censoring =
+            "right_censored表示观察窗内未确认稳定，不是0ms，也不能将窗长直接当真实稳定时间。";
+        packet.definitions.selection =
+            "输入资格与输出表现分离，差响应仍保留；跨轴/油门/未知状态标为混杂，不代表原因已消除。";
+        packet.definitions.errorP95 = "时间加权2048桶近似分位数，误差分辨率单独给出，未做最佳时移。";
+        packet.missingMeasurements.items = [
+            "verified_flight_state",
+            "rpm_noise",
+            "verified_antialiasing",
+            "motor_temperature",
+            "complete_configuration_snapshot",
+            "pid_parameter_causality",
+        ];
+        if (!result.capabilities.throttleGroups) packet.missingMeasurements.items.push("throttle_groups");
+        if (!result.capabilities.outputBounds) packet.missingMeasurements.items.push("motor_output_bounds");
+        if (!packet.axes.some((axis) => axis.observedActions?.eligibleCount > 0))
+            packet.missingMeasurements.items.push("qualified_observed_step_response");
+        packet.missingMeasurements.consequence =
+            "可解释已测量的记录片段；不能判定未覆盖工况、物理原因、滤波安全、温度或具体PID改值。";
+        packet.motion.axesMissingStep = packet.axes
+            .filter((axis) => !axis.observedActions?.eligibleCount)
+            .map((axis) => axis.axis);
+        // Reduce detail in a deterministic order. Coverage/rejections/censoring stay intact.
+        const byteLength = () => new TextEncoder().encode(JSON.stringify(packet)).length;
+        for (const axis of packet.axes)
+            axis.tracking.points = axis.tracking.points.filter((_, i, list) => i % 3 === 0 || i === list.length - 1);
+        for (const key of ["representatives", "actionGroups", "trackingGroups", "estimates"]) {
+            while (byteLength() > MAX_EVIDENCE_BYTES && packet.motion[key].length) {
+                packet.motion[key].pop();
+                const counter = `omitted${key[0].toUpperCase()}${key.slice(1)}`;
+                packet.motion.selection[counter] = (packet.motion.selection[counter] ?? 0) + 1;
+            }
+        }
+    }
     if (new TextEncoder().encode(JSON.stringify(packet)).length > MAX_EVIDENCE_BYTES)
         throw new Error("AI_EVIDENCE_LIMIT");
     return packet;
