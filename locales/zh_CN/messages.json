@@ -10071,5 +10071,17 @@
     },
     "passiveBoundary_explicit_parser_boundary": {
         "message": "解析边界"
+    },
+    "passiveAiError_AI_PROVIDER_TEMPORARY": {
+        "message": "当前 AI 服务或模型暂时不可用，可稍后重试或切换模型。"
+    },
+    "passiveAiError_AI_PROVIDER_QUOTA": {
+        "message": "AI 服务报告账户额度不足，当前未获得模型结论。"
+    },
+    "passiveAiError_AI_PROVIDER_REJECTED": {
+        "message": "AI 服务拒绝了此请求，可导出完整输入核查或切换模型。"
+    },
+    "passiveAiError_AI_REQUEST_TOO_LARGE": {
+        "message": "完整 AI 请求超过中转大小限制，未发送；本地分析仍可用。"
     }
 }

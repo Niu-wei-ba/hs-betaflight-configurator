@@ -122,6 +122,22 @@ describe("AI provider and persisted configuration", () => {
         expect(body.messages[0].content).toContain("不得声称参数已应用");
         expect(answer).toMatchObject({ model: "actual-model", conclusion: { pidDecision: "not_determined" } });
     });
+    it("distinguishes bounded relay transport, request and provider errors without exposing returned messages", async () => {
+        for (const [status, body, expected] of [
+            [
+                502,
+                { error: "relay_upstream_failed", upstreamStatus: 503, message: "private-key" },
+                "AI_PROVIDER_TEMPORARY",
+            ],
+            [502, { error: "relay_upstream_failed", upstreamStatus: 402 }, "AI_PROVIDER_QUOTA"],
+            [502, { error: "relay_network_failed" }, "AI_NETWORK_FAILED"],
+            [504, { error: "relay_timeout" }, "AI_TIMEOUT"],
+            [413, { error: "relay_request_limit" }, "AI_REQUEST_TOO_LARGE"],
+        ]) {
+            fetch.mockResolvedValueOnce({ ok: false, status, json: async () => body });
+            await expect(fetchModels(config)).rejects.toThrow(expected);
+        }
+    });
     it("rejects truncated answers instead of presenting partial text as a conclusion", async () => {
         fetch.mockResolvedValue(
             response({ choices: [{ message: { content: "partial JSON" }, finish_reason: "length" }] }),

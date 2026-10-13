@@ -77,6 +77,7 @@ export function createAiRelay({ allowedOrigin = null, localOnly = true, fetchFn 
                 await upstream.body?.cancel();
                 return finish([401, 403, 429].includes(upstream.status) ? upstream.status : 502, {
                     error: "relay_upstream_failed",
+                    upstreamStatus: upstream.status,
                 });
             }
             const reader = upstream.body.getReader();
@@ -96,7 +97,9 @@ export function createAiRelay({ allowedOrigin = null, localOnly = true, fetchFn 
             finish(200, data);
         } catch {
             if (!res.destroyed && !res.writableEnded)
-                finish(abort.signal.aborted ? 504 : 502, { error: "relay_upstream_failed" });
+                finish(abort.signal.aborted ? 504 : 502, {
+                    error: abort.signal.aborted ? "relay_timeout" : "relay_network_failed",
+                });
         } finally {
             clearTimeout(timer);
             res.off("close", close);

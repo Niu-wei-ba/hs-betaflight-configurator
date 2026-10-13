@@ -75,9 +75,37 @@ export async function providerRequest(config, endpoint, { signal, body, fetchFn 
         throw new Error("AI_NETWORK_FAILED");
     }
     if (!response.ok) {
-        const code = { 401: "AI_AUTH_FAILED", 403: "AI_AUTH_FAILED", 429: "AI_RATE_LIMIT" }[response.status];
+        let relayFailure = null;
+        if (relay)
+            try {
+                relayFailure = await response.json();
+            } catch {
+                /* Error bodies remain optional. */
+            }
+        const statusCode = {
+            401: "AI_AUTH_FAILED",
+            403: "AI_AUTH_FAILED",
+            429: "AI_RATE_LIMIT",
+            413: "AI_REQUEST_TOO_LARGE",
+            504: "AI_TIMEOUT",
+        }[response.status];
+        const upstreamCode =
+            relayFailure?.error === "relay_upstream_failed"
+                ? {
+                    400: "AI_PROVIDER_REJECTED",
+                    402: "AI_PROVIDER_QUOTA",
+                    500: "AI_PROVIDER_TEMPORARY",
+                    502: "AI_PROVIDER_TEMPORARY",
+                    503: "AI_PROVIDER_TEMPORARY",
+                    504: "AI_PROVIDER_TEMPORARY",
+                }[relayFailure.upstreamStatus]
+                : null;
+        const networkCode = relayFailure?.error === "relay_network_failed" ? "AI_NETWORK_FAILED" : null;
         throw new Error(
-            code || (relay && [404, 405].includes(response.status) ? "AI_RELAY_UNAVAILABLE" : "AI_PROVIDER_FAILED"),
+            statusCode ||
+                upstreamCode ||
+                networkCode ||
+                (relay && [404, 405].includes(response.status) ? "AI_RELAY_UNAVAILABLE" : "AI_PROVIDER_FAILED"),
         );
     }
     let data;
@@ -109,7 +137,7 @@ export async function explainEvidence(config, evidence, options) {
         body: {
             model: config.model,
             stream: false,
-            max_tokens: 2800,
+            max_tokens: 6000,
             messages: conclusionMessages(evidence),
         },
     });

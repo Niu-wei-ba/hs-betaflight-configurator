@@ -66,6 +66,14 @@ describe("bounded same-origin relay", () => {
         ).toBe(413);
         expect(upstream).not.toHaveBeenCalled();
     });
+    it("reports bounded upstream status and distinguishes transport failures without echoing errors", async () => {
+        upstream.mockResolvedValueOnce(new Response("private-key-in-error", { status: 503 }));
+        const unavailable = await fetch(`${url}/__passive-ai/models`, { headers });
+        expect(await unavailable.json()).toEqual({ error: "relay_upstream_failed", upstreamStatus: 503 });
+        upstream.mockRejectedValueOnce(new Error("private-key-in-error"));
+        const network = await fetch(`${url}/__passive-ai/models`, { headers });
+        expect(await network.json()).toEqual({ error: "relay_network_failed" });
+    });
     it("does not follow upstream redirects or echo potentially sensitive failures", async () => {
         upstream.mockResolvedValue(
             new Response("secret upstream error", { status: 302, headers: { Location: "https://attacker.example" } }),

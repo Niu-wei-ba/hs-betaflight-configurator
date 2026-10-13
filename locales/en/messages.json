@@ -10213,5 +10213,17 @@
     },
     "passiveBoundary_explicit_parser_boundary": {
         "message": "Parser boundary"
+    },
+    "passiveAiError_AI_PROVIDER_TEMPORARY": {
+        "message": "The selected AI service/model is temporarily unavailable. Retry later or switch models."
+    },
+    "passiveAiError_AI_PROVIDER_QUOTA": {
+        "message": "The AI provider reported insufficient account quota; no conclusion was received."
+    },
+    "passiveAiError_AI_PROVIDER_REJECTED": {
+        "message": "The AI provider rejected this request. Export the complete input to inspect it or try another model."
+    },
+    "passiveAiError_AI_REQUEST_TOO_LARGE": {
+        "message": "The complete AI request exceeds the relay limit and was not sent. Local analysis remains available."
     }
 }
