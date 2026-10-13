@@ -201,10 +201,12 @@ export function metricReferences(packet) {
     const map = new Map();
     const visit = (value, path) => {
         if (Number.isFinite(value)) map.set(path, value);
-        else if (value && typeof value === "object" && !Array.isArray(value))
+        else if (value && typeof value === "object")
             for (const [key, item] of Object.entries(value)) if (key !== "evidenceId") visit(item, `${path}.${key}`);
     };
     for (const item of packet.axes) visit(item, item.evidenceId);
+    for (const key of ["logQuality", "flightConfiguration", "missingMeasurements"])
+        if (packet[key]?.evidenceId) visit(packet[key], packet[key].evidenceId);
     if (packet.motion) visit(packet.motion, packet.motion.evidenceId);
     if (packet.motion)
         for (const key of ["trackingGroups", "actionGroups", "representatives", "estimates"])

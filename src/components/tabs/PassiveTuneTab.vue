@@ -54,10 +54,10 @@
                 :loading="store.evidenceLoading"
                 @inspect="inspectEvidence"
             />
-            <details v-if="store.result" class="space-y-4">
+            <details v-if="store.result" ref="technicalDetails" class="space-y-4">
                 <summary class="cursor-pointer font-semibold">{{ $t("passiveAiTechnicalDetails") }}</summary>
                 <UiBox :title="$t('passiveTuneQualityTitle')">
-                    <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-3">
+                    <dl id="log-quality" class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-3">
                         <div>
                             <dt>{{ $t("passiveTuneSampleRate") }}</dt>
                             <dd>{{ format(store.result.timing.sampleRateMeasuredHz) }} Hz</dd>
@@ -73,6 +73,14 @@
                         <div>
                             <dt>{{ $t("passiveTuneFrames") }}</dt>
                             <dd>{{ store.result.sampleCount }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ $t("passiveAnalysisTimeGaps") }}</dt>
+                            <dd>{{ store.result.timing.temporalGapCount }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ $t("passiveAnalysisExplicitBoundaries") }}</dt>
+                            <dd>{{ store.result.timing.explicitOnlyBoundaryCount }}</dd>
                         </div>
                     </dl>
                     <ul class="list-disc pl-5">
@@ -128,7 +136,9 @@ import { AXES } from "../../js/passive-tune/analysis.js";
 
 const { store, loadFile, analyze, cancel, downloadReport, inspectEvidence } = usePassiveTune();
 const motionResults = ref(null);
+const technicalDetails = ref(null);
 async function revealEvidence(id) {
+    if (id === "log-quality" && technicalDetails.value) technicalDetails.value.open = true;
     motionResults.value?.reveal(id);
     await nextTick();
     const target =

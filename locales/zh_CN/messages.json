@@ -9942,5 +9942,14 @@
     },
     "passiveAnalysisCandidateCount": {
         "message": "动作候选数"
+    },
+    "passiveAnalysisTimeGaps": {
+        "message": "实际时间不连续"
+    },
+    "passiveAnalysisExplicitBoundaries": {
+        "message": "其他状态 / 解析边界"
+    },
+    "passiveAnalysisTotalBoundaries": {
+        "message": "分析边界总数"
     }
 }

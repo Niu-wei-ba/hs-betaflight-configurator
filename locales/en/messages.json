@@ -10084,5 +10084,14 @@
     },
     "passiveAnalysisCandidateCount": {
         "message": "Action candidate count"
+    },
+    "passiveAnalysisTimeGaps": {
+        "message": "Timestamp discontinuities"
+    },
+    "passiveAnalysisExplicitBoundaries": {
+        "message": "Other state / parser boundaries"
+    },
+    "passiveAnalysisTotalBoundaries": {
+        "message": "Analysis boundaries"
     }
 }

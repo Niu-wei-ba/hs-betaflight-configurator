@@ -74,7 +74,11 @@ describe("versioned context and BBL state", () => {
 });
 describe("time-weighted coverage and errors", () => {
     it("distinguishes state/parser boundaries from actual timestamp discontinuities", () => {
-        const t = validateTiming(Float64Array.from({ length: 10 }, (_, i) => i * 1000), 1000, [5]);
+        const t = validateTiming(
+            Float64Array.from({ length: 10 }, (_, i) => i * 1000),
+            1000,
+            [5],
+        );
         expect(t.gaps).toBe(1);
         expect(t.temporalGapCount).toBe(0);
         expect(t.explicitOnlyBoundaryCount).toBe(1);
@@ -153,19 +157,37 @@ describe("observed actions and independent analytical responses", () => {
     });
     it("does not label an already-crossed first sample as failure to reach the target", () => {
         const time = Float64Array.from({ length: 501 }, (_, i) => i * 1000);
-        const m = observedStep(time, Float64Array.from(time, () => 100), { start: 0, end: 501, x0: 0, x1: 100, delta: 100, y0: 0, periodUs: 1000 });
+        const m = observedStep(
+            time,
+            Float64Array.from(time, () => 100),
+            { start: 0, end: 501, x0: 0, x1: 100, delta: 100, y0: 0, periodUs: 1000 },
+        );
         expect(m.targetReached).toBe(true);
-        expect(m.riseTime).toMatchObject({ value: null, status: "limited", reasonCode: "THRESHOLD_CROSSING_UNOBSERVED" });
+        expect(m.riseTime).toMatchObject({
+            value: null,
+            status: "limited",
+            reasonCode: "THRESHOLD_CROSSING_UNOBSERVED",
+        });
     });
 });
 describe("regularized estimate is a separate evidence path", () => {
     it("marks too few oscillation peaks as unavailable and measures a sufficiently observed candidate", () => {
         const time = Float64Array.from({ length: 501 }, (_, i) => i * 1000);
         const event = { start: 0, end: 501, transitionEnd: 0, x0: 0, x1: 100, delta: 100, y0: 0, periodUs: 1000 };
-        const ringing = observedStep(time, Float64Array.from(time, (t) => 100 + 20 * Math.sin(2 * Math.PI * t / 100000)), event).ringing;
+        const ringing = observedStep(
+            time,
+            Float64Array.from(time, (t) => 100 + 20 * Math.sin((2 * Math.PI * t) / 100000)),
+            event,
+        ).ringing;
         expect(ringing.frequency.status).toBe("limited");
         expect(ringing.frequency.value).toBeCloseTo(10, 1);
-        expect(observedStep(time, Float64Array.from(time, () => 100), event).ringing.frequency.value).toBeNull();
+        expect(
+            observedStep(
+                time,
+                Float64Array.from(time, () => 100),
+                event,
+            ).ringing.frequency.value,
+        ).toBeNull();
     });
     it("rejects constant input despite a large numeric setpoint", () => {
         const input = Float32Array.from({ length: 8192 }, () => 500);
@@ -190,11 +212,28 @@ describe("source-bound derived evidence and AI 1.1", () => {
         const packet = aiEvidence(result, aiSource);
         const metrics = metricReferences(packet);
         expect(metrics.get("motion-coverage.candidateCount")).toBe(packet.motion.candidateCount);
+        expect(metrics.get("log-quality.gapCount")).toBe(packet.logQuality.gapCount);
+        expect(metrics.get("axis-roll.tracking.points.0.gainDb")).toBe(packet.axes[0].tracking.points[0].gainDb);
         expect(packet.axes[0].supportedFrequencyBandsHz.length).toBeGreaterThan(0);
-        const answer = { ...aiConclusion(), schemaVersion: "passive-ai-conclusion-1.1",
+        const answer = {
+            ...aiConclusion(),
+            schemaVersion: "passive-ai-conclusion-1.1",
             axes: aiConclusion().axes.map((axis) => ({ ...axis, status: "limited_evidence" })),
-            findings: [{ kind: "estimated_response", text: "有支持频段的有限频响估计。", evidenceIds: ["axis-roll"], metricRefs: ["axis-roll.tracking.peak.gainDb"] },
-                { kind: "limitation", text: "覆盖汇总。", evidenceIds: ["motion-coverage"], metricRefs: ["motion-coverage.candidateCount"] }] };
+            findings: [
+                {
+                    kind: "estimated_response",
+                    text: "有支持频段的有限频响估计。",
+                    evidenceIds: ["axis-roll"],
+                    metricRefs: ["axis-roll.tracking.peak.gainDb"],
+                },
+                {
+                    kind: "limitation",
+                    text: "覆盖汇总。",
+                    evidenceIds: ["motion-coverage"],
+                    metricRefs: ["motion-coverage.candidateCount"],
+                },
+            ],
+        };
         expect(parseConclusion(JSON.stringify(answer), packet).findings).toHaveLength(2);
         answer.cannotDetermine = Array.from({ length: 7 }, (_, i) => `缺失事项${i}`);
         expect(parseConclusion(JSON.stringify(answer), packet).cannotDetermine).toHaveLength(7);
@@ -206,7 +245,10 @@ describe("source-bound derived evidence and AI 1.1", () => {
     });
     it("bounds group detail without losing global coverage, rejection or censoring counts", () => {
         const result = analyzeLog(stepLog({ gain: 0.7 }), 0);
-        result.motion.actionGroups = Array.from({ length: 200 }, (_, i) => ({ ...result.motion.actionGroups[0], evidenceId: `actions-roll-extra-${i}` }));
+        result.motion.actionGroups = Array.from({ length: 200 }, (_, i) => ({
+            ...result.motion.actionGroups[0],
+            evidenceId: `actions-roll-extra-${i}`,
+        }));
         const packet = aiEvidence(result, aiSource);
         expect(packet.motion.selection.omittedActionGroups).toBeGreaterThanOrEqual(185);
         expect(packet.axes[0].observedActions.unconfirmedCount).toBe(1);
@@ -243,7 +285,12 @@ describe("source-bound derived evidence and AI 1.1", () => {
         expect(evidenceIds(packet)).toContain(packet.motion.representatives[0].evidenceId);
         conclusion.findings[0].metricRefs = ["axis-roll.inventedLatency"];
         expect(() => parseConclusion(JSON.stringify(conclusion), packet)).toThrow("AI_CONCLUSION_INVALID");
-        conclusion.findings[0] = { kind: "estimated_response", text: "这是估计响应。", evidenceIds: ["axis-roll"], metricRefs: [] };
+        conclusion.findings[0] = {
+            kind: "estimated_response",
+            text: "这是估计响应。",
+            evidenceIds: ["axis-roll"],
+            metricRefs: [],
+        };
         expect(() => parseConclusion(JSON.stringify(conclusion), packet)).toThrow("AI_CONCLUSION_INVALID");
     });
 });

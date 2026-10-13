@@ -130,14 +130,28 @@ function evidenceLabel(id) {
 function metricText(ref) {
     const value = metricReferences(props.evidence).get(ref);
     const descriptors = [
-        [/nearUpperFraction/, "OutputUpper", "%", 100], [/longestUpperMs/, "OutputRun", "ms", 1],
-        [/tailGainEstimate/, "TailGain", "", 1], [/gainDb|gainRangeDb/, "FrequencyGain", "dB", 1],
-        [/rmsDegPerSecond/, "Rms", "°/s", 1], [/maeDegPerSecond/, "Mae", "°/s", 1],
-        [/absoluteErrorP95/, "P95", "°/s", 1], [/riseTime/, "Rise", "ms", 1],
-        [/overshoot/, "Overshoot", "%", 1], [/unconfirmedFraction/, "NotConfirmed", "%", 100],
-        [/settlingTime/, "Settling", "ms", 1], [/candidateCount/, "CandidateCount", "", 1],
+        [/\.gapCount$/, "TimeGaps", "", 1],
+        [/\.explicitOnlyBoundaryCount$/, "ExplicitBoundaries", "", 1],
+        [/\.boundaryCount$/, "TotalBoundaries", "", 1],
+        [/nearUpperFraction/, "OutputUpper", "%", 100],
+        [/longestUpperMs/, "OutputRun", "ms", 1],
+        [/tailGainEstimate/, "TailGain", "", 1],
+        [/gainDb|gainRangeDb/, "FrequencyGain", "dB", 1],
+        [/rmsDegPerSecond/, "Rms", "°/s", 1],
+        [/maeDegPerSecond/, "Mae", "°/s", 1],
+        [/absoluteErrorP95/, "P95", "°/s", 1],
+        [/riseTime/, "Rise", "ms", 1],
+        [/overshoot/, "Overshoot", "%", 1],
+        [/unconfirmedFraction/, "NotConfirmed", "%", 100],
+        [/settlingTime/, "Settling", "ms", 1],
+        [/candidateCount/, "CandidateCount", "", 1],
     ];
-    const [_match, label, unit, factor] = descriptors.find(([pattern]) => pattern.test(ref)) ?? [null, "Evidence", "", 1];
+    const [_match, label, unit, factor] = descriptors.find(([pattern]) => pattern.test(ref)) ?? [
+        null,
+        "Evidence",
+        "",
+        1,
+    ];
     return `${t(`passiveAnalysis${label}`)}: ${(value * factor).toFixed(2)} ${unit}`;
 }
 function supportedBands(axis) {
