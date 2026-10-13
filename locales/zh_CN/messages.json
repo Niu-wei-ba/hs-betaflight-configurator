@@ -9554,7 +9554,13 @@
         "message": "AI 服务请求失败，请稍后重试。"
     },
     "passiveAiError_AI_INVALID_RESPONSE": {
-        "message": "AI 接口返回的内容格式不兼容。"
+        "message": "AI 接口未返回兼容的 chat/completions 响应，请检查 Base URL 或切换模型后重试。本地分析仍可用。"
+    },
+    "passiveAiError_AI_EMPTY_RESPONSE": {
+        "message": "AI 接口返回了响应，但没有结论正文。请重新生成或切换模型；本地分析仍可用。"
+    },
+    "passiveAiError_AI_RESPONSE_REFUSED": {
+        "message": "模型拒绝回答或服务拦截了输出，未生成结论。可切换模型后重试；本地分析仍可用。"
     },
     "passiveAiError_AI_NO_MODELS": {
         "message": "此 Key 未返回可用模型，请检查 provider 权限。"

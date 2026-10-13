@@ -9,10 +9,13 @@ import {
     providerRequest,
     saveAiConfig,
 } from "../../src/js/passive-tune/ai-provider.js";
-import { aiConclusion } from "./ai-fixtures.js";
+import { aiConclusion, aiResult, aiSource } from "./ai-fixtures.js";
+import { analyzeLog } from "../../src/js/passive-tune/analysis.js";
+import { makeLog } from "./fixtures.js";
 import { usePassiveAi } from "../../src/composables/usePassiveAi.js";
 const config = { baseUrl: "https://8stoken.com/v1", apiKey: "test-key", model: "model-a" };
 const response = (data) => ({ ok: true, json: async () => data });
+const v12Evidence = aiEvidence(analyzeLog(makeLog(), 0), aiSource);
 const storage = () => {
     const data = new Map();
     return {
@@ -143,6 +146,43 @@ describe("AI provider and persisted configuration", () => {
             response({ choices: [{ message: { content: "partial JSON" }, finish_reason: "length" }] }),
         );
         await expect(explainEvidence(config, {})).rejects.toThrow("AI_TRUNCATED");
+    });
+    it.each([
+        [{ choices: [{ message: { content: "" }, finish_reason: "length" }] }, "AI_TRUNCATED"],
+        [{ choices: [{ message: { content: null }, finish_reason: "stop" }] }, "AI_EMPTY_RESPONSE"],
+        [{ choices: [{ message: { content: "  " } }] }, "AI_EMPTY_RESPONSE"],
+        [{ choices: [{ message: { content: [null, { type: "text", text: 123 }] } }] }, "AI_EMPTY_RESPONSE"],
+        [{ choices: [{ message: { content: null }, finish_reason: "content_filter" }] }, "AI_RESPONSE_REFUSED"],
+        [{ choices: [{ message: { content: null, refusal: "private provider message" } }] }, "AI_RESPONSE_REFUSED"],
+        [{ choices: [{ message: { content: { text: "unsupported" } } }] }, "AI_INVALID_RESPONSE"],
+        [null, "AI_INVALID_RESPONSE"],
+        [{ choices: [] }, "AI_INVALID_RESPONSE"],
+        [{ error: { message: "private-key" } }, "AI_PROVIDER_FAILED"],
+    ])("classifies incomplete provider replies before conclusion validation (%j)", async (body, expected) => {
+        fetch.mockResolvedValue(response(body));
+        await expect(explainEvidence(config, v12Evidence)).rejects.toThrow(expected);
+        expect(fetch).toHaveBeenCalledTimes(1);
+    });
+    it("accepts text content blocks while ignoring malformed or non-text blocks", async () => {
+        const conclusion = aiConclusion();
+        fetch.mockResolvedValue(
+            response({
+                choices: [
+                    {
+                        message: {
+                            content: [
+                                null,
+                                { type: "text", text: 123 },
+                                { type: "thinking", text: "hidden" },
+                                { type: "text", text: JSON.stringify(conclusion) },
+                            ],
+                        },
+                        finish_reason: "stop",
+                    },
+                ],
+            }),
+        );
+        expect((await explainEvidence(config, aiEvidence(aiResult(), aiSource))).conclusion).toEqual(conclusion);
     });
     it("preserves model-discovery errors when new local evidence arrives", async () => {
         const local = storage();

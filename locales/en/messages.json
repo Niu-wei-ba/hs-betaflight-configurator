@@ -9696,7 +9696,13 @@
         "message": "The AI provider request failed. Try again later."
     },
     "passiveAiError_AI_INVALID_RESPONSE": {
-        "message": "The AI API returned an incompatible response."
+        "message": "The provider did not return a compatible chat/completions response. Check the Base URL or switch models and retry. Local analysis is still available."
+    },
+    "passiveAiError_AI_EMPTY_RESPONSE": {
+        "message": "The provider responded without conclusion text. Regenerate or switch models. Local analysis is still available."
+    },
+    "passiveAiError_AI_RESPONSE_REFUSED": {
+        "message": "The model refused or the provider filtered the response. Switch models and retry. Local analysis is still available."
     },
     "passiveAiError_AI_NO_MODELS": {
         "message": "No models were returned for this key. Check provider permissions."

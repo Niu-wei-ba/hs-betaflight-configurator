@@ -119,7 +119,7 @@ export async function providerRequest(config, endpoint, { signal, body, fetchFn 
 
 export async function fetchModels(config, options) {
     const data = await providerRequest(config, "models", options);
-    if (!Array.isArray(data.data)) throw new Error("AI_INVALID_RESPONSE");
+    if (!Array.isArray(data?.data)) throw new Error("AI_INVALID_RESPONSE");
     const models = [
         ...new Set(
             data.data.map((item) => item?.id).filter((id) => typeof id === "string" && id.length && id.length <= 256),
@@ -153,18 +153,25 @@ export async function explainEvidence(config, evidence, options) {
                     : messages,
             },
         });
-        const message = data.choices?.[0]?.message?.content;
+        // Check termination first: token exhaustion can leave content empty.
+        const choice = Array.isArray(data?.choices) ? data.choices[0] : null;
+        if (!choice || !choice.message || typeof choice.message !== "object")
+            throw new Error(data?.error ? "AI_PROVIDER_FAILED" : "AI_INVALID_RESPONSE");
+        if (choice.finish_reason === "length") throw new Error("AI_TRUNCATED");
+        if (choice.finish_reason === "content_filter" || choice.message.refusal) throw new Error("AI_RESPONSE_REFUSED");
+        const message = choice.message.content;
         const content =
             typeof message === "string"
                 ? message
                 : Array.isArray(message)
                     ? message
-                        .filter((part) => part.type === "text")
+                        .filter((part) => part?.type === "text" && typeof part.text === "string")
                         .map((part) => part.text)
                         .join("\n")
                     : "";
-        if (!content.trim()) throw new Error("AI_INVALID_RESPONSE");
-        if (data.choices[0].finish_reason === "length") throw new Error("AI_TRUNCATED");
+        if (message != null && typeof message !== "string" && !Array.isArray(message))
+            throw new Error("AI_INVALID_RESPONSE");
+        if (!content.trim()) throw new Error("AI_EMPTY_RESPONSE");
         try {
             const conclusion = parseConclusion(content, evidence);
             return {
