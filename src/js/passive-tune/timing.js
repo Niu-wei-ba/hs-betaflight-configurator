@@ -28,12 +28,17 @@ export function validateTiming(timeUs, headerRateHz = null, breakIndices = []) {
     const spans = [];
     let start = 0;
     let gaps = 0;
+    let temporalGapCount = 0;
+    let explicitOnlyBoundaryCount = 0;
     const finish = (end) => {
         if (end - start >= 4) spans.push({ start, end });
     };
     for (let i = 1; i < timeUs.length; i++) {
         const dt = timeUs[i] - timeUs[i - 1];
-        if (breaks.has(i) || !Number.isFinite(dt) || Math.abs(dt - periodUs) > tolerance) {
+        const temporalGap = !Number.isFinite(dt) || Math.abs(dt - periodUs) > tolerance;
+        if (temporalGap) temporalGapCount++;
+        else if (breaks.has(i)) explicitOnlyBoundaryCount++;
+        if (breaks.has(i) || temporalGap) {
             finish(i);
             start = i;
             gaps++;
@@ -53,6 +58,8 @@ export function validateTiming(timeUs, headerRateHz = null, breakIndices = []) {
         jitterPct,
         periodUs,
         gaps,
+        temporalGapCount,
+        explicitOnlyBoundaryCount,
         invalidIntervals,
         spans,
         reasonCodes,

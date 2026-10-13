@@ -3,6 +3,7 @@ import { parseLog } from "../../src/js/passive-tune/parser.js";
 import { analyzeLog, exportReport } from "../../src/js/passive-tune/analysis.js";
 import { normalizeLog } from "../../src/js/passive-tune/normalization.js";
 import { segmentLog } from "../../src/js/passive-tune/segmentation.js";
+import { validateTiming } from "../../src/js/passive-tune/timing.js";
 import { groupThrottle, throttleBin } from "../../src/js/passive-tune/throttle.js";
 import { trackingMetrics } from "../../src/js/passive-tune/tracking-metrics.js";
 import { observedStep } from "../../src/js/passive-tune/step-metrics.js";
@@ -72,6 +73,12 @@ describe("versioned context and BBL state", () => {
     });
 });
 describe("time-weighted coverage and errors", () => {
+    it("distinguishes state/parser boundaries from actual timestamp discontinuities", () => {
+        const t = validateTiming(Float64Array.from({ length: 10 }, (_, i) => i * 1000), 1000, [5]);
+        expect(t.gaps).toBe(1);
+        expect(t.temporalGapCount).toBe(0);
+        expect(t.explicitOnlyBoundaryCount).toBe(1);
+    });
     it("integrates error over actual dt and preserves delay", () => {
         const value = trackingMetrics([0, 1000, 4000], [0, 0, 0], [0, 2, 2], [{ start: 0, end: 3 }]);
         expect(value.rmsDegPerSecond).toBeCloseTo(Math.sqrt(3.5));

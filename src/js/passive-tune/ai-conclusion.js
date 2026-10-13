@@ -67,7 +67,7 @@ export function conclusionMessages(evidence) {
                     `observedTracking是未时移的角速度跟踪误差；observedActions来自实际有限变化速度输入，不能当理想实验阶跃。输入资格与输出表现分开，差响应不能被删除。eligibleCount=0表示没有合格近似阶跃，不代表调参差。` +
                     `distributionAvailable=false时只能说少量观测，不能评价总体。tracking.coverageStatus=short_fragment只作短片段观测，不能评价该油门工况。right_censored代表观察窗内未确认稳定，不是0ms，窗长也不是真实稳定时间；删失样本不可忽略。混控油门不是摇杆、推力或功率，未知飞行状态不能认定悬停或降落。` +
                     `actionGroups的方向、幅度、配置及混杂不同，不可简单归因某个PID。output仅为电机指令接近日志输出边界，不证明推力饱和。estimates是局部线性带限反卷积估计，与实际动作分别解释；fullDcGainEstablished=false不能当精确稳态增益。` +
-                    `有效频段不是控制带宽。estimatedControlBandwidthHz=null不能编造带宽、相位裕度或端到端延迟；gyroSignal包括动作响应，不能全部叫噪声。phaseDeg不能换算固定延迟。断点原因未知。` +
+                    `有效频段不是控制带宽。estimatedControlBandwidthHz=null不能编造带宽、相位裕度或端到端延迟；gyroSignal包括动作响应，不能全部叫噪声。phaseDeg不能换算固定延迟。gapCount是实测时间不连续数，boundaryCount还包含状态/解析边界，不能将全部边界当丢帧。时间缺口原因未知。` +
                     `missingMeasurements和axesMissingStep按实测能力判断，不要无条件说阶跃/油门/误差尚未测量。没有对应数据仍不能判定是否跟手、姿态回弹、RPM噪声、滤波安全、温度、物理原因或整机PID好坏。` +
                     `pidDecision必须not_determined，禁止具体PID/滤波改值或CLI命令。nextSteps给2至4项可执行的补充记录建议，不要求快速推杆、指定时长悬停或危险测试动作；建议在正常安全飞行记录中寻找已有适度输入、提供配置或补充状态证据。cannotDetermine为3至10项，仅列目前确实缺少的证据。summary不超过150字，每轴结论不超过120字。`,
             },
