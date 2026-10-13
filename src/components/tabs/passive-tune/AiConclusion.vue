@@ -44,11 +44,18 @@
             </div>
             <div v-if="conclusion.findings?.length" class="space-y-3 my-3">
                 <article
-                    v-for="(finding, index) in conclusion.findings"
+                    v-for="(finding, index) in sortedFindings"
                     :key="index"
                     class="border-l-2 border-amber-500 pl-3"
                 >
+                    <h3 class="font-semibold">{{ $t(`passiveAnalysisFinding_${finding.kind}`) }}</h3>
                     <p>{{ finding.text }}</p>
+                    <ul v-if="finding.limitations" class="list-disc pl-5 text-sm">
+                        <li v-for="item in finding.limitations" :key="item">{{ item }}</li>
+                    </ul>
+                    <p v-if="finding.verification" class="text-sm">
+                        {{ $t("passiveAnalysisVerifyExplanation") }}: {{ finding.verification }}
+                    </p>
                     <p v-for="metricRef in finding.metricRefs" :key="metricRef" class="text-sm tabular-nums">
                         {{ metricText(metricRef) }}
                     </p>
@@ -64,6 +71,9 @@
                 </article>
             </div>
             <h3 class="font-semibold">{{ $t("passiveAiNextSteps") }}</h3>
+            <p v-if="ai.answer.value.omittedNextSteps" class="text-sm">
+                {{ $t("passiveAiOmittedSuggestions", { count: ai.answer.value.omittedNextSteps }) }}
+            </p>
             <ol class="list-decimal pl-5">
                 <li v-for="step in conclusion.nextSteps" :key="step.action" class="my-1">{{ step.action }}</li>
             </ol>
@@ -97,19 +107,23 @@
             <p class="text-sm my-2">{{ $t("passiveAiPacketDescription") }}</p>
             <p class="text-sm my-2" data-testid="passive-ai-packet-coverage">
                 {{ $t("passiveAiPacketSize") }}: {{ packetBytes }} bytes · {{ $t("passiveAiPacketGroups") }}:
-                {{ evidence.motion?.trackingGroups.length ?? 0 }} /
-                {{ evidence.motion?.selection.trackingGroupsTotal ?? 0 }} ·
-                {{ evidence.motion?.actionGroups.length ?? 0 }} /
-                {{ evidence.motion?.selection.actionGroupsTotal ?? 0 }}
+                {{ view.motion?.trackingGroups.length ?? 0 }} / {{ view.motion?.selection.trackingGroupsTotal ?? 0 }} ·
+                {{ view.motion?.actionGroups.length ?? 0 }} /
+                {{ view.motion?.selection.actionGroupsTotal ?? 0 }}
+            </p>
+            <p v-if="view.motion" class="text-sm">
+                {{ $t("passiveAiPacketRepresentatives") }}:
+                {{ view.motion.selection.sentRepresentativeCount ?? view.motion.representatives.length }} /
+                {{ view.motion.selection.originalRepresentativeCount ?? view.motion.representatives.length }}
             </p>
             <p class="text-sm">
-                {{ $t("passiveAiPacketOmissions") }}: {{ evidence.motion?.selection.omittedRepresentatives ?? 0 }} ·
-                {{ evidence.motion?.selection.omittedEstimates ?? 0 }}
+                {{ $t("passiveAiPacketOmissions") }}: {{ view.motion?.selection.omittedRepresentatives ?? 0 }} ·
+                {{ view.motion?.selection.omittedEstimates ?? 0 }}
             </p>
-            <p v-if="evidence.motion" class="text-sm">
+            <p v-if="view.motion" class="text-sm">
                 {{ $t("passiveAiPacketFrequencyPoints") }}:
-                {{ evidence.motion.selection.sentRepresentativeFrequencyPoints }} /
-                {{ evidence.motion.selection.originalRepresentativeFrequencyPoints }}
+                {{ view.motion.selection.sentRepresentativeFrequencyPoints }} /
+                {{ view.motion.selection.originalRepresentativeFrequencyPoints }}
             </p>
             <button type="button" class="underline my-2" @click="downloadPacket">
                 {{ $t("passiveAiDownloadPacket") }}
@@ -121,6 +135,7 @@
     </UiBox>
 </template>
 <script setup>
+import { evidenceView } from "../../../js/passive-tune/evidence-view.js";
 import { computed } from "vue";
 import { useTranslation } from "i18next-vue";
 import UiBox from "../../elements/UiBox.vue";
@@ -136,8 +151,15 @@ defineEmits(["generate", "cancel", "evidence"]);
 const ai = props.ai;
 const { t } = useTranslation();
 const busy = computed(() => ai.state.value !== "idle");
+const view = computed(() => evidenceView(props.evidence));
 const packetBytes = computed(() => new TextEncoder().encode(JSON.stringify(props.evidence)).length);
 const conclusion = computed(() => ai.answer.value?.conclusion);
+const sortedFindings = computed(() =>
+    [...(conclusion.value?.findings ?? [])].sort((a, b) => {
+        const order = { observed_response: 0, estimated_response: 1, possible_explanation: 2, limitation: 3 };
+        return order[a.kind] - order[b.kind];
+    }),
+);
 function evidenceLabel(id) {
     if (
         ["log-quality", "flight-configuration", "missing-measurements", "axis-roll", "axis-pitch", "axis-yaw"].includes(
@@ -157,10 +179,19 @@ function metricText(ref) {
         [/\.explicitOnlyBoundaryCount$/, "ExplicitBoundaries", "", 1],
         [/\.boundaryCount$/, "TotalBoundaries", "", 1],
         [/pErrorCorrelation|ffCommandDerivativeCorrelation/, "ControlCorrelation", "", 1],
-        [/lagEstimate\.valueMs/, "LocalLag", "ms", 1],
+        [/lagEstimate\.(?:localLagCandidateMs|valueMs)/, "LocalLag", "ms", 1],
         [/trackingEligibleCount/, "TrackingCount", "", 1],
+        [/nearLowerFraction/, "OutputLower", "%", 100],
+        [/longestLowerMs/, "LongestLower", "ms", 1],
         [/nearUpperFraction/, "OutputUpper", "%", 100],
         [/longestUpperMs/, "OutputRun", "ms", 1],
+        [/peakAbsDegPerSecond/, "StopResidual", "°/s", 1],
+        [/alternatingPeakCount/, "AlternatingPeaks", "", 1],
+        [/tailToInitialRmsRatio/, "DecayRatio", "", 1],
+        [/stableSubsetSeconds/, "StableSubset", "s", 1],
+        [/includedSeconds/, "FullCoverage", "s", 1],
+        [/durationSeconds/, "Duration", "s", 1],
+        [/trackingQualifiedCount/, "QualifiedTracking", "", 1],
         [/tailGainEstimate/, "TailGain", "", 1],
         [/gainDb|gainRangeDb/, "FrequencyGain", "dB", 1],
         [/rmsDegPerSecond/, "Rms", "°/s", 1],
@@ -181,7 +212,7 @@ function metricText(ref) {
     return `${t(`passiveAnalysis${label}`)}: ${(value * factor).toFixed(2)} ${unit}`;
 }
 function supportedBands(axis) {
-    const values = props.evidence.axes.find((item) => item.axis === axis).supportedFrequencyBandsHz;
+    const values = view.value.axes.find((item) => item.axis === axis).supportedFrequencyBandsHz;
     return values.length
         ? values.map(([low, high]) => `${low.toFixed(1)}–${high.toFixed(1)} Hz`).join(", ")
         : t("passiveTuneInsufficient");

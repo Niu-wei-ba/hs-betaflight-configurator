@@ -53,48 +53,141 @@ export function trackingMetrics(time, input, output, spans) {
     };
 }
 
-/** Output-command bounds are not physical thrust, ESC current or motor temperature. */
+/** Fractions use left-endpoint time weights and verified command bounds, never physical thrust. */
 export function outputMetrics(log, spans) {
     const bounds = log.motorBounds;
     const motors = Object.keys(log.channels).filter((name) => /^motor\[\d+\]$/.test(name));
-    if (!bounds || !motors.length)
-        return { status: "unavailable", reasonCode: "OUTPUT_BOUNDS_UNKNOWN", nearUpperFraction: null };
-    const time = log.channels.time;
+    const unavailable = {
+        status: "unavailable",
+        reasonCode: "OUTPUT_BOUNDS_UNKNOWN",
+        nearUpperFraction: null,
+        nearLowerFraction: null,
+        longestUpperMs: null,
+        longestLowerMs: null,
+        controlAuthorityLimited: "unknown",
+    };
+    if (!bounds || !motors.length) return unavailable;
+    const time = log.channels.time,
+        perMotor = motors.map((name) => ({
+            name,
+            min: Infinity,
+            max: -Infinity,
+            validUs: 0,
+            invalidUs: 0,
+            lowerUs: 0,
+            upperUs: 0,
+            longestLowerUs: 0,
+            longestUpperUs: 0,
+            minLowerRoom: Infinity,
+            minUpperRoom: Infinity,
+        }));
+    const counts = new Float64Array(motors.length + 1);
     let total = 0,
         high = 0,
         low = 0,
-        longest = 0,
-        invalid = 0;
+        longestHigh = 0,
+        longestLow = 0,
+        invalid = 0,
+        available = 0;
     for (const { start, end } of spans) {
-        let run = 0;
+        let highRun = 0,
+            lowRun = 0;
+        const runs = perMotor.map(() => ({ low: 0, high: 0 }));
         for (let i = start; i + 1 < end; i++) {
             const dt = time[i + 1] - time[i];
-            if (!(dt > 0)) continue;
-            const values = motors.map((name) => log.channels[name][i]);
-            if (values.some((v) => !Number.isFinite(v) || v < bounds.low || v > bounds.high)) {
-                invalid += dt;
-                run = 0;
+            if (!(dt > 0)) {
+                highRun = lowRun = 0;
+                for (const run of runs) run.low = run.high = 0;
                 continue;
             }
-            const atHigh = values.some((v) => v >= bounds.high - bounds.tolerance);
+            available += dt;
+            let lowerCount = 0,
+                atHigh = false,
+                valid = true;
+            for (const [j, item] of perMotor.entries()) {
+                const v = log.channels[item.name][i];
+                if (!Number.isFinite(v) || v < bounds.low || v > bounds.high) {
+                    item.invalidUs += dt;
+                    runs[j].low = runs[j].high = 0;
+                    valid = false;
+                    continue;
+                }
+                item.validUs += dt;
+                item.min = Math.min(item.min, v);
+                item.max = Math.max(item.max, v);
+                const range = bounds.high - bounds.low;
+                item.minLowerRoom = Math.min(item.minLowerRoom, (v - bounds.low) / range);
+                item.minUpperRoom = Math.min(item.minUpperRoom, (bounds.high - v) / range);
+                const lower = v <= bounds.low + bounds.tolerance,
+                    upper = v >= bounds.high - bounds.tolerance;
+                runs[j].low = lower ? runs[j].low + dt : 0;
+                runs[j].high = upper ? runs[j].high + dt : 0;
+                item.longestLowerUs = Math.max(item.longestLowerUs, runs[j].low);
+                item.longestUpperUs = Math.max(item.longestUpperUs, runs[j].high);
+                if (lower) {
+                    item.lowerUs += dt;
+                    lowerCount++;
+                }
+                if (upper) {
+                    item.upperUs += dt;
+                    atHigh = true;
+                }
+            }
+            if (!valid) {
+                invalid += dt;
+                highRun = lowRun = 0;
+                continue;
+            }
             total += dt;
-            if (atHigh) {
-                high += dt;
-                run += dt;
-                longest = Math.max(longest, run);
-            } else run = 0;
-            if (values.some((v) => v <= bounds.low + bounds.tolerance)) low += dt;
+            counts[lowerCount] += dt;
+            if (lowerCount) low += dt;
+            if (atHigh) high += dt;
+            lowRun = lowerCount ? lowRun + dt : 0;
+            highRun = atHigh ? highRun + dt : 0;
+            longestLow = Math.max(longestLow, lowRun);
+            longestHigh = Math.max(longestHigh, highRun);
+        }
+        // Include the final endpoint in extrema, without adding an extra time interval.
+        for (const item of perMotor) {
+            const v = log.channels[item.name][end - 1];
+            if (Number.isFinite(v) && v >= bounds.low && v <= bounds.high) {
+                item.min = Math.min(item.min, v);
+                item.max = Math.max(item.max, v);
+                item.minLowerRoom = Math.min(item.minLowerRoom, (v-bounds.low)/(bounds.high-bounds.low));
+                item.minUpperRoom = Math.min(item.minUpperRoom, (bounds.high-v)/(bounds.high-bounds.low));
+            }
         }
     }
+    const finite = (v) => (Number.isFinite(v) ? v : null);
     return {
         status: total ? "measured" : "unavailable",
         reasonCode: total ? null : "OUTPUT_BOUNDS_UNKNOWN",
         nearUpperFraction: total ? high / total : null,
         nearLowerFraction: total ? low / total : null,
-        longestUpperMs: longest / 1000,
+        longestUpperMs: total ? longestHigh / 1000 : null,
+        longestLowerMs: total ? longestLow / 1000 : null,
         invalidSeconds: invalid / 1e6,
+        availableSeconds: available / 1e6,
         durationSeconds: total / 1e6,
         bounds,
-        meaning: "motor_command_near_logged_output_bounds",
+        lowerMotorCountSeconds: Array.from(counts, (value) => value / 1e6),
+        perMotor: perMotor.map((m) => ({
+            name: m.name,
+            min: finite(m.min),
+            max: finite(m.max),
+            durationSeconds: m.validUs / 1e6,
+            invalidSeconds: m.invalidUs / 1e6,
+            nearLowerSeconds: m.lowerUs / 1e6,
+            nearUpperSeconds: m.upperUs / 1e6,
+            nearLowerFraction: m.validUs ? m.lowerUs / m.validUs : null,
+            nearUpperFraction: m.validUs ? m.upperUs / m.validUs : null,
+            longestLowerMs: m.validUs ? m.longestLowerUs / 1000 : null,
+            longestUpperMs: m.validUs ? m.longestUpperUs / 1000 : null,
+            minimumLowerCommandRoomFraction: finite(m.minLowerRoom),
+            minimumUpperCommandRoomFraction: finite(m.minUpperRoom),
+        })),
+        controlAuthorityLimited: "unknown",
+        weighting: "left_endpoint_valid_time",
+        meaning: "motor_command_near_logged_output_bounds_not_physical_thrust",
     };
 }

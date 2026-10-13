@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 export const POLICY = Object.freeze({
-    version: "passive-policy-1.0",
+    version: "passive-policy-1.1",
     calibration: "engineering_candidates_not_dataset_calibrated",
+    trackingMinimumMs: 250,
+    trackingMinimumIntervals: 20,
+    trackingMinimumRange: 30,
+    trackingMinimumCenteredRms: 5,
+    phaseHoldMs: 50,
+    stopThreshold: 15,
+    residualMinimumAmplitude: 3,
+    residualPeakSpacingMs: 10,
     preMs: 100,
     postMs: 250,
     transitionMs: 50,

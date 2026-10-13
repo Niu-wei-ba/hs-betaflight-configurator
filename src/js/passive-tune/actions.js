@@ -2,6 +2,7 @@
 import { AXIS_NAMES, POLICY, quantile } from "./policy.js";
 import { throttleWindow } from "./throttle.js";
 import { eventDiagnostics } from "./control-metrics.js";
+import { actionPhases } from "./phases.js";
 import { observedStep } from "./step-metrics.js";
 
 const lowerBound = (time, value, lo, hi) => {
@@ -84,8 +85,8 @@ export function detectActions(log, spans) {
                 if (transitionMs > POLICY.transitionMs) reasons.push("INPUT_TOO_SLOW");
                 const throttle = throttleWindow(log.throttle, start, end);
                 const confounds = [];
-                confounds.push("FLIGHT_STATE_UNKNOWN");
-                if (!span.stateKnown) confounds.push("STATE_CONTEXT_UNKNOWN");
+
+                if (!span.stateFieldsPresent) confounds.push("STATE_CONTEXT_UNKNOWN");
                 if (span.stateFlags?.failsafePhase > 0) confounds.push("FAILSAFE_CONTEXT");
                 if (span.stateFlags?.rxSignalReceived === 0 || span.stateFlags?.rxFlightChannelsValid === 0)
                     confounds.push("RX_SIGNAL_INVALID");
@@ -119,6 +120,8 @@ export function detectActions(log, spans) {
                     end,
                     transitionEnd,
                     preStart,
+                    analysisSpanEnd: span.end,
+                    nextInputStart: clusters[k + 1]?.start ?? span.end,
                     x0,
                     x1,
                     delta,
@@ -131,8 +134,9 @@ export function detectActions(log, spans) {
                     postMs,
                     periodUs: span.periodUs,
                     configEpoch: span.configEpoch,
-                    stateKnown: span.stateKnown,
+                    stateFieldsPresent: span.stateFieldsPresent,
                     recordedState: span.stateFlags,
+                    stepInputEligibility: eligible ? "eligible" : "ineligible",
                     inputEligibility: eligible ? "eligible" : "ineligible",
                     contextStatus: confounds.length ? "confounded" : "isolated",
                     reasonCodes: reasons,
@@ -142,6 +146,10 @@ export function detectActions(log, spans) {
                     truncated: end < span.end && end === clusters[k + 1]?.start,
                 };
                 event.diagnostics = eventDiagnostics(log, axisIndex, event);
+                const phaseResult = actionPhases(log, axisIndex, event);
+                event.phases = phaseResult.phases;
+                event.diagnostics.diagnosticEligibility.stopResidual = phaseResult.stopResidualEligibility;
+                event.contextLimitations = event.diagnostics.contextLimitations;
                 event.metrics = eligible ? observedStep(time, output, event) : null;
                 records.push(event);
             }

@@ -6,7 +6,7 @@ import {
     controlSummary,
     spectrumSummary,
 } from "./ai-motion-evidence.js";
-export const EVIDENCE_VERSION = "passive-ai-evidence-1.1";
+export const EVIDENCE_VERSION = "passive-ai-evidence-1.2";
 export const MAX_EVIDENCE_BYTES = 98304;
 const AXES = ["roll", "pitch", "yaw"];
 const number = (value) => (Number.isFinite(value) ? Math.round(value * 1e5) / 1e5 : null);
@@ -177,6 +177,7 @@ export function aiEvidence(result, source) {
                     observedTracking: trackingSummary(value.tracking),
                     observedActions: actionSummary(value.actions),
                     capabilities: value.capabilities,
+                    diagnosticCoverage: value.diagnosticCoverage,
                     control: controlSummary(value.control),
                     controlSpectrum: spectrumSummary(value.controlSpectrum),
                 }
@@ -302,7 +303,9 @@ export function aiEvidence(result, source) {
         packet.definitions.diagnostics =
             "阶跃资格、跟踪资格和控制项可用性独立；多轴和斜坡动作仍可观测，不能直接归因单个PID参数。";
         packet.definitions.lagEstimate =
-            "局部0至100ms、5ms网格相关搜索；有限估计，边界或歧义时valueMs=null，不是固定延迟，不用于消除原始误差。";
+            "局部0至100ms、5ms网格相关搜索；有限估计，边界或歧义时localLagCandidateMs=null，不是固定延迟，不用于消除原始误差。";
+        packet.definitions.throttleCoverage =
+            "完整油门箱按左端间隔归属。stable是范围不超过5个百分点且至少250ms的工程子集，不证明油门静止或工况平稳。classificationSeconds.changing_throttle仅统计跨箱或单间隔跳变超过5个百分点的时间，不是所有油门变化时长；与事件CHANGING_THROTTLE标签不能互换。";
         packet.definitions.controlTerms =
             "PID记录输出单位；均值/RMS/峰值与FF-指令变化率相关仅说明活动或关联，不确定参数因果。";
         // Retain every group summary. Trim only optional details fairly, or fail explicitly.
@@ -312,7 +315,10 @@ export function aiEvidence(result, source) {
         );
         packet.motion.selection.sentRepresentativeFrequencyPoints =
             packet.motion.selection.originalRepresentativeFrequencyPoints;
-        const byteLength = () => new TextEncoder().encode(JSON.stringify(packet)).length;
+        const byteLength = () => {
+            packet.motion.selection.sentRepresentativeCount = packet.motion.representatives.length;
+            return new TextEncoder().encode(JSON.stringify(versionedPacket(packet))).length;
+        };
         if (byteLength() > MAX_EVIDENCE_BYTES)
             for (const axis of packet.axes)
                 axis.tracking.points = axis.tracking.points.filter(
@@ -335,9 +341,83 @@ export function aiEvidence(result, source) {
             );
             packet.motion.representatives.splice(index, 1);
             packet.motion.selection.omittedRepresentatives++;
+            packet.motion.selection.omittedRepresentativeCategories ??= {};
+            for (const category of largest.at(-1).selection.categories) {
+                const key = `${largest.at(-1).axis}:${category}`;
+                packet.motion.selection.omittedRepresentativeCategories[key] =
+                    (packet.motion.selection.omittedRepresentativeCategories[key] ?? 0) + 1;
+            }
         }
     }
-    if (new TextEncoder().encode(JSON.stringify(packet)).length > MAX_EVIDENCE_BYTES)
+    if (packet.motion) {
+        packet.motion.selection.sentRepresentativeCount = packet.motion.representatives.length;
+        packet.motion.selection.omittedPhaseMotorDetails = packet.motion.representatives.reduce(
+            (sum, event) => sum + event.phases.filter((p) => p.status === "measured" && !p.output?.perMotor).length,
+            0,
+        );
+    }
+    if (new TextEncoder().encode(JSON.stringify(versionedPacket(packet))).length > MAX_EVIDENCE_BYTES)
         throw new Error("AI_EVIDENCE_LIMIT");
-    return packet;
+    return versionedPacket(packet);
+}
+
+function versionedPacket(packet) {
+    if (packet.schemaVersion !== EVIDENCE_VERSION) return packet;
+    const { trackingGroups, actionGroups, representatives, estimates, motorConstraints, ...motion } = packet.motion;
+    const measuredAxes = packet.axes.filter((axis) => Number.isFinite(axis.observedTracking?.rmsDegPerSecond));
+    const largestError = measuredAxes.reduce(
+        (best, axis) =>
+            !best || axis.observedTracking.rmsDegPerSecond > best.observedTracking.rmsDegPerSecond ? axis : best,
+        null,
+    );
+    return {
+        schemaVersion: packet.schemaVersion,
+        algorithmVersion: packet.algorithmVersion,
+        source: packet.source,
+        scope: packet.scope,
+        summary: {
+            observationHighlights: {
+                largestRecordedTrackingRmsAxis: largestError?.axis ?? null,
+                comparisonEvidenceIds: measuredAxes.map((axis) => axis.evidenceId),
+                comparisonMetricRefs: measuredAxes.map((axis) => `${axis.evidenceId}.observedTracking.rmsDegPerSecond`),
+                meaning: "仅比较本日志全段未时移RMS，不表示控制性能排名或PID优劣。",
+            },
+            logQuality: packet.logQuality,
+            axisAssessments: packet.axes,
+            flightConfiguration: packet.flightConfiguration,
+            evidenceLimitations: packet.missingMeasurements,
+            reasons: packet.reasons,
+            motion,
+            stepResponse: {
+                status: packet.axes.some((a) => a.observedActions.eligibleCount) ? "available" : "unavailable",
+                axesMissingStep: motion.axesMissingStep,
+            },
+        },
+        evidence: { trackingGroups, actionGroups, motorConstraints, representatives, estimates },
+        analysisPolicy: {
+            definitions: packet.definitions,
+            spectralSupportCriteria: packet.spectralSupportCriteria,
+            prohibitedInferences: [
+                "physical_thrust_saturation",
+                "actual_arming_from_arm_switch",
+                "airborne_from_motor_or_rx",
+                "pid_or_filter_parameter_changes",
+                "fixed_system_delay_from_local_lag",
+            ],
+            trackingComparison: {
+                minimumDurationMs: 250,
+                minimumIntervals: 20,
+                minimumCommandRangeDegPerSecond: 30,
+                minimumCenteredCommandRmsDegPerSecond: 5,
+                calibration: "engineering_candidates_not_dataset_calibrated",
+            },
+            explanationCategories: [
+                "lower_command_constraint",
+                "upper_command_constraint",
+                "multi_axis_input",
+                "changing_throttle",
+                "command_phase_association",
+            ],
+        },
+    };
 }

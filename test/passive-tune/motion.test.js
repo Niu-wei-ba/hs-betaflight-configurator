@@ -1,3 +1,4 @@
+import { evidenceView } from "../../src/js/passive-tune/evidence-view.js";
 import { describe, expect, it } from "vitest";
 import { parseLog } from "../../src/js/passive-tune/parser.js";
 import { analyzeLog, exportReport } from "../../src/js/passive-tune/analysis.js";
@@ -53,8 +54,8 @@ describe("versioned context and BBL state", () => {
             [64, 1],
             [80, 1],
         ]);
-        expect(usableSpans[1].stateKnown).toBe(true);
-        expect(usableSpans[2].stateKnown).toBe(true);
+        expect(usableSpans[1].stateFieldsPresent).toBe(true);
+        expect(usableSpans[2].stateFieldsPresent).toBe(true);
     });
     it("does not scale mixer throttle by high-resolution angular scaling or infer its range", () => {
         const parsed = parseLog(stepLog(), 0),
@@ -205,11 +206,11 @@ describe("regularized estimate is a separate evidence path", () => {
         expect(value.acceptedWindows).toBeGreaterThanOrEqual(6);
     });
 });
-describe("source-bound derived evidence and AI 1.1", () => {
+describe("source-bound derived evidence and AI 1.2", () => {
     it("registers actual coverage-root values and supported passive frequency estimates", () => {
         const signal = seededSignal(8192);
         const result = analyzeLog(makeLog({ input: (n) => signal[n], output: (n) => signal[n] }), 0);
-        const packet = aiEvidence(result, aiSource);
+        const packet = evidenceView(aiEvidence(result, aiSource));
         const metrics = metricReferences(packet);
         expect(metrics.get("motion-coverage.candidateCount")).toBe(packet.motion.candidateCount);
         expect(metrics.get("log-quality.gapCount")).toBe(packet.logQuality.gapCount);
@@ -217,7 +218,7 @@ describe("source-bound derived evidence and AI 1.1", () => {
         expect(packet.axes[0].supportedFrequencyBandsHz.length).toBeGreaterThan(0);
         const answer = {
             ...aiConclusion(),
-            schemaVersion: "passive-ai-conclusion-1.1",
+            schemaVersion: "passive-ai-conclusion-1.2",
             axes: aiConclusion().axes.map((axis) => ({ ...axis, status: "limited_evidence" })),
             findings: [
                 {
@@ -251,18 +252,18 @@ describe("source-bound derived evidence and AI 1.1", () => {
         }));
         expect(() => aiEvidence(result, aiSource)).toThrow("AI_EVIDENCE_LIMIT");
         result.motion.actionGroups = result.motion.actionGroups.slice(0, 60);
-        const packet = aiEvidence(result, aiSource);
+        const packet = evidenceView(aiEvidence(result, aiSource));
         expect(packet.motion.actionGroups).toHaveLength(60);
         expect(packet.motion.selection.omittedActionGroups).toBe(0);
         expect(packet.axes[0].observedActions.unconfirmedCount).toBe(1);
         expect(packet.axes[0].observedActions.settlingTimeMs.p90).toBeNull();
         expect(packet.motion.throttle.totalSeconds).toBeGreaterThan(0);
-        expect(Buffer.byteLength(JSON.stringify(packet))).toBeLessThan(MAX_EVIDENCE_BYTES);
+        expect(Buffer.byteLength(JSON.stringify(aiEvidence(result, aiSource)))).toBeLessThan(MAX_EVIDENCE_BYTES);
     });
     it("exports summaries without Worker channels and dynamically exposes real step metrics", () => {
         const result = analyzeLog(stepLog(), 0),
-            packet = aiEvidence(result, aiSource);
-        expect(packet.schemaVersion).toBe("passive-ai-evidence-1.1");
+            packet = evidenceView(aiEvidence(result, aiSource));
+        expect(packet.schemaVersion).toBe("passive-ai-evidence-1.2");
         expect(packet.axes[0].observedActions.eligibleCount).toBe(1);
         expect(packet.missingMeasurements.items).not.toContain("qualified_observed_step_response");
         expect(packet.motion.axesMissingStep).toEqual(["pitch", "yaw"]);
@@ -272,7 +273,7 @@ describe("source-bound derived evidence and AI 1.1", () => {
         expect(JSON.stringify(exportReport(result, aiSource))).not.toContain("localLog");
         const conclusion = {
             ...aiConclusion(),
-            schemaVersion: "passive-ai-conclusion-1.1",
+            schemaVersion: "passive-ai-conclusion-1.2",
             axes: aiConclusion().axes.map((axis) => ({ ...axis, status: "limited_evidence" })),
             findings: [
                 {

@@ -25,6 +25,15 @@
                 fill="currentColor"
                 opacity="0.06"
             />
+            <rect
+                v-if="curve.highlightedPhase"
+                :x="sx(curve.highlightedPhase.startMs)"
+                y="20"
+                :width="Math.max(0, sx(curve.highlightedPhase.endMs) - sx(curve.highlightedPhase.startMs))"
+                height="250"
+                fill="#f2a900"
+                opacity="0.16"
+            />
             <g v-for="tick in yTicks" :key="tick">
                 <line x1="68" :y1="sy(tick)" x2="875" :y2="sy(tick)" stroke="currentColor" opacity="0.12" />
                 <text x="58" :y="sy(tick) + 4" text-anchor="end">{{ tick.toFixed(1) }}</text>

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { AXIS_NAMES, POLICY, distribution } from "./policy.js";
-import { trackingMetrics } from "./tracking-metrics.js";
+import { trackingMetrics, outputMetrics } from "./tracking-metrics.js";
 
 export function aggregateActions(records) {
     const eligible = records.filter((event) => event.inputEligibility === "eligible");
@@ -30,6 +30,9 @@ export function aggregateActions(records) {
         candidateConfoundedCount: records.filter((event) => event.contextStatus !== "isolated").length,
         eligibleConfoundedCount: eligible.filter((event) => event.contextStatus !== "isolated").length,
         trackingEligibleCount: records.filter((event) => event.diagnostics?.eligibility.tracking).length,
+        trackingQualifiedCount: records.filter(
+            (e) => e.diagnostics?.diagnosticEligibility?.trackingComparison.status === "qualified",
+        ).length,
         mixedManeuverCount: records.filter((event) => event.diagnostics?.eventType === "mixed_maneuver").length,
         unconfirmedCount: unconfirmed,
         unconfirmedFraction: independent.length ? unconfirmed / independent.length : null,
@@ -64,14 +67,14 @@ export function aggregateLog(log, spans, throttle, actions) {
         ]),
     );
     const groups = new Map();
-    for (const window of throttle.windows.filter((window) => window.stable)) {
-        const key = `${window.group}-${window.configEpoch}-${window.stateKnown ? "state-recorded" : "state-unknown"}`;
+    for (const window of throttle.windows.filter((window) => !["unknown", "invalid"].includes(window.group))) {
+        const key = `${window.group}-${window.configEpoch}-${window.stateFieldsPresent ? "state-recorded" : "state-unknown"}`;
         if (!groups.has(key))
             groups.set(key, {
                 key,
                 throttleGroup: window.group,
                 configEpoch: window.configEpoch,
-                stateKnown: window.stateKnown,
+                stateFieldsPresent: window.stateFieldsPresent,
                 windows: [],
             });
         groups.get(key).windows.push(window);
@@ -82,7 +85,7 @@ export function aggregateLog(log, spans, throttle, actions) {
             axis,
             throttleGroup: group.throttleGroup,
             configEpoch: group.configEpoch,
-            stateKnown: group.stateKnown,
+            stateFieldsPresent: group.stateFieldsPresent,
             tracking: log.scaleKnown
                 ? trackingMetrics(
                     time,
@@ -92,6 +95,16 @@ export function aggregateLog(log, spans, throttle, actions) {
                 )
                 : null,
             continuousWindowCount: group.windows.length,
+            outputEvidenceId: `motors-${group.key}`,
+            output: outputMetrics(log, group.windows),
+            stableSubsetSeconds: throttle.stableWindows
+                .filter(
+                    (w) =>
+                        w.group === group.throttleGroup &&
+                        w.configEpoch === group.configEpoch &&
+                        w.stateFieldsPresent === group.stateFieldsPresent,
+                )
+                .reduce((s, w) => s + (time[w.end - 1] - time[w.start]) / 1e6, 0),
         })),
     );
     const actionMap = new Map();
@@ -113,5 +126,20 @@ export function aggregateLog(log, spans, throttle, actions) {
         ],
         ...aggregateActions(records),
     }));
-    return { axes, trackingGroups, actionGroups, estimationGroups: [...groups.values()] };
+    return {
+        axes,
+        trackingGroups,
+        actionGroups,
+        estimationGroups: [...groups.values()]
+            .map((group) => ({
+                ...group,
+                windows: throttle.stableWindows.filter(
+                    (w) =>
+                        w.group === group.throttleGroup &&
+                        w.configEpoch === group.configEpoch &&
+                        w.stateFieldsPresent === group.stateFieldsPresent,
+                ),
+            }))
+            .filter((group) => group.windows.length),
+    };
 }

@@ -5,10 +5,22 @@ export function eventCurve(log, event, maxPoints = 1800) {
         index = ["roll", "pitch", "yaw"].indexOf(event.axis);
     const input = log.channels[`setpoint[${index}]`],
         output = log.channels[`gyroADC[${index}]`];
-    const indices = new Set([event.preStart, event.start, event.transitionEnd, event.end - 1]);
-    const width = Math.max(1, Math.ceil((event.end - event.preStart) / Math.floor(maxPoints / 5)));
-    for (let start = event.preStart; start < event.end; start += width) {
-        const end = Math.min(event.end, start + width);
+    const curveEnd = Math.max(
+        event.end,
+        ...(event.phases ?? []).filter((p) => p.status === "measured").map((p) => p.end ?? event.end),
+    );
+    const indices = new Set([event.preStart, event.start, event.transitionEnd, curveEnd - 1]);
+    for (const phase of event.phases ?? [])
+        if (phase.status === "measured" && Number.isInteger(phase.start) && Number.isInteger(phase.end)) {
+            indices.add(phase.start);
+            indices.add(phase.end - 1);
+        }
+    const width = Math.max(
+        1,
+        Math.ceil((curveEnd - event.preStart) / Math.max(1, Math.floor((maxPoints - indices.size) / 5))),
+    );
+    for (let start = event.preStart; start < curveEnd; start += width) {
+        const end = Math.min(curveEnd, start + width);
         let lo = start,
             hi = start,
             xlo = start,
@@ -27,9 +39,9 @@ export function eventCurve(log, event, maxPoints = 1800) {
         points: [...indices]
             .sort((a, b) => a - b)
             .map((i) => ({ timeMs: (time[i] - time[event.start]) / 1000, input: input[i], output: output[i] })),
-        target: event.x1,
+        target: event.metrics ? event.x1 : null,
         unit: "deg/s",
         transitionMs: event.transitionMs,
-        observationMs: (time[event.end - 1] - time[event.start]) / 1000,
+        observationMs: (time[curveEnd - 1] - time[event.start]) / 1000,
     };
 }

@@ -48,7 +48,7 @@ export function segmentLog(log) {
             ...span,
             id: `span-${index}`,
             configEpoch: configCursor,
-            stateKnown: state?.valid === true,
+            stateFieldsPresent: state?.valid === true,
             stateFlags: state?.valid ? state.fields : null,
             usable: local.status !== "rejected",
             sampleRateHz: spanFs,

@@ -132,30 +132,51 @@ export async function fetchModels(config, options) {
 export { aiEvidence } from "./ai-evidence.js";
 
 export async function explainEvidence(config, evidence, options) {
-    const data = await providerRequest(config, "chat/completions", {
-        ...options,
-        body: {
-            model: config.model,
-            stream: false,
-            max_tokens: 6000,
-            messages: conclusionMessages(evidence),
-        },
-    });
-    const message = data.choices?.[0]?.message?.content;
-    const content =
-        typeof message === "string"
-            ? message
-            : Array.isArray(message)
+    const messages = conclusionMessages(evidence);
+    const attempts = evidence.schemaVersion === "passive-ai-evidence-1.2" ? 2 : 1;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+        const data = await providerRequest(config, "chat/completions", {
+            ...options,
+            body: {
+                model: config.model,
+                stream: false,
+                max_tokens: 6000,
+                messages: attempt
+                    ? [
+                        ...messages,
+                        {
+                            role: "user",
+                            content:
+                                  "上一份输出未通过本地校验。请重新输出完整JSON，逐项核对：所有字段与示例一致；metricRefs只能复制引用表中的路径，路径第一段必须属于本项evidenceIds，不能引用points数组或猜测字段。findings.text不出现数字且不超过120字；summary不超过150字，每轴结论不超过120字；nextSteps和verification不超过80字，仅补充已有记录或配置，不提出参数修改或快速输入测试。possible_explanation同时具备metricRefs、支持的explanationCategory、limitations、verification。",
+                        },
+                    ]
+                    : messages,
+            },
+        });
+        const message = data.choices?.[0]?.message?.content;
+        const content =
+            typeof message === "string"
                 ? message
-                    .filter((part) => part.type === "text")
-                    .map((part) => part.text)
-                    .join("\n")
-                : "";
-    if (!content.trim()) throw new Error("AI_INVALID_RESPONSE");
-    if (data.choices[0].finish_reason === "length") throw new Error("AI_TRUNCATED");
-    return {
-        conclusion: parseConclusion(content, evidence),
-        model: typeof data.model === "string" ? data.model : config.model,
-        evidenceVersion: evidence.schemaVersion,
-    };
+                : Array.isArray(message)
+                    ? message
+                        .filter((part) => part.type === "text")
+                        .map((part) => part.text)
+                        .join("\n")
+                    : "";
+        if (!content.trim()) throw new Error("AI_INVALID_RESPONSE");
+        if (data.choices[0].finish_reason === "length") throw new Error("AI_TRUNCATED");
+        try {
+            const conclusion = parseConclusion(content, evidence);
+            return {
+                conclusion,
+                omittedNextSteps: conclusion.omittedNextSteps,
+                model: typeof data.model === "string" ? data.model : config.model,
+                evidenceVersion: evidence.schemaVersion,
+                repairAttempted: attempt > 0,
+            };
+        } catch (error) {
+            if (error.message !== "AI_CONCLUSION_INVALID" || attempt + 1 === attempts || options?.signal?.aborted)
+                throw error;
+        }
+    }
 }

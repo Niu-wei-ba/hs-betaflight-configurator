@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { trackingMetrics, outputMetrics } from "./tracking-metrics.js";
+import { POLICY } from "./policy.js";
+import { flightContext } from "./flight-context.js";
 
 /** Logged PID output units, not degrees/s and not parameter-change recommendations. */
 export function signalSummary(time, signal, spans) {
@@ -94,7 +96,7 @@ export function controlMetrics(log, axisIndex, spans) {
 /** Bounded local correlation search, with common overlap for all candidates; never replaces unaligned error. */
 export function lagEstimate(time, input, output, start, end) {
     const durationUs = time[end - 1] - time[start];
-    const unavailable = (reasonCode) => ({ status: "unavailable", valueMs: null, reasonCode });
+    const unavailable = (reasonCode) => ({ status: "unavailable", localLagCandidateMs: null, reasonCode });
     if (end - start < 20 || durationUs < 100000) return unavailable("LAG_WINDOW_TOO_SHORT");
     const window = [{ start, end }],
         inputStats = signalSummary(time, input, window),
@@ -133,7 +135,7 @@ export function lagEstimate(time, input, output, start, end) {
     const useful = best.correlation >= 0.6 && !boundary && !ambiguous;
     return {
         status: "limited",
-        valueMs: useful ? best.lagMs : null,
+        localLagCandidateMs: useful ? best.lagMs : null,
         bestCandidateMs: best.lagMs,
         bestCorrelation: best.correlation,
         zeroLagCorrelation: scores[0].correlation,
@@ -158,7 +160,64 @@ export function eventDiagnostics(log, axisIndex, event) {
     );
     const control = controlMetrics(log, axisIndex, spans);
     const trackingAvailable = !!tracking && tracking.intervalCount >= 3 && tracking.durationSeconds >= 0.02;
+    const command = log.channels[`setpoint[${axisIndex}]`];
+    const commandStart = event.inputEligibility === "eligible" ? event.preStart : event.start;
+    const commandStats = signalSummary(log.channels.time, command, [{ start: commandStart, end: event.end }]);
+    let min = Infinity,
+        max = -Infinity;
+    for (let i = commandStart; i < event.end; i++) {
+        min = Math.min(min, command[i]);
+        max = Math.max(max, command[i]);
+    }
+    const centeredRms = commandStats ? Math.sqrt(Math.max(0, commandStats.rms ** 2 - commandStats.mean ** 2)) : null;
+    const trackingReasons = [];
+    if (!tracking || tracking.durationSeconds * 1000 < POLICY.trackingMinimumMs)
+        trackingReasons.push("TRACKING_WINDOW_TOO_SHORT");
+    if (!tracking || tracking.intervalCount < POLICY.trackingMinimumIntervals)
+        trackingReasons.push("TRACKING_INTERVALS_INSUFFICIENT");
+    if (!Number.isFinite(max - min) || max - min < POLICY.trackingMinimumRange)
+        trackingReasons.push("COMMAND_RANGE_INSUFFICIENT");
+    if (centeredRms === null || centeredRms < POLICY.trackingMinimumCenteredRms)
+        trackingReasons.push("COMMAND_ACTIVITY_INSUFFICIENT");
+    const output = outputMetrics(log, spans);
+    const lag = trackingAvailable
+        ? lagEstimate(log.channels.time, command, log.channels[`gyroADC[${axisIndex}]`], event.start, event.end)
+        : null;
+    const grade = (qualified, reasons) => ({ status: qualified ? "qualified" : "insufficient", reasonCodes: reasons });
     return {
+        measurementStatus: trackingAvailable ? "measured" : "unavailable",
+        command: {
+            timeRangeSeconds: [
+                (log.channels.time[commandStart] - log.channels.time[0]) / 1e6,
+                (log.channels.time[event.end - 1] - log.channels.time[0]) / 1e6,
+            ],
+            rmsDegPerSecond: commandStats?.rms ?? null,
+            centeredRmsDegPerSecond: centeredRms,
+            peakToPeakDegPerSecond: Number.isFinite(max - min) ? max - min : null,
+            setpointMaxAbs: Number.isFinite(max - min) ? Math.max(Math.abs(min), Math.abs(max)) : null,
+        },
+        diagnosticEligibility: {
+            trackingComparison: grade(!trackingReasons.length, trackingReasons),
+            stepResponse: grade(event.inputEligibility === "eligible", event.reasonCodes),
+            controlTermActivity: grade(
+                control.status === "measured",
+                control.status === "measured" ? [] : ["CONTROL_TERMS_MISSING"],
+            ),
+            localLag: {
+                status: lag?.localLagCandidateMs != null ? "limited" : "unavailable",
+                reasonCodes: lag ? [lag.reasonCode] : ["TRACKING_UNAVAILABLE"],
+            },
+            stopResidual: { status: "unavailable", reasonCodes: ["STOP_PLATFORM_NOT_CONFIRMED"] },
+        },
+        contextLimitations: [
+            ...new Set([
+                ...event.confounds,
+                "ARMED_STATE_UNOBSERVED",
+                "AIRBORNE_STATE_UNOBSERVED",
+                ...(output.nearLowerFraction > 0 ? ["LOWER_COMMAND_BOUND_PROXIMITY"] : []),
+                ...(output.nearUpperFraction > 0 ? ["UPPER_COMMAND_BOUND_PROXIMITY"] : []),
+            ]),
+        ],
         eventType:
             event.inputEligibility === "eligible"
                 ? "standard_step"
@@ -172,22 +231,9 @@ export function eventDiagnostics(log, axisIndex, event) {
             outputBounds: !!log.motorBounds,
         },
         tracking,
-        lagEstimate: trackingAvailable
-            ? lagEstimate(
-                log.channels.time,
-                log.channels[`setpoint[${axisIndex}]`],
-                log.channels[`gyroADC[${axisIndex}]`],
-                event.start,
-                event.end,
-            )
-            : null,
         control,
-        output: outputMetrics(log, spans),
-        context: {
-            stateFieldsRecorded: event.stateKnown,
-            recordedFlags: event.recordedState,
-            armedState: "unknown",
-            airborneState: "unknown",
-        },
+        output,
+        lagEstimate: lag,
+        context: flightContext(log, event),
     };
 }

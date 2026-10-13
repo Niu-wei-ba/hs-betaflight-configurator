@@ -9707,7 +9707,7 @@
         "message": "没有足够的连续工作点窗口。"
     },
     "passiveAnalysisGroupLimit": {
-        "message": "不同配置段分别显示。误差未做最佳时移；油门、方向和动作幅度不同的结果不能直接归因于 PID。"
+        "message": "误差来自完整油门箱有效间隔；稳定子集单独显示。不同动作、配置与状态不能简单比较或归因 PID。"
     },
     "passiveAnalysisActionsTitle": {
         "message": "动作候选与实际响应"
@@ -9953,7 +9953,7 @@
         "message": "分析边界总数"
     },
     "passiveAnalysisTrackingCandidates": {
-        "message": "可作跟踪分析 / 全部候选"
+        "message": "可测量动作 / 候选数"
     },
     "passiveAnalysisStepCount": {
         "message": "合格近似阶跃"
@@ -10083,5 +10083,158 @@
     },
     "passiveAiError_AI_REQUEST_TOO_LARGE": {
         "message": "完整 AI 请求超过中转大小限制，未发送；本地分析仍可用。"
+    },
+    "passiveAnalysisOutputLower": {
+        "message": "电机指令接近下限时间占比"
+    },
+    "passiveAnalysisLongestLower": {
+        "message": "最长连续接近下限时间"
+    },
+    "passiveAnalysisValidOutput": {
+        "message": "有效输出统计时长"
+    },
+    "passiveAnalysisInvalidOutput": {
+        "message": "无效输出时长"
+    },
+    "passiveAnalysisPerMotor": {
+        "message": "查看逐电机边界证据"
+    },
+    "passiveAnalysisBoundTolerance": {
+        "message": "接近边界容差"
+    },
+    "passiveAnalysisMotor": {
+        "message": "电机"
+    },
+    "passiveAnalysisCommandRoom": {
+        "message": "最小指令余量：下限 / 上限"
+    },
+    "passiveAnalysisLowerMotorCount": {
+        "message": "同时有 {{count}} 个电机接近下限"
+    },
+    "passiveAnalysisQualifiedTracking": {
+        "message": "具备跟踪比较资格"
+    },
+    "passiveAnalysisMeasurableOnly": {
+        "message": "可测量，比较证据不足"
+    },
+    "passiveAnalysisTrackingQualification": {
+        "message": "跟踪比较资格"
+    },
+    "passiveAnalysisGrade_qualified": {
+        "message": "输入与窗口满足比较门槛"
+    },
+    "passiveAnalysisGrade_insufficient": {
+        "message": "窗口或激励不足，仅作局部观测"
+    },
+    "passiveAnalysisStateEvidence": {
+        "message": "飞行状态证据"
+    },
+    "passiveAnalysisActualStateUnknown": {
+        "message": "实际解锁和离地状态未确认；ARM 仅表示开关"
+    },
+    "passiveAnalysisFullCoverage": {
+        "message": "完整油门箱参与时长"
+    },
+    "passiveAnalysisStableSubset": {
+        "message": "稳定油门子集"
+    },
+    "passiveAnalysisCoverageLedger": {
+        "message": "查看互斥时间分类"
+    },
+    "passiveAnalysisIntervalMeaning": {
+        "message": "每个有效间隔按左端油门归属；稳定子集独立筛选，不代表整段飞行。"
+    },
+    "passiveAnalysisCoverage_stable": {
+        "message": "稳定且至少 250ms"
+    },
+    "passiveAnalysisCoverage_short_fragment": {
+        "message": "稳定候选短片段"
+    },
+    "passiveAnalysisCoverage_changing_throttle": {
+        "message": "油门变化或跨箱间隔"
+    },
+    "passiveAnalysisCoverage_unknown": {
+        "message": "油门未知"
+    },
+    "passiveAnalysisCoverage_invalid": {
+        "message": "油门无效"
+    },
+    "passiveAnalysisPhase_command_change": {
+        "message": "指令变化"
+    },
+    "passiveAnalysisPhase_command_hold": {
+        "message": "指令保持"
+    },
+    "passiveAnalysisPhase_command_stop": {
+        "message": "回中或停止输入"
+    },
+    "passiveAnalysisPhase_post_stop": {
+        "message": "停止后观察"
+    },
+    "passiveAnalysisPhaseUnavailable": {
+        "message": "该阶段未确认"
+    },
+    "passiveAnalysisPhaseCurve": {
+        "message": "在曲线中定位本阶段"
+    },
+    "passiveAnalysisStopResidual": {
+        "message": "停止后残余角速度峰值"
+    },
+    "passiveAnalysisAlternatingPeaks": {
+        "message": "交替响应峰数量"
+    },
+    "passiveAnalysisDecayRatio": {
+        "message": "尾段 / 初段 RMS"
+    },
+    "passiveAnalysisPhaseTruncated": {
+        "message": "观察窗有限；不能将窗长当成稳定时间，也不能确认姿态回弹或共振。"
+    },
+    "passiveAnalysisFinding_observed_response": {
+        "message": "观测事实"
+    },
+    "passiveAnalysisFinding_estimated_response": {
+        "message": "有限估计"
+    },
+    "passiveAnalysisFinding_possible_explanation": {
+        "message": "可能解释 · 尚需验证"
+    },
+    "passiveAnalysisFinding_limitation": {
+        "message": "证据不足"
+    },
+    "passiveAnalysisVerifyExplanation": {
+        "message": "验证方式"
+    },
+    "passiveAnalysisReason_ARMED_STATE_UNOBSERVED": {
+        "message": "没有能确认实际解锁的记录"
+    },
+    "passiveAnalysisReason_AIRBORNE_STATE_UNOBSERVED": {
+        "message": "没有能确认离地的记录"
+    },
+    "passiveAnalysisReason_LOWER_COMMAND_BOUND_PROXIMITY": {
+        "message": "电机指令接近记录下限，限制 PID 归因"
+    },
+    "passiveAnalysisReason_UPPER_COMMAND_BOUND_PROXIMITY": {
+        "message": "电机指令接近记录上限，限制 PID 归因"
+    },
+    "passiveAnalysisReason_TRACKING_WINDOW_TOO_SHORT": {
+        "message": "跟踪比较窗口不足 250ms"
+    },
+    "passiveAnalysisReason_TRACKING_INTERVALS_INSUFFICIENT": {
+        "message": "跟踪比较有效间隔不足"
+    },
+    "passiveAnalysisReason_COMMAND_RANGE_INSUFFICIENT": {
+        "message": "指令变化范围不足 30°/s"
+    },
+    "passiveAnalysisReason_COMMAND_ACTIVITY_INSUFFICIENT": {
+        "message": "去均值指令活动不足 5°/s"
+    },
+    "passiveAnalysisPhaseDetails": {
+        "message": "查看阶段控制项与电机边界"
+    },
+    "passiveAiPacketRepresentatives": {
+        "message": "代表事件已发送 / 本地选出"
+    },
+    "passiveAiOmittedSuggestions": {
+        "message": "已省略 {{count}} 条超出补充记录或配置范围的建议。"
     }
 }

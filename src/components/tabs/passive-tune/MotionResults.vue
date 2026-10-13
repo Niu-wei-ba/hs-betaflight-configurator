@@ -12,6 +12,10 @@
                     >
                     <p>{{ $t("passiveAnalysisTrackingCandidates") }}</p>
                     <p>
+                        {{ $t("passiveAnalysisQualifiedTracking") }}:
+                        {{ result.axes[axis].actions.trackingQualifiedCount }}
+                    </p>
+                    <p>
                         {{ $t("passiveAnalysisStepCount") }}: {{ result.axes[axis].actions.eligibleCount }} ·
                         {{ $t("passiveAnalysisMixedCount") }}: {{ result.axes[axis].actions.mixedManeuverCount }}
                     </p>
@@ -30,11 +34,7 @@
                     </p>
                 </div>
             </div>
-            <p>
-                {{ $t("passiveAnalysisOutputUpper") }}:
-                {{ fmt(result.output.nearUpperFraction == null ? null : result.output.nearUpperFraction * 100) }}% ·
-                {{ $t("passiveAnalysisOutputMeaning") }}
-            </p>
+            <MotorEvidence :output="result.output" />
         </UiBox>
         <UiBox :title="$t('passiveAnalysisThrottleTitle')">
             <p>
@@ -42,6 +42,18 @@
                     $t(result.throttle.source ? "passiveAnalysisThrottleMeaning" : "passiveAnalysisThrottleUnavailable")
                 }}
             </p>
+            <p id="throttle-coverage" class="my-3" data-testid="passive-throttle-accounting">
+                {{ $t("passiveAnalysisFullCoverage") }}: {{ fmt(result.throttle.coverage?.includedSeconds) }} /
+                {{ fmt(result.throttle.totalSeconds) }} s · {{ $t("passiveAnalysisStableSubset") }}:
+                {{ fmt(result.throttle.coverage?.stableSubsetSeconds) }} s
+            </p>
+            <details class="text-sm">
+                <summary>{{ $t("passiveAnalysisCoverageLedger") }}</summary>
+                <p v-for="(seconds, kind) in result.throttle.coverage?.classificationSeconds" :key="kind">
+                    {{ $t(`passiveAnalysisCoverage_${kind}`) }}: {{ fmt(seconds) }} s
+                </p>
+                <p>{{ $t("passiveAnalysisIntervalMeaning") }}</p>
+            </details>
             <div class="throttle-coverage my-3">
                 <div v-for="group in groups" :key="group">
                     <span>{{ group }}%</span>
@@ -74,6 +86,7 @@
                             <th>{{ $t("passiveAnalysisThrottle") }}</th>
                             <th>{{ $t("passiveAnalysisEpoch") }}</th>
                             <th>{{ $t("passiveAnalysisDuration") }}</th>
+                            <th>{{ $t("passiveAnalysisStableSubset") }}</th>
                             <th>{{ $t("passiveAnalysisRms") }}</th>
                             <th>{{ $t("passiveAnalysisMae") }}</th>
                             <th>{{ $t("passiveAnalysisP95") }}</th>
@@ -86,7 +99,7 @@
                                 {{ group.configEpoch }} ·
                                 {{
                                     $t(
-                                        group.stateKnown
+                                        group.stateFieldsPresent
                                             ? "passiveAnalysisStateRecorded"
                                             : "passiveAnalysisStateUnknown",
                                     )
@@ -98,9 +111,16 @@
                                     >· {{ $t("passiveAnalysisTooFew") }}</span
                                 >
                             </td>
+                            <td>{{ fmt(group.stableSubsetSeconds) }} s</td>
                             <td>{{ fmt(group.tracking?.rmsDegPerSecond) }} °/s</td>
                             <td>{{ fmt(group.tracking?.maeDegPerSecond) }} °/s</td>
-                            <td>{{ fmt(group.tracking?.absoluteErrorP95DegPerSecond) }} °/s</td>
+                            <td>
+                                {{ fmt(group.tracking?.absoluteErrorP95DegPerSecond) }} °/s
+                                <details :id="group.outputEvidenceId">
+                                    <summary>{{ $t("passiveAnalysisPerMotor") }}</summary>
+                                    <MotorEvidence :output="group.output" />
+                                </details>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -151,9 +171,10 @@
                                     $t(
                                         event.inputEligibility === "eligible"
                                             ? "passiveAnalysisEligible"
-                                            : event.diagnostics?.eligibility.tracking
-                                              ? "passiveAnalysisTrackingOnly"
-                                              : "passiveAnalysisRejected",
+                                            : event.diagnostics?.diagnosticEligibility.trackingComparison.status ===
+                                                "qualified"
+                                              ? "passiveAnalysisQualifiedTracking"
+                                              : "passiveAnalysisMeasurableOnly",
                                     )
                                 }}
                             </td>
@@ -208,12 +229,72 @@
                     {{ fmt(selectedEvent.diagnostics?.tracking?.maeDegPerSecond) }} °/s
                 </p>
                 <p>
-                    {{ $t("passiveAnalysisLocalLag") }}: {{ fmt(selectedEvent.diagnostics?.lagEstimate?.valueMs) }} ms ·
+                    {{ $t("passiveAnalysisLocalLag") }}:
+                    {{ fmt(selectedEvent.diagnostics?.lagEstimate?.localLagCandidateMs) }} ms ·
                     {{ $t("passiveAnalysisLagMeaning") }}
                 </p>
+                <p>
+                    {{ $t("passiveAnalysisTrackingQualification") }}:
+                    {{
+                        $t(
+                            `passiveAnalysisGrade_${selectedEvent.diagnostics?.diagnosticEligibility.trackingComparison.status}`,
+                        )
+                    }}
+                </p>
+                <p>
+                    {{ $t("passiveAnalysisStateEvidence") }}: {{ $t("passiveAnalysisActualStateUnknown") }} · ARM
+                    {{ selectedEvent.diagnostics?.context.armSwitchActive ?? "—" }}
+                </p>
+                <MotorEvidence :output="selectedEvent.diagnostics?.output" />
                 <ControlTerms :control="selectedEvent.diagnostics?.control" />
+                <div class="space-y-3 my-3" data-testid="passive-action-phases">
+                    <article
+                        v-for="phase in selectedEvent.phases"
+                        :id="phase.evidenceId"
+                        :key="phase.kind"
+                        class="border border-default rounded p-3"
+                    >
+                        <h4>
+                            {{ $t(`passiveAnalysisPhase_${phase.kind}`) }} ·
+                            {{
+                                phase.status === "measured"
+                                    ? fmt(phase.durationSeconds) + " s"
+                                    : $t("passiveAnalysisPhaseUnavailable")
+                            }}
+                        </h4>
+                        <template v-if="phase.status === 'measured'">
+                            <button type="button" class="underline" @click="selectedPhaseId = phase.evidenceId">
+                                {{ $t("passiveAnalysisPhaseCurve") }}
+                            </button>
+                            <p>
+                                {{ fmt(phase.timeRangeSeconds[0]) }}–{{ fmt(phase.timeRangeSeconds[1]) }} s ·
+                                {{ $t("passiveAnalysisRms") }} {{ fmt(phase.tracking?.rmsDegPerSecond) }} °/s
+                            </p>
+                            <p>{{ $t('passiveAnalysisOutputLower') }}: {{ fmt(phase.output?.nearLowerFraction == null ? null : phase.output.nearLowerFraction*100) }}%</p>
+                            <details><summary>{{ $t('passiveAnalysisPhaseDetails') }}</summary>
+                                <ControlTerms :control="phase.control" /><MotorEvidence :output="phase.output" />
+                            </details>
+                            <p v-if="phase.residual">
+                                {{ $t("passiveAnalysisStopResidual") }}:
+                                {{ fmt(phase.residual.peakAbsDegPerSecond) }} °/s ·
+                                {{ $t("passiveAnalysisAlternatingPeaks") }}: {{ phase.residual.alternatingPeakCount }} ·
+                                {{ $t("passiveAnalysisDecayRatio") }}: {{ fmt(phase.residual.tailToInitialRmsRatio) }}
+                            </p>
+                            <p v-if="phase.observationTruncated">{{ $t("passiveAnalysisPhaseTruncated") }}</p>
+                        </template>
+                    </article>
+                </div>
                 <ul class="list-disc pl-5">
-                    <li v-for="code in [...selectedEvent.reasonCodes, ...selectedEvent.confounds]" :key="code">
+                    <li
+                        v-for="code in [
+                            ...new Set([
+                                ...selectedEvent.reasonCodes,
+                                ...selectedEvent.diagnostics.contextLimitations,
+                                ...selectedEvent.diagnostics.diagnosticEligibility.trackingComparison.reasonCodes,
+                            ]),
+                        ]"
+                        :key="code"
+                    >
                         {{ $t(`passiveAnalysisReason_${code}`) }}
                     </li>
                 </ul>
@@ -221,7 +302,7 @@
                     {{ $t("passiveAnalysisCensoredMeaning") }} {{ fmt(selectedEvent.metrics.observationMs) }} ms
                 </p>
                 <p v-if="loading" role="status">{{ $t("passiveAnalysisLoadingCurve") }}</p>
-                <ResponsePlot v-if="curve?.eventId === selectedEvent.eventId" :curve="curve" />
+                <ResponsePlot v-if="curve?.eventId === selectedEvent.eventId" :curve="displayCurve" />
             </div>
         </UiBox>
         <UiBox :title="$t('passiveControlTitle')"
@@ -290,6 +371,7 @@
     </section>
 </template>
 <script setup>
+import MotorEvidence from "./MotorEvidence.vue";
 import { computed, ref, watch, nextTick } from "vue";
 import { useTranslation } from "i18next-vue";
 import UiBox from "../../elements/UiBox.vue";
@@ -307,7 +389,23 @@ const selectedAxis = ref("roll"),
     eligibleOnly = ref(false),
     page = ref(0),
     selectedEvent = ref(null);
-const detail = ref(null);
+const detail = ref(null),
+    selectedPhaseId = ref(null);
+const displayCurve = computed(() => {
+    const phase = selectedEvent.value?.phases?.find((p) => p.evidenceId === selectedPhaseId.value);
+    return props.curve
+        ? {
+            ...props.curve,
+            highlightedPhase:
+                  phase?.status === "measured"
+                      ? {
+                          startMs: (phase.timeRangeSeconds[0] - selectedEvent.value.timeStartSeconds) * 1000,
+                          endMs: (phase.timeRangeSeconds[1] - selectedEvent.value.timeStartSeconds) * 1000,
+                      }
+                      : null,
+        }
+        : null;
+});
 const { t } = useTranslation();
 const groupLabel = (group) =>
     ["unknown", "invalid", "changing_throttle"].includes(group) ? t(`passiveAnalysisGroup_${group}`) : `${group}%`;
@@ -355,6 +453,7 @@ watch(
 function selectEvent(event) {
     selectedAxis.value = event.axis;
     selectedEvent.value = event;
+    selectedPhaseId.value = null;
     emit("inspect", event.eventId);
 }
 function reveal(id) {
@@ -363,16 +462,19 @@ function reveal(id) {
         selectedEvent.value = null;
         return;
     }
-    const event = props.result.motion.records.find((item) => item.eventId === id);
+    const event = props.result.motion.records.find(
+        (item) => item.eventId === id || item.phases?.some((p) => p.evidenceId === id),
+    );
     if (event) {
         selectEvent(event);
+        if (id !== event.eventId) selectedPhaseId.value = id;
         return;
     }
     const group = [
         ...props.result.motion.trackingGroups,
         ...props.result.motion.actionGroups,
         ...props.result.estimates,
-    ].find((item) => item.evidenceId === id);
+    ].find((item) => item.evidenceId === id || item.outputEvidenceId === id);
     if (group) selectedAxis.value = group.axis;
 }
 const estimateCurve = (item) => ({

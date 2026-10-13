@@ -9849,7 +9849,7 @@
         "message": "No continuous operating-point windows available."
     },
     "passiveAnalysisGroupLimit": {
-        "message": "Configuration epochs remain separate. Errors are not delay-aligned. Differences in throttle, direction or amplitude do not establish PID causality."
+        "message": "Errors use all valid throttle-bin intervals; stable subsets are separate. Different actions, configurations and states do not establish PID causes."
     },
     "passiveAnalysisActionsTitle": {
         "message": "Action candidates and observed response"
@@ -10095,7 +10095,7 @@
         "message": "Analysis boundaries"
     },
     "passiveAnalysisTrackingCandidates": {
-        "message": "Tracking observations / candidates"
+        "message": "Measurable actions / candidates"
     },
     "passiveAnalysisStepCount": {
         "message": "Qualified near steps"
@@ -10225,5 +10225,158 @@
     },
     "passiveAiError_AI_REQUEST_TOO_LARGE": {
         "message": "The complete AI request exceeds the relay limit and was not sent. Local analysis remains available."
+    },
+    "passiveAnalysisOutputLower": {
+        "message": "Motor command near lower bound"
+    },
+    "passiveAnalysisLongestLower": {
+        "message": "Longest lower-bound run"
+    },
+    "passiveAnalysisValidOutput": {
+        "message": "Valid output duration"
+    },
+    "passiveAnalysisInvalidOutput": {
+        "message": "Invalid output duration"
+    },
+    "passiveAnalysisPerMotor": {
+        "message": "Per-motor boundary evidence"
+    },
+    "passiveAnalysisBoundTolerance": {
+        "message": "Bound proximity tolerance"
+    },
+    "passiveAnalysisMotor": {
+        "message": "Motor"
+    },
+    "passiveAnalysisCommandRoom": {
+        "message": "Minimum command room: lower / upper"
+    },
+    "passiveAnalysisLowerMotorCount": {
+        "message": "{{count}} motors simultaneously near lower bound"
+    },
+    "passiveAnalysisQualifiedTracking": {
+        "message": "Qualified for tracking comparison"
+    },
+    "passiveAnalysisMeasurableOnly": {
+        "message": "Measurable; insufficient for comparison"
+    },
+    "passiveAnalysisTrackingQualification": {
+        "message": "Tracking comparison eligibility"
+    },
+    "passiveAnalysisGrade_qualified": {
+        "message": "Input and window pass comparison criteria"
+    },
+    "passiveAnalysisGrade_insufficient": {
+        "message": "Insufficient window or excitation; local observation only"
+    },
+    "passiveAnalysisStateEvidence": {
+        "message": "Flight-state evidence"
+    },
+    "passiveAnalysisActualStateUnknown": {
+        "message": "Actual arming and flight unconfirmed; ARM indicates switch only"
+    },
+    "passiveAnalysisFullCoverage": {
+        "message": "Full throttle-bin included duration"
+    },
+    "passiveAnalysisStableSubset": {
+        "message": "Stable-throttle subset"
+    },
+    "passiveAnalysisCoverageLedger": {
+        "message": "Exclusive time accounting"
+    },
+    "passiveAnalysisIntervalMeaning": {
+        "message": "Each valid interval belongs to its left-endpoint throttle bin; stable subsets are selected independently."
+    },
+    "passiveAnalysisCoverage_stable": {
+        "message": "Stable, at least 250ms"
+    },
+    "passiveAnalysisCoverage_short_fragment": {
+        "message": "Short stable candidate"
+    },
+    "passiveAnalysisCoverage_changing_throttle": {
+        "message": "Changing throttle or bin transition"
+    },
+    "passiveAnalysisCoverage_unknown": {
+        "message": "Unknown throttle"
+    },
+    "passiveAnalysisCoverage_invalid": {
+        "message": "Invalid throttle"
+    },
+    "passiveAnalysisPhase_command_change": {
+        "message": "Command transition"
+    },
+    "passiveAnalysisPhase_command_hold": {
+        "message": "Command hold"
+    },
+    "passiveAnalysisPhase_command_stop": {
+        "message": "Recenter or command stop"
+    },
+    "passiveAnalysisPhase_post_stop": {
+        "message": "Post-stop observation"
+    },
+    "passiveAnalysisPhaseUnavailable": {
+        "message": "Phase not confirmed"
+    },
+    "passiveAnalysisPhaseCurve": {
+        "message": "Locate this phase in the curve"
+    },
+    "passiveAnalysisStopResidual": {
+        "message": "Post-stop peak angular rate"
+    },
+    "passiveAnalysisAlternatingPeaks": {
+        "message": "Alternating response peaks"
+    },
+    "passiveAnalysisDecayRatio": {
+        "message": "Tail / initial RMS"
+    },
+    "passiveAnalysisPhaseTruncated": {
+        "message": "Limited observation; window length is not settling time and does not establish attitude rebound or resonance."
+    },
+    "passiveAnalysisFinding_observed_response": {
+        "message": "Observed facts"
+    },
+    "passiveAnalysisFinding_estimated_response": {
+        "message": "Limited estimates"
+    },
+    "passiveAnalysisFinding_possible_explanation": {
+        "message": "Possible explanation · unverified"
+    },
+    "passiveAnalysisFinding_limitation": {
+        "message": "Evidence limitations"
+    },
+    "passiveAnalysisVerifyExplanation": {
+        "message": "How to verify"
+    },
+    "passiveAnalysisReason_ARMED_STATE_UNOBSERVED": {
+        "message": "Actual arming not established"
+    },
+    "passiveAnalysisReason_AIRBORNE_STATE_UNOBSERVED": {
+        "message": "Airborne state not established"
+    },
+    "passiveAnalysisReason_LOWER_COMMAND_BOUND_PROXIMITY": {
+        "message": "Motor command near logged lower bound; limits PID attribution"
+    },
+    "passiveAnalysisReason_UPPER_COMMAND_BOUND_PROXIMITY": {
+        "message": "Motor command near logged upper bound; limits PID attribution"
+    },
+    "passiveAnalysisReason_TRACKING_WINDOW_TOO_SHORT": {
+        "message": "Tracking comparison window shorter than 250ms"
+    },
+    "passiveAnalysisReason_TRACKING_INTERVALS_INSUFFICIENT": {
+        "message": "Too few valid tracking intervals"
+    },
+    "passiveAnalysisReason_COMMAND_RANGE_INSUFFICIENT": {
+        "message": "Command range below 30°/s"
+    },
+    "passiveAnalysisReason_COMMAND_ACTIVITY_INSUFFICIENT": {
+        "message": "Centered command activity below 5°/s"
+    },
+    "passiveAnalysisPhaseDetails": {
+        "message": "Phase control terms and motor bounds"
+    },
+    "passiveAiPacketRepresentatives": {
+        "message": "Representative events sent / selected locally"
+    },
+    "passiveAiOmittedSuggestions": {
+        "message": "Omitted {{count}} suggestions outside recording or configuration evidence scope."
     }
 }

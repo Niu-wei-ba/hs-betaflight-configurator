@@ -1,3 +1,4 @@
+import { evidenceView } from "../../src/js/passive-tune/evidence-view.js";
 import { describe, expect, it } from "vitest";
 import { makeLog } from "./fixtures.js";
 import { analyzeLog } from "../../src/js/passive-tune/analysis.js";
@@ -26,7 +27,7 @@ describe("independent motion and controller evidence", () => {
         const spans = segmentLog(log).usableSpans;
         expect(spans).toHaveLength(1);
         expect(spans[0].start).toBe(1);
-        expect(spans[0].stateKnown).toBe(true);
+        expect(spans[0].stateFieldsPresent).toBe(true);
     });
     it("supports verified 2026.6 throttle/output, angular raw gyro scale and unscaled PID terms", () => {
         const log = normalizeLog(
@@ -77,8 +78,8 @@ describe("independent motion and controller evidence", () => {
         expect(log.states).toHaveLength(3);
         expect(log.states[0].fields.stateFlags).toBe(3);
         const spans = segmentLog(log).usableSpans;
-        expect(spans.find((s) => s.start === 40).stateKnown).toBe(false);
-        expect(spans.find((s) => s.start === 50).stateKnown).toBe(true);
+        expect(spans.find((s) => s.start === 40).stateFieldsPresent).toBe(false);
+        expect(spans.find((s) => s.start === 50).stateFieldsPresent).toBe(true);
     });
     it("keeps multi-axis non-step tracking and controller observations without inventing step metrics", () => {
         const input = (n) => 50 * Math.sin(n / 35),
@@ -107,8 +108,9 @@ describe("independent motion and controller evidence", () => {
         expect(mixed.diagnostics.control.terms.I.mean).toBe(-4);
         expect(result.axes.roll.actions.candidateConfoundedCount).toBe(result.axes.roll.actions.candidateCount);
         expect(result.axes.roll.actions.eligibleConfoundedCount).toBe(0);
-        const packet = aiEvidence(result, aiSource);
-        expect(packet.motion.representatives.some((e) => e.eventType === "mixed_maneuver" && e.tracking)).toBe(true);
+        const packet = evidenceView(aiEvidence(result, aiSource));
+        expect(packet.axes[0].observedActions.trackingEligibleCount).toBeGreaterThan(0);
+        expect(packet.axes[0].observedActions.trackingQualifiedCount).toBe(0);
         expect(packet.axes[0].capabilities.tracking).toBe(true);
         expect(packet.axes[0].capabilities.stepResponse).toBe(false);
     });
@@ -133,7 +135,7 @@ describe("independent motion and controller evidence", () => {
         const x = Float32Array.from(t, (_, i) => fn(i)),
             y = Float32Array.from(t, (_, i) => fn(i - 20));
         const estimate = lagEstimate(t, x, y, 0, t.length);
-        expect(estimate.valueMs).toBe(20);
+        expect(estimate.localLagCandidateMs).toBe(20);
         expect(estimate.status).toBe("limited");
         expect(
             lagEstimate(
@@ -142,7 +144,7 @@ describe("independent motion and controller evidence", () => {
                 y,
                 0,
                 t.length,
-            ).valueMs,
+            ).localLagCandidateMs,
         ).toBeNull();
         expect(
             lagEstimate(

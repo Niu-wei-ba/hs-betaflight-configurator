@@ -11,7 +11,7 @@ import { estimateResponse } from "./deconvolution.js";
 import { controlMetrics } from "./control-metrics.js";
 import { POLICY } from "./policy.js";
 
-export const ALGORITHM_VERSION = "passive-core-0.4.0";
+export const ALGORITHM_VERSION = "passive-core-0.5.0";
 export const AXES = ["roll", "pitch", "yaw"];
 
 /** First read-only milestone: no PID candidate or device transport dependency. */
@@ -109,6 +109,25 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
                 gyroComparison: !!log.channels[`gyroUnfilt[${index}]`],
                 vibrationSafety: false,
             },
+            diagnosticCoverage: Object.fromEntries(
+                ["trackingComparison", "stepResponse", "stopResidual", "controlTermActivity", "localLag"].map(
+                    (name) => {
+                        const records = actions.records.filter((e) => e.axis === axis);
+                        const statuses = records.map((e) => e.diagnostics.diagnosticEligibility[name].status);
+                        const qualifiedCount = statuses.filter((s) => s === "qualified").length;
+                        const limitedCount = statuses.filter((s) => s === "limited").length;
+                        return [
+                            name,
+                            {
+                                status: qualifiedCount ? "qualified" : limitedCount ? "limited" : "insufficient",
+                                qualifiedCount,
+                                limitedCount,
+                                candidateCount: records.length,
+                            },
+                        ];
+                    },
+                ),
+            ),
             actions: aggregate.axes[axis].actions,
             recommendation: { changes: [], applyAllowed: false },
         };
@@ -116,7 +135,7 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
     onProgress("estimating", 0);
     const unknownGroups = new Map();
     for (const span of usableSpans) {
-        const key = `unknown-${span.configEpoch}-${span.stateKnown ? "state-recorded" : "state-unknown"}`;
+        const key = `unknown-${span.configEpoch}-${span.stateFieldsPresent ? "state-recorded" : "state-unknown"}`;
         if (!unknownGroups.has(key)) unknownGroups.set(key, { key, configEpoch: span.configEpoch, windows: [] });
         unknownGroups.get(key).windows.push(span);
     }
@@ -143,9 +162,9 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
         )
         : [];
     onProgress("aggregating", 1);
-    const { windows: _windows, ...throttleSummary } = throttle;
+    const { windows: _windows, stableWindows: _stableWindows, ...throttleSummary } = throttle;
     const result = {
-        schemaVersion: "0.4.0",
+        schemaVersion: "0.5.0",
         algorithmVersion: ALGORITHM_VERSION,
         logIndex,
         firmware: log.firmware,
