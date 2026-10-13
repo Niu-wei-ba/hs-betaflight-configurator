@@ -2,6 +2,7 @@
 import { trackingMetrics, outputMetrics } from "./tracking-metrics.js";
 import { POLICY } from "./policy.js";
 import { flightContext } from "./flight-context.js";
+import { boundaryAssociation } from "./boundary-association.js";
 
 /** Logged PID output units, not degrees/s and not parameter-change recommendations. */
 export function signalSummary(time, signal, spans) {
@@ -232,6 +233,7 @@ export function eventDiagnostics(log, axisIndex, event) {
         },
         tracking,
         control,
+        boundaryAssociation: boundaryAssociation(log, axisIndex, spans),
         output,
         lagEstimate: lag,
         context: flightContext(log, event),

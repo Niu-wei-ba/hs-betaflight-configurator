@@ -32,7 +32,9 @@ const groupDurations = Object.fromEntries(
         return [axis, duration];
     }),
 );
+const fullLocalBeforeAi = JSON.stringify(exportReport(result, source));
 const packet = aiEvidence(result, source);
+assert.equal(JSON.stringify(exportReport(result, source)), fullLocalBeforeAi, "AI budget must not mutate local evidence");
 const packetBytes = Buffer.byteLength(JSON.stringify(packet));
 assert.ok(packetBytes <= MAX_EVIDENCE_BYTES);
 assert.equal(packet.schemaVersion, "passive-ai-evidence-1.2");
@@ -50,6 +52,21 @@ if (source.sha256 === "95dcf89550ccf087a60be0b826aa042f9bebafef948187bbbd4990e8a
     assert.equal(roll.diagnostics.output.nearLowerFraction, 1);
     assert.equal(pitch.diagnostics.measurementStatus, "measured");
     assert.equal(pitch.diagnostics.diagnosticEligibility.trackingComparison.status, "insufficient");
+    const yawStop = result.motion.records.find(e => e.eventId === "event-yaw-375823-375862");
+    const after = yawStop.phases.find(p => p.kind === "post_stop");
+    const stop = yawStop.phases.find(p => p.kind === "command_stop");
+    near(after.stopTiming.continuedInputMs, 177.039, "continued return input");
+    near(stop.timeRangeSeconds[1], after.timeRangeSeconds[0], "confirmed stop end is observation start");
+    assert.ok(after.command.rms < 1);
+    assert.equal(after.residual.peakAbsDegPerSecond, 70);
+    assert.equal(after.residual.alternatingPeakCount, 14);
+    assert.deepEqual(Object.values(result.axes).map(a => a.actions.lowerMarkedConfoundTrackingCount), [2, 2, 3]);
+    assert.deepEqual(Object.values(result.axes).map(a => a.actions.stopResponses.qualifiedCount), [41, 32, 30]);
+    assert.equal(result.armingEvidence.eventCount, 1);
+    for (const axis of ["roll", "pitch", "yaw"]) {
+        assert.ok(packet.evidence.representatives.some(e => e.axis === axis && e.selection.categories.includes("typical_qualified_tracking")), `${axis} low-context comparison retained`);
+        assert.ok(packet.evidence.representatives.some(e => e.axis === axis && e.selection.categories.includes("lower_command_constraint")), `${axis} constraint comparison retained`);
+    }
     assert.ok(packet.evidence.representatives.some((e) => e.evidenceId === roll.eventId));
     regression = {
         criticalRollLowerFraction: roll.diagnostics.output.nearLowerFraction,
@@ -76,9 +93,9 @@ const audit = {
 };
 fs.mkdirSync(directory, { recursive: true });
 for (const [name, value] of [
-    ["local-report-v05.json", exportReport(result, source)],
+    ["local-report-v06.json", exportReport(result, source)],
     ["ai-evidence-v12.json", packet],
-    ["sample-audit-v05.json", audit],
+    ["sample-audit-v06.json", audit],
 ])
     fs.writeFileSync(path.join(directory, name), JSON.stringify(value, null, 2) + "\n");
 console.log(

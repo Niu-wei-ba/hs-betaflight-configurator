@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import { roomHistogram, addRoom, roomQuantiles, runDurations } from "./command-room.js";
 /** Trapezoidal time integration. Histogram p95 is explicitly an approximation. */
 export function trackingMetrics(time, input, output, spans) {
     if (!input || !output) return null;
@@ -80,7 +81,12 @@ export function outputMetrics(log, spans) {
             longestUpperUs: 0,
             minLowerRoom: Infinity,
             minUpperRoom: Infinity,
+            lowerRoomHistogram: roomHistogram(), upperRoomHistogram: roomHistogram(),
+            lowerRuns: [], upperRuns: [],
         }));
+    const unionLowerRoom = roomHistogram(), unionUpperRoom = roomHistogram(), spreadHistogram = roomHistogram();
+    const unionLowerRuns = [], unionUpperRuns = [];
+    const finishRun = (values, duration) => { if (duration > 0) values.push(duration / 1000); };
     const counts = new Float64Array(motors.length + 1);
     let total = 0,
         high = 0,
@@ -96,8 +102,12 @@ export function outputMetrics(log, spans) {
         for (let i = start; i + 1 < end; i++) {
             const dt = time[i + 1] - time[i];
             if (!(dt > 0)) {
+                finishRun(unionUpperRuns, highRun); finishRun(unionLowerRuns, lowRun);
                 highRun = lowRun = 0;
-                for (const run of runs) run.low = run.high = 0;
+                for (const [j, run] of runs.entries()) {
+                    finishRun(perMotor[j].lowerRuns, run.low); finishRun(perMotor[j].upperRuns, run.high);
+                    run.low = run.high = 0;
+                }
                 continue;
             }
             available += dt;
@@ -108,6 +118,7 @@ export function outputMetrics(log, spans) {
                 const v = log.channels[item.name][i];
                 if (!Number.isFinite(v) || v < bounds.low || v > bounds.high) {
                     item.invalidUs += dt;
+                    finishRun(item.lowerRuns, runs[j].low); finishRun(item.upperRuns, runs[j].high);
                     runs[j].low = runs[j].high = 0;
                     valid = false;
                     continue;
@@ -118,8 +129,12 @@ export function outputMetrics(log, spans) {
                 const range = bounds.high - bounds.low;
                 item.minLowerRoom = Math.min(item.minLowerRoom, (v - bounds.low) / range);
                 item.minUpperRoom = Math.min(item.minUpperRoom, (bounds.high - v) / range);
+                addRoom(item.lowerRoomHistogram, (v - bounds.low) / range, dt);
+                addRoom(item.upperRoomHistogram, (bounds.high - v) / range, dt);
                 const lower = v <= bounds.low + bounds.tolerance,
                     upper = v >= bounds.high - bounds.tolerance;
+                if (!lower) finishRun(item.lowerRuns, runs[j].low);
+                if (!upper) finishRun(item.upperRuns, runs[j].high);
                 runs[j].low = lower ? runs[j].low + dt : 0;
                 runs[j].high = upper ? runs[j].high + dt : 0;
                 item.longestLowerUs = Math.max(item.longestLowerUs, runs[j].low);
@@ -135,17 +150,29 @@ export function outputMetrics(log, spans) {
             }
             if (!valid) {
                 invalid += dt;
+                finishRun(unionUpperRuns, highRun); finishRun(unionLowerRuns, lowRun);
                 highRun = lowRun = 0;
                 continue;
             }
             total += dt;
+            const values = motors.map(name => log.channels[name][i]);
+            const minimum = Math.min(...values), maximum = Math.max(...values), range = bounds.high - bounds.low;
+            addRoom(unionLowerRoom, (minimum - bounds.low) / range, dt);
+            addRoom(unionUpperRoom, (bounds.high - maximum) / range, dt);
+            addRoom(spreadHistogram, (maximum - minimum) / range, dt);
             counts[lowerCount] += dt;
             if (lowerCount) low += dt;
             if (atHigh) high += dt;
+            if (!lowerCount) finishRun(unionLowerRuns, lowRun);
+            if (!atHigh) finishRun(unionUpperRuns, highRun);
             lowRun = lowerCount ? lowRun + dt : 0;
             highRun = atHigh ? highRun + dt : 0;
             longestLow = Math.max(longestLow, lowRun);
             longestHigh = Math.max(longestHigh, highRun);
+        }
+        finishRun(unionUpperRuns, highRun); finishRun(unionLowerRuns, lowRun);
+        for (const [j, run] of runs.entries()) {
+            finishRun(perMotor[j].lowerRuns, run.low); finishRun(perMotor[j].upperRuns, run.high);
         }
         // Include the final endpoint in extrema, without adding an extra time interval.
         for (const item of perMotor) {
@@ -170,6 +197,13 @@ export function outputMetrics(log, spans) {
         availableSeconds: available / 1e6,
         durationSeconds: total / 1e6,
         bounds,
+        commandRoom: {
+            lower: roomQuantiles(unionLowerRoom), upper: roomQuantiles(unionUpperRoom),
+            motorSpread: roomQuantiles(spreadHistogram),
+            method: "left_endpoint_valid_time_histogram_256_bins", resolutionFraction: 1 / 256,
+            meaning: "minimum_across_recorded_motors_command_margin_not_available_torque",
+        },
+        lowerRunDuration: runDurations(unionLowerRuns), upperRunDuration: runDurations(unionUpperRuns),
         lowerMotorCountSeconds: Array.from(counts, (value) => value / 1e6),
         perMotor: perMotor.map((m) => ({
             name: m.name,
@@ -185,6 +219,8 @@ export function outputMetrics(log, spans) {
             longestUpperMs: m.validUs ? m.longestUpperUs / 1000 : null,
             minimumLowerCommandRoomFraction: finite(m.minLowerRoom),
             minimumUpperCommandRoomFraction: finite(m.minUpperRoom),
+            commandRoom: { lower: roomQuantiles(m.lowerRoomHistogram), upper: roomQuantiles(m.upperRoomHistogram) },
+            lowerRunDuration: runDurations(m.lowerRuns), upperRunDuration: runDurations(m.upperRuns),
         })),
         controlAuthorityLimited: "unknown",
         weighting: "left_endpoint_valid_time",

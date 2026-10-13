@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { AXIS_NAMES, POLICY, distribution } from "./policy.js";
 import { trackingMetrics, outputMetrics } from "./tracking-metrics.js";
+import { comparisonBlockers } from "./diagnostic-context.js";
+import { stopSummary } from "./stop-summary.js";
+import { boundaryAssociation } from "./boundary-association.js";
 
 export function aggregateActions(records) {
     const eligible = records.filter((event) => event.inputEligibility === "eligible");
@@ -22,6 +25,7 @@ export function aggregateActions(records) {
             return result;
         }, {});
     const unconfirmed = independent.filter((event) => event.metrics.settlingTime.status === "right_censored").length;
+    const comparable = records.filter(e => e.diagnostics?.diagnosticEligibility?.trackingComparison.status === "qualified");
     return {
         candidateCount: records.length,
         eligibleCount: eligible.length,
@@ -34,6 +38,16 @@ export function aggregateActions(records) {
             (e) => e.diagnostics?.diagnosticEligibility?.trackingComparison.status === "qualified",
         ).length,
         mixedManeuverCount: records.filter((event) => event.diagnostics?.eventType === "mixed_maneuver").length,
+        lowerMarkedConfoundTrackingCount: comparable.filter(e => !comparisonBlockers(e).length).length,
+        stopResponses: stopSummary(records),
+        parameterAttribution: {
+            status: "not_supported",
+            blockerCounts: records.reduce((summary, event) => {
+                for (const code of event.diagnostics?.parameterAttribution?.blockerCodes ?? []) summary[code] = (summary[code] ?? 0) + 1;
+                return summary;
+            }, {}),
+            parameterDecision: "not_determined",
+        },
         unconfirmedCount: unconfirmed,
         unconfirmedFraction: independent.length ? unconfirmed / independent.length : null,
         notReachedCount: independent.filter((event) => !event.metrics.targetReached).length,
@@ -97,6 +111,7 @@ export function aggregateLog(log, spans, throttle, actions) {
             continuousWindowCount: group.windows.length,
             outputEvidenceId: `motors-${group.key}`,
             output: outputMetrics(log, group.windows),
+            boundaryAssociation: boundaryAssociation(log, index, group.windows),
             stableSubsetSeconds: throttle.stableWindows
                 .filter(
                     (w) =>

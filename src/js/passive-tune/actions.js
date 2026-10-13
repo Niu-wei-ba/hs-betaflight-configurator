@@ -3,6 +3,7 @@ import { AXIS_NAMES, POLICY, quantile } from "./policy.js";
 import { throttleWindow } from "./throttle.js";
 import { eventDiagnostics } from "./control-metrics.js";
 import { actionPhases } from "./phases.js";
+import { attributionLimits } from "./diagnostic-context.js";
 import { observedStep } from "./step-metrics.js";
 
 const lowerBound = (time, value, lo, hi) => {
@@ -150,6 +151,7 @@ export function detectActions(log, spans) {
                 event.phases = phaseResult.phases;
                 event.diagnostics.diagnosticEligibility.stopResidual = phaseResult.stopResidualEligibility;
                 event.contextLimitations = event.diagnostics.contextLimitations;
+                event.diagnostics.parameterAttribution = attributionLimits(event);
                 event.metrics = eligible ? observedStep(time, output, event) : null;
                 records.push(event);
             }

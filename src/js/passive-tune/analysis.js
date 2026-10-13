@@ -10,8 +10,10 @@ import { outputMetrics } from "./tracking-metrics.js";
 import { estimateResponse } from "./deconvolution.js";
 import { controlMetrics } from "./control-metrics.js";
 import { POLICY } from "./policy.js";
+import { armingEvidence } from "./flight-context.js";
+import { boundaryAssociation } from "./boundary-association.js";
 
-export const ALGORITHM_VERSION = "passive-core-0.5.0";
+export const ALGORITHM_VERSION = "passive-core-0.6.0";
 export const AXES = ["roll", "pitch", "yaw"];
 
 /** First read-only milestone: no PID candidate or device transport dependency. */
@@ -100,6 +102,7 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
             noise,
             charts,
             tracking: aggregate.axes[axis].tracking,
+            boundaryAssociation: boundaryAssociation(log, index, usableSpans),
             control: controlMetrics(log, index, usableSpans),
             controlSpectrum,
             capabilities: {
@@ -164,7 +167,7 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
     onProgress("aggregating", 1);
     const { windows: _windows, stableWindows: _stableWindows, ...throttleSummary } = throttle;
     const result = {
-        schemaVersion: "0.5.0",
+        schemaVersion: "0.6.0",
         algorithmVersion: ALGORITHM_VERSION,
         logIndex,
         firmware: log.firmware,
@@ -179,6 +182,7 @@ export function analyzeLog(bytes, logIndex, onProgress = () => {}) {
         capabilities: { ...log.capabilities, actionDetection: log.scaleKnown, localTiming: usableSpans.length > 0 },
         throttle: throttleSummary,
         output: outputMetrics(log, usableSpans),
+        armingEvidence: armingEvidence(log),
         motion: {
             candidateCount: actions.records.length,
             limitReached: actions.limitReached,

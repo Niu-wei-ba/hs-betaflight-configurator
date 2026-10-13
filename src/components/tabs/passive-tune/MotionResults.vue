@@ -36,6 +36,7 @@
             </div>
             <MotorEvidence :output="result.output" />
         </UiBox>
+        <DiagnosticSummary :result="result" />
         <UiBox :title="$t('passiveAnalysisThrottleTitle')">
             <p>
                 {{
@@ -246,8 +247,10 @@
                     {{ selectedEvent.diagnostics?.context.armSwitchActive ?? "—" }}
                 </p>
                 <MotorEvidence :output="selectedEvent.diagnostics?.output" />
+                <p>{{ $t("passiveContextAttribution") }}</p>
                 <ControlTerms :control="selectedEvent.diagnostics?.control" />
                 <div class="space-y-3 my-3" data-testid="passive-action-phases">
+                    <p>{{ $t("passiveContextPhaseLabels") }}</p>
                     <article
                         v-for="phase in selectedEvent.phases"
                         :id="phase.evidenceId"
@@ -279,6 +282,14 @@
                                 {{ fmt(phase.residual.peakAbsDegPerSecond) }} °/s ·
                                 {{ $t("passiveAnalysisAlternatingPeaks") }}: {{ phase.residual.alternatingPeakCount }} ·
                                 {{ $t("passiveAnalysisDecayRatio") }}: {{ fmt(phase.residual.tailToInitialRmsRatio) }}
+                            </p>
+                            <p v-if="phase.stopTiming" data-testid="passive-stop-timing">
+                                {{ $t("passiveContextContinuedInput") }} {{ fmt(phase.stopTiming.continuedInputMs) }} ms ·
+                                {{ $t("passiveContextStopPlatform") }} {{ fmt(phase.stopTiming.confirmedStopPlatformStartSeconds) }} s
+                            </p>
+                            <p v-if="phase.trackingErrorResidual">
+                                {{ $t("passiveContextStopCommand") }} {{ fmt(phase.command?.mean) }} / {{ fmt(phase.command?.rms) }} °/s ·
+                                {{ $t("passiveContextStopError") }} {{ fmt(phase.trackingErrorResidual.rmsDegPerSecond) }} °/s
                             </p>
                             <p v-if="phase.observationTruncated">{{ $t("passiveAnalysisPhaseTruncated") }}</p>
                         </template>
@@ -376,6 +387,7 @@ import { computed, ref, watch, nextTick } from "vue";
 import { useTranslation } from "i18next-vue";
 import UiBox from "../../elements/UiBox.vue";
 import ControlTerms from "./ControlTerms.vue";
+import DiagnosticSummary from "./DiagnosticSummary.vue";
 import ResponsePlot from "./ResponsePlot.vue";
 const props = defineProps({
     result: { type: Object, required: true },

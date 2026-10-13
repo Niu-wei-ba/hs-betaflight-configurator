@@ -357,12 +357,12 @@ function messagesV12(packet) {
                 ),
         )
         .filter((ref) =>
-            /rmsDegPerSecond$|absoluteErrorP95DegPerSecond$|nearLowerFraction$|nearUpperFraction$|longestLowerMs$|longestUpperMs$|peakAbsDegPerSecond$|gainDb$|localLagCandidateMs$|control\.terms\.[PIFD]\.rms$/.test(
+            /rmsDegPerSecond$|absoluteErrorP95DegPerSecond$|nearLowerFraction$|nearUpperFraction$|longestLowerMs$|longestUpperMs$|peakAbsDegPerSecond$|gainDb$|localLagCandidateMs$|control\.terms\.[PIFD]\.rms$|boundaryAssociation\.jointFractionOfValidTime$|stopResponses\.all\.trackingErrorRmsDegPerSecond\.(median|p90)$|stopTiming\.continuedInputMs$|command\.rms$/.test(
                 ref,
             ),
         )
         .sort((a, b) => {
-            const rank = (ref) =>
+            const rank = (ref) => /observedTracking\.rmsDegPerSecond$|\.tracking\.rmsDegPerSecond$|\.output\.near(Lower|Upper)Fraction$|trackingErrorResidual\.rmsDegPerSecond$|boundaryAssociation\.jointFractionOfValidTime$|stopResponses\.all\.trackingErrorRmsDegPerSecond\.(median|p90)$|stopTiming\.continuedInputMs$|command\.rms$/.test(ref) ? -1 :
                 ref.startsWith("axis-")
                     ? 0
                     : ref.startsWith("event-")
@@ -392,7 +392,9 @@ function messagesV12(packet) {
                 `每轴limitations为1至6条，nextSteps为2至4项，cannotDetermine为3至10条。summary至多150字，每轴结论120字，findings.text120字，其他条目80字。` +
                 `完整油门箱与稳定子集不同；按覆盖和各诊断资格解释。measurementStatus=measured不代表trackingComparison合格；短片段可描述局部数据，不评价工况。contextLimitations与输入资格独立；未合格阶跃不代表没有其他观测或PID差，拒绝原因仅stepInputEligibility对应reasonCodes。poor responses保留，right_censored不是0ms或窗口时长。` +
                 `阶段来自Setpoint，停止后残余是角速度，不证明姿态回弹或共振；观察截断限制衰减解释。PID输出单位不是角速度。P/误差、FF/指令导数相关不证明最优PID或因果。` +
+                `阶段标签可重叠，禁止相加阶段时长。stopTiming.continuedInputMs是初始变化结束到稳定停止平台之间的持续输入时间，不是漏采数据或响应延迟。command是停止后平台的目标角速度；residual是Gyro活动，trackingErrorResidual是Gyro减Setpoint。非零目标下Gyro RMS不等于误差或振荡，交替峰和首尾RMS比值不能判断PID阻尼。stopResponses按轴去重，分开总体和lowerMarkedConfounds子集，样本不足不填分位数；低混杂不是已确认飞行。parameterAttribution.status=not_supported，筛选不能建立参数因果。boundaryAssociation只是按有效时间的共同出现，30度/秒是未校准工程门槛，不能据此归因PID或物理推力。armingEvidence仅证明记录的上锁转换，不回填整段解锁或离地状态。` +
                 `上下限只表示指令接近日志边界，controlAuthorityLimited=unknown，不能断言真实推力不足。ARM开关不证明实际解锁，解锁不证明离地，RX和电机运转也不证明离地。` +
+                `selection公布省略的可选详情，完整分组摘要始终保留；若阶段只含RMS，不得补造均值/峰值/变化量。typical_qualified_tracking是在低已标记混杂工况按发生顺序取中间事件，不按Gyro误差挑好响应，不代表总体性能。` +
                 `localLagCandidateMs仅局部相关候选，不是固定系统延迟，不用于时移主误差；null不得用bestCandidateMs代替。受支持频段不是控制带宽，maxObservedGain不是共振峰。estimated_response必须引用支持频段或有效estimate。噪声活动不证明滤波安全、RPM效果、温度。` +
                 `pidDecision必须not_determined，禁止具体PID/滤波改值和CLI命令。不能要求危险动作或为补通道改变控制参数。次要建议只补记录或已有配置。`,
         },

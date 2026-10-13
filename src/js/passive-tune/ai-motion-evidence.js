@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /** Explicit derived-data allowlist. No channels, event payloads or arbitrary header text. */
 import { evidenceView } from "./evidence-view.js";
+import { comparisonBlockers } from "./diagnostic-context.js";
 const n = (value) => (Number.isFinite(value) ? Math.round(value * 1e5) / 1e5 : null);
 const stats = (value) =>
     value
@@ -19,7 +20,7 @@ const counts = (value = {}) =>
             .filter(([key, count]) => /^[A-Z_]{1,64}$/.test(key) && Number.isFinite(count))
             .map(([key, count]) => [key, n(count)]),
     );
-export function actionSummary(value) {
+export function actionSummary(value, detailed = false) {
     if (!value) return null;
     return {
         candidateCount: n(value.candidateCount),
@@ -28,6 +29,11 @@ export function actionSummary(value) {
         candidateConfoundedCount: n(value.candidateConfoundedCount),
         trackingEligibleCount: n(value.trackingEligibleCount),
         trackingQualifiedCount: n(value.trackingQualifiedCount),
+        ...(value.stopResponses ? {
+            lowerMarkedConfoundTrackingCount: n(value.lowerMarkedConfoundTrackingCount),
+            ...(detailed ? { stopResponses: rounded(value.stopResponses) } : {}),
+            ...(detailed ? { parameterAttribution: rounded(value.parameterAttribution) } : {}),
+        } : {}),
         mixedManeuverCount: n(value.mixedManeuverCount),
         ...(value.eligibleCount
             ? {
@@ -108,6 +114,7 @@ function rounded(value) {
         return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, rounded(v)]));
     return value;
 }
+export function associationSummary(value) { return rounded(value); }
 export function outputSummary(value, compact = false) {
     if (!value) return null;
     const keys = [
@@ -121,6 +128,7 @@ export function outputSummary(value, compact = false) {
         "availableSeconds",
         "durationSeconds",
         "bounds",
+        "commandRoom", "lowerRunDuration", "upperRunDuration",
         "lowerMotorCountSeconds",
         "perMotor",
         "controlAuthorityLimited",
@@ -149,14 +157,14 @@ export function outputSummary(value, compact = false) {
     );
 }
 function phaseSummary(phase) {
-    if (phase.kind === "command_stop" && phase.status === "measured")
+    if (phase.metricsEvidenceId && phase.status === "measured")
         return {
             kind: phase.kind,
             evidenceId: phase.evidenceId,
             status: phase.status,
             timeRangeSeconds: phase.timeRangeSeconds.map(n),
             durationSeconds: n(phase.durationSeconds),
-            metricsEvidenceId: phase.evidenceId.replace(/-command_stop$/, "-command_change"),
+            metricsEvidenceId: phase.metricsEvidenceId,
         };
 
     if (phase.status !== "measured") return { kind: phase.kind, status: phase.status, reasonCode: phase.reasonCode };
@@ -193,6 +201,9 @@ function phaseSummary(phase) {
         ...(phase.residual
             ? {
                 residual: rounded(phase.residual),
+                command: rounded(phase.command),
+                trackingErrorResidual: rounded(phase.trackingErrorResidual),
+                stopTiming: rounded(phase.stopTiming),
                 contextLimitations: phase.contextLimitations ?? [],
                 observationTruncated: phase.observationTruncated,
                 endReason: phase.endReason,
@@ -230,11 +241,13 @@ function eventSummary(event) {
             maxPct: n(event.throttle.maxPct),
         },
         eventType: event.diagnostics?.eventType ?? null,
-        context: event.diagnostics?.context ?? null,
+        context: rounded(event.diagnostics?.context ?? null),
         measurementStatus: event.diagnostics?.measurementStatus ?? null,
         diagnosticEligibility: event.diagnostics?.diagnosticEligibility ?? null,
         contextLimitations: event.diagnostics?.contextLimitations ?? [],
         command: rounded(event.diagnostics?.command ?? null),
+        parameterAttribution: rounded(event.diagnostics?.parameterAttribution ?? null),
+        boundaryAssociation: rounded(event.diagnostics?.boundaryAssociation ?? null),
         phases: (event.phases ?? []).map(phaseSummary),
         tracking: trackingSummary(event.diagnostics?.tracking),
         control: controlSummary(event.diagnostics?.control),
@@ -267,7 +280,8 @@ export function motionEvidence(result) {
         const qualified = values.filter(
             (e) => e.diagnostics?.diagnosticEligibility?.trackingComparison.status === "qualified",
         );
-        const ordered = [...qualified].sort((a, b) => rms(a) - rms(b) || a.eventId.localeCompare(b.eventId));
+        const ordered = qualified.filter(e => !comparisonBlockers(e).length)
+            .sort((a, b) => a.start - b.start || a.eventId.localeCompare(b.eventId));
         const choose = (category, population, score = rms, typical = false) => {
             if (!population.length) return;
             const sorted = [...population].sort((a, b) => score(b) - score(a) || a.eventId.localeCompare(b.eventId));
@@ -282,11 +296,13 @@ export function motionEvidence(result) {
                         representativeOfCount: population.length,
                         populations: {},
                         limitations: event.diagnostics?.contextLimitations ?? [],
+                        requiredForBalance: false,
                     },
                 };
                 selected.set(event.eventId, item);
             }
             item.selection.categories.push(category);
+            if (["typical_qualified_tracking", "lower_command_constraint"].includes(category)) item.selection.requiredForBalance = true;
             item.selection.populations[category] = population.length;
             item.selection.diagnosticTargets = [...new Set([...item.selection.diagnosticTargets, category])];
         };
@@ -303,7 +319,8 @@ export function motionEvidence(result) {
         const stopping = values.filter(
             (e) => e.diagnostics?.diagnosticEligibility?.stopResidual.status === "qualified",
         );
-        choose("qualified_command_stop", stopping, (e) => stop(e)?.durationSeconds ?? 0);
+        const lowContextStops = stopping.filter(e => !comparisonBlockers(e, stop(e)).length);
+        choose("qualified_command_stop", lowContextStops.length ? lowContextStops : stopping, (e) => stop(e)?.durationSeconds ?? 0);
         choose("maximum_measured_stop_residual", stopping, (e) => stop(e)?.residual?.peakAbsDegPerSecond ?? -Infinity);
     }
     return {
@@ -330,6 +347,7 @@ export function motionEvidence(result) {
             coverage: rounded(result.throttle.coverage),
         },
         output: outputSummary(result.output),
+        armingEvidence: rounded(result.armingEvidence),
         motorConstraints: [
             ...new Map(
                 result.motion.trackingGroups
@@ -355,6 +373,7 @@ export function motionEvidence(result) {
             stableSubsetSeconds: n(group.stableSubsetSeconds),
             outputEvidenceId: group.outputEvidenceId,
             tracking: trackingSummary(group.tracking),
+            boundaryAssociation: rounded(group.boundaryAssociation),
         })),
         actionGroups: [...result.motion.actionGroups]
             .sort((a, b) => b.independentCount - a.independentCount)
@@ -370,18 +389,21 @@ export function motionEvidence(result) {
             })),
         representatives: [...selected.values()].sort((a, b) => {
             const priority = [
+                "typical_qualified_tracking",
                 "lower_command_constraint",
+                "qualified_command_stop",
                 "maximum_measured_stop_residual",
                 "maximum_qualified_tracking_error",
                 "upper_command_constraint",
-                "qualified_command_stop",
-                "typical_qualified_tracking",
             ];
             const rank = (item) => Math.min(...item.selection.categories.map((c) => priority.indexOf(c)));
             return rank(a) - rank(b) || a.evidenceId.localeCompare(b.evidenceId);
         }),
         selection: {
-            rule: "all_groups_six_diagnostic_categories_per_axis",
+            rule: "all_groups_balanced_low_context_tracking_and_constraint_per_axis",
+            comparisonContextMeaning: "low_marked_confounds_not_verified_flight_or_parameter_causality",
+            stopSummaryScope: "per_axis_all_and_low_context_groups_group_specific_details_local_report",
+            missingTypicalTrackingAxes: ["roll", "pitch", "yaw"].filter(axis => ![...selected.values()].some(e => e.axis === axis && e.selection.categories.includes("typical_qualified_tracking"))),
             omittedEstimates: Math.max(0, result.estimates.filter((item) => item.status === "limited").length - 9),
             trackingGroupsTotal: result.motion.trackingGroups.length,
             actionGroupsTotal: result.motion.actionGroups.length,

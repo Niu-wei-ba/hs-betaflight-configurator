@@ -20,3 +20,25 @@ export function flightContext(log, event) {
         meaning: "arm_switch_activation_not_actual_arming_or_airborne_evidence",
     };
 }
+
+/** Verified DISARM transition proves state at that event only, not an entire preceding flight. */
+export function armingEvidence(log) {
+    const supported = /^Betaflight 2026\.6\.2\b/.test(log.firmware ?? "") && /\(e0b7bb01b\)/.test(log.firmware ?? "");
+    const time = log.channels.time, origin = time[0];
+    const events = supported ? (log.events ?? []).filter(e => e.type === 15) : [];
+    return {
+        adapterVersion: "blackbox-disarm-e0b7bb01b-1.0",
+        status: events.length ? "recorded_disarm_transition" : "unavailable",
+        eventCount: events.length,
+        omittedEvents: Math.max(0, events.length - 16),
+        disarmEvents: events.slice(0, 16).map(e => ({
+            sampleIndex: e.sampleIndex,
+            afterPreviousFrameSeconds: Number.isFinite(e.timeBeforeUs) ? (e.timeBeforeUs - origin) / 1e6 : null,
+            beforeNextFrameSeconds: e.sampleIndex < time.length ? (time[e.sampleIndex] - origin) / 1e6 : null,
+            reason: Number.isInteger(e.payload?.reason) ? e.payload.reason : null,
+            stateImmediatelyBefore: "armed", stateAtTransition: "disarmed",
+        })),
+        armedIntervals: "unknown", airborneState: "unknown",
+        meaning: "event_only_no_independent_timestamp_no_backfill_across_gaps_or_rearming",
+    };
+}

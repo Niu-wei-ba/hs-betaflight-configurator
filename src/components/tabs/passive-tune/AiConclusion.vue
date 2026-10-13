@@ -125,6 +125,14 @@
                 {{ view.motion.selection.sentRepresentativeFrequencyPoints }} /
                 {{ view.motion.selection.originalRepresentativeFrequencyPoints }}
             </p>
+            <p v-if="view.motion" class="text-sm" data-testid="passive-ai-detail-omissions">
+                {{ $t("passiveAiOptionalLocalDetails", {
+                    motors: view.motion.selection.omittedPerMotorDistributionProfiles ?? 0,
+                    phases: view.motion.selection.compactPhaseCount ?? 0,
+                    events: view.motion.selection.omittedEventControlAndLagDetails ?? 0,
+                    spectra: view.motion.selection.omittedControlSpectrumAxes?.length ?? 0,
+                }) }}
+            </p>
             <button type="button" class="underline my-2" @click="downloadPacket">
                 {{ $t("passiveAiDownloadPacket") }}
             </button>
@@ -175,6 +183,12 @@ function metricText(ref) {
     if (term)
         return `${term[1] === "F" ? "FF" : term[1]} ${term[2]}: ${Number.isFinite(value) ? value.toFixed(2) : "—"} (${t("passiveAnalysisControlUnit")})`;
     const descriptors = [
+        [/trackingErrorResidual\.rmsDegPerSecond$/, "StopErrorRms", "°/s", 1],
+        [/stopResponses\.all\.trackingErrorRmsDegPerSecond\.median$/, "StopErrorMedian", "°/s", 1],
+        [/stopResponses\.all\.trackingErrorRmsDegPerSecond\.p90$/, "StopErrorP90", "°/s", 1],
+        [/boundaryAssociation\.jointFractionOfValidTime$/, "BoundaryOverlap", "%", 100],
+        [/stopTiming\.continuedInputMs$/, "ContinuedInput", "ms", 1],
+        [/command\.rms$/, "CommandRms", "°/s", 1],
         [/\.gapCount$/, "TimeGaps", "", 1],
         [/\.explicitOnlyBoundaryCount$/, "ExplicitBoundaries", "", 1],
         [/\.boundaryCount$/, "TotalBoundaries", "", 1],

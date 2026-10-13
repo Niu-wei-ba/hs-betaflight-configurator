@@ -5,6 +5,7 @@ import {
     trackingSummary,
     controlSummary,
     spectrumSummary,
+    associationSummary,
 } from "./ai-motion-evidence.js";
 export const EVIDENCE_VERSION = "passive-ai-evidence-1.2";
 export const MAX_EVIDENCE_BYTES = 98304;
@@ -175,7 +176,8 @@ export function aiEvidence(result, source) {
             ...(result.motion
                 ? {
                     observedTracking: trackingSummary(value.tracking),
-                    observedActions: actionSummary(value.actions),
+                    observedActions: actionSummary(value.actions, true),
+                    boundaryAssociation: associationSummary(value.boundaryAssociation),
                     capabilities: value.capabilities,
                     diagnosticCoverage: value.diagnosticCoverage,
                     control: controlSummary(value.control),
@@ -332,10 +334,23 @@ export function aiEvidence(result, source) {
             packet.motion.estimates.pop();
             packet.motion.selection.omittedEstimates++;
         }
+        // Remove optional per-channel details before sacrificing a balanced comparison event.
+        if (byteLength() > MAX_EVIDENCE_BYTES) {
+            let omitted = 0;
+            for (const event of packet.motion.representatives) {
+                if (event.output?.perMotor) { omitted += event.output.perMotor.length; delete event.output.perMotor; }
+                for (const phase of event.phases) {
+                    if (phase.residual?.segmentRms) delete phase.residual.segmentRms;
+                    if (phase.trackingErrorResidual?.segmentRms) delete phase.trackingErrorResidual.segmentRms;
+                }
+            }
+            packet.motion.selection.omittedRepresentativeMotorChannels = omitted;
+            packet.motion.selection.phaseSegmentDetails = "local_report";
+        }
         while (byteLength() > MAX_EVIDENCE_BYTES) {
-            const byAxis = AXES.map((axis) => packet.motion.representatives.filter((item) => item.axis === axis));
+            const byAxis = AXES.map((axis) => packet.motion.representatives.filter((item) => item.axis === axis && !item.selection.requiredForBalance));
             const largest = byAxis.reduce((a, b) => (a.length >= b.length ? a : b));
-            if (largest.length <= 1) break;
+            if (!largest.length) break;
             const index = packet.motion.representatives.findIndex(
                 (item) => item.evidenceId === largest.at(-1).evidenceId,
             );
@@ -346,6 +361,84 @@ export function aiEvidence(result, source) {
                 const key = `${largest.at(-1).axis}:${category}`;
                 packet.motion.selection.omittedRepresentativeCategories[key] =
                     (packet.motion.selection.omittedRepresentativeCategories[key] ?? 0) + 1;
+            }
+        }
+        if (byteLength() > MAX_EVIDENCE_BYTES) {
+            let omittedMotorProfiles = 0, compactPhases = 0;
+            const trimMotorProfiles = output => {
+                for (const motor of output?.perMotor ?? []) {
+                    if (motor.commandRoom) { delete motor.commandRoom; delete motor.lowerRunDuration; delete motor.upperRunDuration; omittedMotorProfiles++; }
+                }
+            };
+            const trimAssociation = association => {
+                if (!association) return;
+                delete association.meaning; delete association.calibration;
+            };
+            trimMotorProfiles(packet.motion.output);
+            for (const group of packet.motion.motorConstraints) {
+                trimMotorProfiles(group.output);
+                if (group.output?.commandRoom) delete group.output.commandRoom.meaning;
+            }
+            for (const group of packet.motion.trackingGroups) trimAssociation(group.boundaryAssociation);
+            for (const axis of packet.axes) trimAssociation(axis.boundaryAssociation);
+            for (const event of packet.motion.representatives) {
+                if (event.context) {
+                    delete event.context.recordedFlags; delete event.context.unknownModeBits;
+                    delete event.context.meaning; delete event.context.source;
+                }
+                trimAssociation(event.boundaryAssociation);
+                if (event.output) event.output = {
+                    status: event.output.status, nearLowerFraction: event.output.nearLowerFraction,
+                    nearUpperFraction: event.output.nearUpperFraction, durationSeconds: event.output.durationSeconds,
+                    invalidSeconds: event.output.invalidSeconds, longestLowerMs: event.output.longestLowerMs,
+                    longestUpperMs: event.output.longestUpperMs, bounds: event.output.bounds,
+                };
+                if (event.control?.terms) for (const term of Object.values(event.control.terms))
+                    if (term) { delete term.mean; delete term.absolutePeak; delete term.endMinusStart; }
+                for (const phase of event.phases) {
+                    if (phase.control?.terms) {
+                        for (const term of Object.values(phase.control.terms))
+                            if (term) { delete term.mean; delete term.absolutePeak; delete term.endMinusStart; }
+                        compactPhases++;
+                    }
+                    if (phase.tracking) { delete phase.tracking.maeDegPerSecond; delete phase.tracking.absoluteErrorP95DegPerSecond; delete phase.tracking.p95ResolutionDegPerSecond; }
+                    for (const residual of [phase.residual, phase.trackingErrorResidual]) {
+                        if (residual) { delete residual.meaning; delete residual.peakMethod; }
+                    }
+                }
+            }
+            packet.motion.selection.omittedPerMotorDistributionProfiles = omittedMotorProfiles;
+            packet.motion.selection.compactPhaseCount = compactPhases;
+            packet.motion.selection.optionalDetailPolicy = "stage_term_rms_and_tracking_rms_retained_other_details_local_report";
+        }
+        if (byteLength() > MAX_EVIDENCE_BYTES) {
+            for (const group of packet.motion.trackingGroups) {
+                const a = group.boundaryAssociation;
+                if (a?.status === "measured") group.boundaryAssociation = {
+                    status: a.status, durationSeconds: a.durationSeconds, invalidSeconds: a.invalidSeconds,
+                    highErrorSeconds: a.highErrorSeconds, jointSeconds: a.jointSeconds,
+                    jointFractionOfValidTime: a.jointFractionOfValidTime,
+                    boundFractionGivenHighError: a.boundFractionGivenHighError,
+                };
+            }
+            for (const axis of packet.axes) {
+                const low = axis.observedActions.stopResponses?.lowerMarkedConfounds;
+                if (low && low.count < 5) axis.observedActions.stopResponses.lowerMarkedConfounds = {
+                    count: low.count, status: "insufficient_events", minimumEvents: 5,
+                    errorDecayStatusCounts: low.errorDecayStatusCounts, truncatedCount: low.truncatedCount,
+                };
+            }
+            let omittedEventDetails = 0;
+            for (const event of packet.motion.representatives) {
+                if (event.control || event.lagEstimate) { delete event.control; delete event.lagEstimate; omittedEventDetails++; }
+            }
+            packet.motion.selection.omittedEventControlAndLagDetails = omittedEventDetails;
+            packet.motion.selection.groupBoundaryDetailPolicy = "common_valid_duration_and_overlap_retained_other_association_details_local_report";
+        }
+        if (byteLength() > MAX_EVIDENCE_BYTES) {
+            packet.motion.selection.omittedControlSpectrumAxes = [];
+            for (const axis of packet.axes) {
+                if (axis.controlSpectrum) { delete axis.controlSpectrum; packet.motion.selection.omittedControlSpectrumAxes.push(axis.axis); }
             }
         }
     }
@@ -396,6 +489,9 @@ function versionedPacket(packet) {
         evidence: { trackingGroups, actionGroups, motorConstraints, representatives, estimates },
         analysisPolicy: {
             definitions: packet.definitions,
+            phaseSemantics: "overlapping_observation_labels_never_sum_phase_durations",
+            residualSemantics: "gyro_activity_and_gyro_minus_setpoint_error_separate_no_pid_damping_inference",
+            attributionSemantics: "context_screening_never_establishes_parameter_causality",
             spectralSupportCriteria: packet.spectralSupportCriteria,
             prohibitedInferences: [
                 "physical_thrust_saturation",

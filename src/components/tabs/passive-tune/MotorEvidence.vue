@@ -10,6 +10,14 @@
             {{ $t("passiveAnalysisInvalidOutput") }}: {{ fmt(output.invalidSeconds) }} s
         </p>
         <p class="text-dimmed">{{ $t("passiveAnalysisOutputMeaning") }}</p>
+        <p v-if="output.commandRoom">
+            {{ $t("passiveContextRoom") }} {{ pct(output.commandRoom.lower.p5) }} / {{ pct(output.commandRoom.lower.p50) }} ·
+            {{ $t("passiveContextUpperRoom") }} {{ pct(output.commandRoom.upper.p5) }} / {{ pct(output.commandRoom.upper.p50) }}
+        </p>
+        <p v-if="output.lowerRunDuration">
+            {{ $t("passiveContextRunP95") }} {{ fmt(output.lowerRunDuration.p95Ms) }} ms ·
+            {{ $t("passiveContextRoomMeaning") }}
+        </p>
         <details v-if="output.perMotor?.length">
             <summary>{{ $t("passiveAnalysisPerMotor") }}</summary>
             <p>

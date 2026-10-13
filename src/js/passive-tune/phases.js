@@ -23,6 +23,7 @@ export function actionPhases(log, axisIndex, event) {
             timeRangeSeconds: [(time[start] - origin) / 1e6, (time[end - 1] - origin) / 1e6],
             durationSeconds: (time[end - 1] - time[start]) / 1e6,
             tracking: trackingMetrics(time, command, gyro, spans),
+            command: signalSummary(time, command, spans),
             control: controlMetrics(log, axisIndex, spans),
             output: outputMetrics(log, spans),
         };
@@ -55,8 +56,9 @@ export function actionPhases(log, axisIndex, event) {
         for (let i = holdStart; i < holdEnd; i++) if (Math.abs(command[i]) > POLICY.stopThreshold) stop = false;
     }
     const recenter = stop
-        ? { ...transition, kind: "command_stop", evidenceId: `${event.eventId}-command_stop` }
+        ? phase("command_stop", transition.start, holdStart + 1)
         : phase("command_stop", null, null, "STOP_PLATFORM_NOT_CONFIRMED");
+    if (stop && recenter.end === transition.end) recenter.metricsEvidenceId = transition.evidenceId;
     let observationEnd = holdEnd,
         observationLimitReached = false;
     if (stop) {
@@ -83,6 +85,13 @@ export function actionPhases(log, axisIndex, event) {
         : phase("post_stop", null, null, "STOP_PLATFORM_NOT_CONFIRMED");
     if (stop) {
         after.observationTruncated = !observationLimitReached && after.durationSeconds < POLICY.observeMs / 1000;
+        after.stopTiming = {
+            detectedChangeEndSeconds: (time[event.transitionEnd] - origin) / 1e6,
+            confirmedStopPlatformStartSeconds: (time[holdStart] - origin) / 1e6,
+            continuedInputMs: (time[holdStart] - time[event.transitionEnd]) / 1000,
+            reason: holdStart > event.transitionEnd ? "CONTINUED_COMMAND_BEFORE_STABLE_PLATFORM" : "PLATFORM_AT_CHANGE_END",
+            meaning: "return_command_ends_at_platform_start_not_at_initial_change_end",
+        };
         after.endReason = !after.observationTruncated
             ? "OBSERVATION_LIMIT"
             : observationEnd >= (event.analysisSpanEnd ?? event.end)
@@ -114,12 +123,16 @@ export function actionPhases(log, axisIndex, event) {
             }
         after.contextLimitations = [...new Set(after.contextLimitations)];
         after.residual = residualMetrics(time, gyro, holdStart, observationEnd);
+        const localTime = time.subarray(holdStart, observationEnd);
+        const error = Float64Array.from(localTime, (_, i) => gyro[holdStart + i] - command[holdStart + i]);
+        after.trackingErrorResidual = residualMetrics(localTime, error, 0, error.length);
+        after.trackingErrorResidual.meaning = "gyro_minus_recorded_setpoint_not_pid_damping_or_causality";
     }
     return {
         phases: [transition, hold, recenter, after],
         stopResidualEligibility: {
-            status: stop ? "qualified" : "unavailable",
-            reasonCodes: stop ? [] : ["STOP_PLATFORM_NOT_CONFIRMED"],
+            status: stop && after.tracking ? "qualified" : "unavailable",
+            reasonCodes: stop && after.tracking ? [] : [stop ? "TRACKING_UNAVAILABLE" : "STOP_PLATFORM_NOT_CONFIRMED"],
         },
     };
 }
