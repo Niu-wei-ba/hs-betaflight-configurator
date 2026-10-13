@@ -12,7 +12,7 @@ import { estimateResponse } from "../../src/js/passive-tune/deconvolution.js";
 import { eventCurve } from "../../src/js/passive-tune/evidence-registry.js";
 import { aiEvidence, MAX_EVIDENCE_BYTES } from "../../src/js/passive-tune/ai-evidence.js";
 import { parseConclusion, conclusionMessages } from "../../src/js/passive-tune/ai-conclusion.js";
-import { evidenceIds } from "../../src/js/passive-tune/ai-motion-evidence.js";
+import { evidenceIds, metricReferences } from "../../src/js/passive-tune/ai-motion-evidence.js";
 import { makeLog, seededSignal } from "./fixtures.js";
 import { aiConclusion, aiSource } from "./ai-fixtures.js";
 
@@ -177,6 +177,21 @@ describe("regularized estimate is a separate evidence path", () => {
     });
 });
 describe("source-bound derived evidence and AI 1.1", () => {
+    it("registers actual coverage-root values and supported passive frequency estimates", () => {
+        const signal = seededSignal(8192);
+        const result = analyzeLog(makeLog({ input: (n) => signal[n], output: (n) => signal[n] }), 0);
+        const packet = aiEvidence(result, aiSource);
+        const metrics = metricReferences(packet);
+        expect(metrics.get("motion-coverage.candidateCount")).toBe(packet.motion.candidateCount);
+        expect(packet.axes[0].supportedFrequencyBandsHz.length).toBeGreaterThan(0);
+        const answer = { ...aiConclusion(), schemaVersion: "passive-ai-conclusion-1.1",
+            axes: aiConclusion().axes.map((axis) => ({ ...axis, status: "limited_evidence" })),
+            findings: [{ kind: "estimated_response", text: "有支持频段的有限频响估计。", evidenceIds: ["axis-roll"], metricRefs: ["axis-roll.tracking.peak.gainDb"] },
+                { kind: "limitation", text: "覆盖汇总。", evidenceIds: ["motion-coverage"], metricRefs: ["motion-coverage.candidateCount"] }] };
+        expect(parseConclusion(JSON.stringify(answer), packet).findings).toHaveLength(2);
+        answer.findings[1].metricRefs = ["motion-coverage.output.unknownBound"];
+        expect(() => parseConclusion(JSON.stringify(answer), packet)).toThrow("AI_CONCLUSION_INVALID");
+    });
     it("bounds group detail without losing global coverage, rejection or censoring counts", () => {
         const result = analyzeLog(stepLog({ gain: 0.7 }), 0);
         result.motion.actionGroups = Array.from({ length: 200 }, (_, i) => ({ ...result.motion.actionGroups[0], evidenceId: `actions-roll-extra-${i}` }));

@@ -205,6 +205,7 @@ export function metricReferences(packet) {
             for (const [key, item] of Object.entries(value)) if (key !== "evidenceId") visit(item, `${path}.${key}`);
     };
     for (const item of packet.axes) visit(item, item.evidenceId);
+    if (packet.motion) visit(packet.motion, packet.motion.evidenceId);
     if (packet.motion)
         for (const key of ["trackingGroups", "actionGroups", "representatives", "estimates"])
             for (const item of packet.motion[key]) visit(item, item.evidenceId);

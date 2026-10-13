@@ -9930,5 +9930,17 @@
     },
     "passiveAnalysisReason_RX_SIGNAL_INVALID": {
         "message": "记录中接收信号或通道有效性异常"
+    },
+    "passiveAnalysisOutputRun": {
+        "message": "指令连续接近上限时长"
+    },
+    "passiveAnalysisTailGain": {
+        "message": "估计尾部增益（带限）"
+    },
+    "passiveAnalysisFrequencyGain": {
+        "message": "受支持频点的幅度估计"
+    },
+    "passiveAnalysisCandidateCount": {
+        "message": "动作候选数"
     }
 }

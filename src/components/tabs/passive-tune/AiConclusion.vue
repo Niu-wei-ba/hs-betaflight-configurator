@@ -129,25 +129,16 @@ function evidenceLabel(id) {
 }
 function metricText(ref) {
     const value = metricReferences(props.evidence).get(ref);
-    const type = /rmsDegPerSecond/.test(ref)
-        ? "Rms"
-        : /maeDegPerSecond/.test(ref)
-            ? "Mae"
-            : /absoluteErrorP95/.test(ref)
-                ? "P95"
-                : /riseTime/.test(ref)
-                    ? "Rise"
-                    : /overshoot/.test(ref)
-                        ? "Overshoot"
-                        : /unconfirmedFraction/.test(ref)
-                            ? "NotConfirmed"
-                            : /settlingTime/.test(ref)
-                                ? "Settling"
-                                : "Evidence";
-    const fraction = /Fraction/.test(ref);
-    const unit =
-        fraction || /overshoot/.test(ref) ? "%" : /Time|Ms/.test(ref) ? "ms" : /DegPerSecond/.test(ref) ? "°/s" : "";
-    return `${t(`passiveAnalysis${type}`)}: ${(value * (fraction ? 100 : 1)).toFixed(2)} ${unit}`;
+    const descriptors = [
+        [/nearUpperFraction/, "OutputUpper", "%", 100], [/longestUpperMs/, "OutputRun", "ms", 1],
+        [/tailGainEstimate/, "TailGain", "", 1], [/gainDb|gainRangeDb/, "FrequencyGain", "dB", 1],
+        [/rmsDegPerSecond/, "Rms", "°/s", 1], [/maeDegPerSecond/, "Mae", "°/s", 1],
+        [/absoluteErrorP95/, "P95", "°/s", 1], [/riseTime/, "Rise", "ms", 1],
+        [/overshoot/, "Overshoot", "%", 1], [/unconfirmedFraction/, "NotConfirmed", "%", 100],
+        [/settlingTime/, "Settling", "ms", 1], [/candidateCount/, "CandidateCount", "", 1],
+    ];
+    const [_match, label, unit, factor] = descriptors.find(([pattern]) => pattern.test(ref)) ?? [null, "Evidence", "", 1];
+    return `${t(`passiveAnalysis${label}`)}: ${(value * factor).toFixed(2)} ${unit}`;
 }
 function supportedBands(axis) {
     const values = props.evidence.axes.find((item) => item.axis === axis).supportedFrequencyBandsHz;

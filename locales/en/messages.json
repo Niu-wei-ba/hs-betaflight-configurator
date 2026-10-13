@@ -10072,5 +10072,17 @@
     },
     "passiveAnalysisReason_RX_SIGNAL_INVALID": {
         "message": "Logged receiver signal or channel validity issue"
+    },
+    "passiveAnalysisOutputRun": {
+        "message": "Longest command run near upper bound"
+    },
+    "passiveAnalysisTailGain": {
+        "message": "Estimated tail gain (band-limited)"
+    },
+    "passiveAnalysisFrequencyGain": {
+        "message": "Gain estimate at supported frequencies"
+    },
+    "passiveAnalysisCandidateCount": {
+        "message": "Action candidate count"
     }
 }
