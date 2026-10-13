@@ -46,6 +46,7 @@ export function trackingSummary(value) {
         p95ResolutionDegPerSecond: n(value.p95ResolutionDegPerSecond),
         p95Method: "time_weighted_histogram_2048_bins",
         durationSeconds: n(value.durationSeconds),
+        coverageStatus: value.durationSeconds >= 0.25 ? "covered" : "short_fragment",
         delayAligned: false,
     };
 }

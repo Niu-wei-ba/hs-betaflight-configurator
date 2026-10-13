@@ -61,7 +61,7 @@ export function conclusionMessages(evidence) {
                     `可引用编号：${JSON.stringify(evidenceIds(evidence))}。findings给1至4项；kind只允许observed_response、estimated_response、limitation。metricRefs可以为空，最多3项；必须属于本项evidenceIds且在证据中存在且是有限数值。` +
                     `findings.text用白话说明含义，具体数字通过metricRefs由页面展示，避免重新计算或重复编造数字。不能从没有有效频段推断全频段相干性低；资格失败可能有多个原因。` +
                     `observedTracking是未时移的角速度跟踪误差；observedActions来自实际有限变化速度输入，不能当理想实验阶跃。输入资格与输出表现分开，差响应不能被删除。eligibleCount=0表示没有合格近似阶跃，不代表调参差。` +
-                    `distributionAvailable=false时只能说少量观测，不能评价总体。right_censored代表观察窗内未确认稳定，不是0ms，窗长也不是真实稳定时间；删失样本不可忽略。混控油门不是摇杆、推力或功率，未知飞行状态不能认定悬停或降落。` +
+                    `distributionAvailable=false时只能说少量观测，不能评价总体。tracking.coverageStatus=short_fragment只作短片段观测，不能评价该油门工况。right_censored代表观察窗内未确认稳定，不是0ms，窗长也不是真实稳定时间；删失样本不可忽略。混控油门不是摇杆、推力或功率，未知飞行状态不能认定悬停或降落。` +
                     `actionGroups的方向、幅度、配置及混杂不同，不可简单归因某个PID。output仅为电机指令接近日志输出边界，不证明推力饱和。estimates是局部线性带限反卷积估计，与实际动作分别解释；fullDcGainEstablished=false不能当精确稳态增益。` +
                     `有效频段不是控制带宽。estimatedControlBandwidthHz=null不能编造带宽、相位裕度或端到端延迟；gyroSignal包括动作响应，不能全部叫噪声。phaseDeg不能换算固定延迟。断点原因未知。` +
                     `missingMeasurements和axesMissingStep按实测能力判断，不要无条件说阶跃/油门/误差尚未测量。没有对应数据仍不能判定是否跟手、姿态回弹、RPM噪声、滤波安全、温度、物理原因或整机PID好坏。` +

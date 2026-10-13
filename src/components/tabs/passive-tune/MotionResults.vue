@@ -88,7 +88,7 @@
                                     )
                                 }}
                             </td>
-                            <td>{{ fmt(group.tracking?.durationSeconds) }} s</td>
+                            <td>{{ fmt(group.tracking?.durationSeconds) }} s <span v-if="group.tracking?.durationSeconds < 0.25" class="text-dimmed">· {{ $t('passiveAnalysisTooFew') }}</span></td>
                             <td>{{ fmt(group.tracking?.rmsDegPerSecond) }} °/s</td>
                             <td>{{ fmt(group.tracking?.maeDegPerSecond) }} °/s</td>
                             <td>{{ fmt(group.tracking?.absoluteErrorP95DegPerSecond) }} °/s</td>
@@ -275,7 +275,7 @@ const selectedAxis = ref("roll"),
 const detail = ref(null);
 const { t } = useTranslation();
 const groupLabel = (group) => ["unknown", "invalid", "changing_throttle"].includes(group) ? t(`passiveAnalysisGroup_${group}`) : `${group}%`;
-const fmt = (value) => (Number.isFinite(value) ? value.toFixed(value !== 0 && Math.abs(value) < 0.1 ? 2 : 1) : "—");
+const fmt = (value) => !Number.isFinite(value) ? "—" : value !== 0 && Math.abs(value) < 0.01 ? value < 0 ? ">-0.01" : "<0.01" : value.toFixed(value !== 0 && Math.abs(value) < 0.1 ? 2 : 1);
 const filtered = computed(() =>
     props.result.motion.records.filter(
         (event) => event.axis === selectedAxis.value && (!eligibleOnly.value || event.inputEligibility === "eligible"),
