@@ -690,6 +690,9 @@
     "tabMotorTesting": {
         "message": "Motors"
     },
+    "tabEscMelody": {
+        "message": "ESC Melody"
+    },
     "tabLedStrip": {
         "message": "LED Strip"
     },

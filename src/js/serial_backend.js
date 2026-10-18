@@ -46,6 +46,7 @@ const logHead = "[SERIAL-BACKEND]";
 let mspHelper;
 let connectionTimestamp = null;
 let liveDataRefreshTimerId = false;
+let liveDataRefreshInFlight = false;
 // Re-entrancy guard for the live-data poller. update_live_status is async and awaits a
 // sequential MSP chain; the setInterval that drives it fires on a fixed cadence regardless
 // of whether the previous cycle finished. On a slow-responding FC (e.g. STM32H5/C5) a cycle
@@ -1407,6 +1408,9 @@ export function read_serial(info) {
 // lifecycle event for a background poller that outlives any single tab, so it is swallowed
 // silently; genuine failures (timeout, CRC) are still logged and the cycle continues.
 async function requestLiveData(code, name) {
+    if (GUI.connect_lock) {
+        return false;
+    }
     try {
         await MSP.promise(code);
         return true;
@@ -1491,7 +1495,7 @@ async function update_live_status() {
     // tab_switch_cleanup() clears the MSP queue, so a poll issued now would just be cancelled.
     // Skipping keeps the background poller from firing requests straight into that cleanup;
     // the interval resumes normally on the next tick once the switch has settled.
-    if (GUI.tab_switch_in_progress) {
+    if (GUI.tab_switch_in_progress || GUI.connect_lock || liveDataRefreshInFlight) {
         return;
     }
 
@@ -1503,7 +1507,12 @@ async function update_live_status() {
 
     // cli or presets tab do not use MSP connection
     if (GUI.active_tab !== "cli" && GUI.active_tab !== "presets") {
-        await update_sensor_status();
+        liveDataRefreshInFlight = true;
+        try {
+            await update_sensor_status();
+        } finally {
+            liveDataRefreshInFlight = false;
+        }
     }
 }
 
