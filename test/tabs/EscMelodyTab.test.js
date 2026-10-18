@@ -219,6 +219,55 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
+    it("changes timeline density without stretching note duration and supports keyboard editing", async () => {
+        const { app, container } = await mountTab();
+        const initial = container.querySelector(".esc-melody-note");
+        const note = container.querySelector('[aria-label="音符 1 起点"]');
+        const before = Number(note.value);
+        initial.focus();
+        initial.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+        await nextTick();
+        expect(Number(container.querySelector('[aria-label="音符 1 起点"]').value)).toBeCloseTo(before + 0.125);
+        const originalWidth = container.querySelector(".esc-melody-note").style.width;
+        const originalTimelineWidth = parseFloat(container.querySelector(".piano-roll").style.width);
+        const zoom = container.querySelector('[aria-label="卷帘缩放"]');
+        zoom.value = "112";
+        zoom.dispatchEvent(new Event("input"));
+        await nextTick();
+        expect(container.querySelector(".esc-melody-note").style.width).toBe(originalWidth);
+        expect(container.querySelector(".piano-roll").style.width).toBe(`${originalTimelineWidth * 2}px`);
+        initial.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+        await nextTick();
+        expect(container.querySelector(".esc-melody-note").textContent).toContain("D#5");
+        expect(container.querySelectorAll(".roll-time-ruler span").length).toBeGreaterThan(2);
+        app.unmount();
+    });
+
+    it("traps code-dialog focus and restores the trigger after Escape", async () => {
+        const { app, container } = await mountTab();
+        const trigger = container.querySelector('[title="RTTTL 代码"]');
+        trigger.focus();
+        trigger.click();
+        await nextTick();
+        await nextTick();
+        expect(container.querySelector("main").hasAttribute("inert")).toBe(true);
+        const buttons = [
+            ...container.querySelectorAll(".rtttl-code-dialog button:not([disabled]), .rtttl-code-dialog textarea"),
+        ];
+        buttons.at(-1).focus();
+        buttons.at(-1).dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
+        expect(document.activeElement).toBe(buttons[0]);
+        document.activeElement.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        );
+        await nextTick();
+        await nextTick();
+        expect(container.querySelector(".rtttl-code-dialog")).toBeNull();
+        expect(document.activeElement).toBe(trigger);
+        expect(container.querySelector("main").hasAttribute("inert")).toBe(false);
+        app.unmount();
+    });
+
     it("opens the music contribution popup with the QQ group QR code", async () => {
         const { app, container } = await mountTab();
         const contributionButton = [...container.querySelectorAll("button")].find((button) =>
@@ -567,14 +616,14 @@ describe("EscMelodyTab", () => {
 
         const { app, container } = await mountTab();
         const previewButton = [...container.querySelectorAll(".inspector-preview-actions button")].find((button) =>
-            button.textContent.includes("单路播放"),
+            button.textContent.includes("试听当前声部"),
         );
 
         previewButton.click();
         await Promise.resolve();
         await Promise.resolve();
         await nextTick();
-        expect(previewButton.textContent).toContain("停止单路");
+        expect(previewButton.textContent).toContain("停止当前声部");
         const notes = [...container.querySelectorAll(".esc-melody-note")];
         expect(container.querySelectorAll(".esc-melody-note.preview-active")).toHaveLength(0);
 
@@ -591,7 +640,7 @@ describe("EscMelodyTab", () => {
         await Promise.resolve();
         await Promise.resolve();
         await nextTick();
-        expect(previewButton.textContent).toContain("单路播放");
+        expect(previewButton.textContent).toContain("试听当前声部");
         expect(container.querySelectorAll(".esc-melody-note.preview-active")).toHaveLength(0);
         expect(stop).toHaveBeenCalled();
 
@@ -638,7 +687,7 @@ describe("EscMelodyTab", () => {
         findButton(container, "扫描电调").click();
         await vi.waitFor(() => expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(2));
 
-        const playAllButton = findButton(container, "全部播放");
+        const playAllButton = findButton(container, "试听合奏");
         expect(playAllButton.disabled).toBe(false);
         playAllButton.click();
         await Promise.resolve();
@@ -647,13 +696,13 @@ describe("EscMelodyTab", () => {
 
         expect(startTimes).toHaveLength(2);
         expect(new Set(startTimes)).toEqual(new Set([3.04]));
-        expect(playAllButton.textContent).toContain("停止全部");
+        expect(playAllButton.textContent).toContain("停止合奏");
 
         playAllButton.click();
         await Promise.resolve();
         await Promise.resolve();
         await nextTick();
-        expect(playAllButton.textContent).toContain("全部播放");
+        expect(playAllButton.textContent).toContain("试听合奏");
         expect(stops.every((stop) => stop.mock.calls.length > 0)).toBe(true);
         expect(writeMelody).not.toHaveBeenCalled();
 
@@ -883,7 +932,7 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
-    it("discards staged RTTTL changes when the dialog is closed", async () => {
+    it("requires explicit discard before closing staged RTTTL changes", async () => {
         const { app, container } = await mountTab();
 
         container.querySelector('[title="RTTTL 代码"]').click();
@@ -894,6 +943,9 @@ describe("EscMelodyTab", () => {
         await nextTick();
 
         container.querySelector('.rtttl-code-dialog [aria-label="关闭"]').click();
+        await nextTick();
+        expect(container.querySelector(".code-discard-confirm")).not.toBeNull();
+        findButton(container, "放弃更改并关闭").click();
         await nextTick();
         expect(container.querySelector(".rtttl-code-dialog")).toBeNull();
         expect(container.querySelector(".editor-title strong").textContent).toBe("Two-Tigers");
@@ -1683,7 +1735,9 @@ describe("EscMelodyTab", () => {
         const startRestore = findButton(container, "开始恢复");
         expect(startRestore.disabled).toBe(true);
         findButton(container, "备份当前状态").click();
-        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/));
+        await vi.waitFor(() =>
+            expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/),
+        );
         await vi.waitFor(() =>
             expect(container.querySelector(".restore-current-backup").textContent).toMatch(/已(?:持久)?保存并下载/),
         );
@@ -1734,7 +1788,9 @@ describe("EscMelodyTab", () => {
         expect([...safetyInputs].slice(0, 3).every((input) => input.checked)).toBe(true);
 
         findButton(container, "备份当前状态").click();
-        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/));
+        await vi.waitFor(() =>
+            expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/),
+        );
         await vi.waitFor(() => expect(safetyInputs[3].checked).toBe(true));
 
         expect([...safetyInputs].slice(0, 3).every((input) => input.checked)).toBe(true);
@@ -1797,7 +1853,9 @@ describe("EscMelodyTab", () => {
         findButton(container, "安全写入").click();
         await nextTick();
         findButton(container, "备份到本机").click();
-        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/));
+        await vi.waitFor(() =>
+            expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/),
+        );
         for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
         await nextTick();
         findButton(container, "开始写入").click();
@@ -1845,7 +1903,9 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() => expect(scanEscs).toHaveBeenCalledOnce());
         await selectRestoreFile(container, restorePackage);
         findButton(container, "备份当前状态").click();
-        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/));
+        await vi.waitFor(() =>
+            expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/),
+        );
         await vi.waitFor(() =>
             expect(container.querySelector(".restore-current-backup").textContent).toMatch(/已(?:持久)?保存并下载/),
         );

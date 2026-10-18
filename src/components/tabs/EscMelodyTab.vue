@@ -1,7 +1,7 @@
 <template>
     <BaseTab tab-name="esc_melody" extra-class="esc-melody-tab">
         <div class="esc-melody-shell">
-            <header class="esc-melody-header" :inert="draftModalOpen ? '' : undefined">
+            <header class="esc-melody-header" :inert="modalOpen ? '' : undefined">
                 <div class="esc-melody-title-group">
                     <div class="esc-melody-kicker">
                         <span class="esc-melody-emoji" aria-hidden="true">🎵</span> ESC WORKBENCH
@@ -28,7 +28,7 @@
                 class="esc-melody-notice"
                 :class="`notice-${operationType}`"
                 role="status"
-                :inert="draftModalOpen ? '' : undefined"
+                :inert="modalOpen ? '' : undefined"
             >
                 <span
                     class="fas"
@@ -41,7 +41,22 @@
                 </button>
             </div>
 
-            <main class="esc-melody-workspace" :inert="draftModalOpen ? '' : undefined">
+            <nav class="workbench-mobile-nav" aria-label="工作区视图" :inert="modalOpen ? '' : undefined">
+                <button
+                    v-for="view in [
+                        { id: 'editor', label: '编辑器' },
+                        { id: 'library', label: '曲库与草稿' },
+                        { id: 'targets', label: '设备与分配' },
+                    ]"
+                    :key="view.id"
+                    type="button"
+                    :aria-pressed="workspaceView === view.id"
+                    @click="workspaceView = view.id"
+                >
+                    {{ view.label }}
+                </button>
+            </nav>
+            <main :data-view="workspaceView" class="esc-melody-workspace" :inert="modalOpen ? '' : undefined">
                 <aside class="esc-melody-sidebar">
                     <section class="esc-scan-panel" :class="{ connected, scanning }">
                         <div class="esc-scan-panel-heading">
@@ -263,6 +278,22 @@
                             <span>{{ draftSaveStatus }}</span>
                         </div>
                     </section>
+                    <section class="target-panel melody-contribution-panel">
+                        <span class="melody-contribution-icon fas fa-compact-disc" aria-hidden="true"></span>
+                        <div class="melody-contribution-copy">
+                            <span class="melody-contribution-eyebrow">COMMUNITY LIBRARY</span>
+                            <strong>音乐投稿</strong>
+                            <small>分享你的电调开机旋律，优秀作品将收录到旋律库。</small>
+                        </div>
+                        <button
+                            type="button"
+                            class="regular-button melody-contribution-button"
+                            @click="openContributionDialog"
+                        >
+                            <span class="fab fa-qq" aria-hidden="true"></span>
+                            联系投稿
+                        </button>
+                    </section>
                 </aside>
 
                 <section class="esc-melody-editor">
@@ -372,48 +403,147 @@
                         </div>
                     </div>
 
-                    <div ref="pianoRollWrap" class="piano-roll-wrap">
-                        <div class="piano-roll-labels" :style="pianoRollStyle" aria-hidden="true">
-                            <span v-for="row in noteRows" :key="row">{{ row % 12 === 0 ? noteName(row) : "" }}</span>
+                    <div class="transport-strip" aria-label="试听与编辑工具">
+                        <div class="transport-title">
+                            <strong>{{ presetSessionName || melody.name }}</strong
+                            ><small>电脑试听与实际电机音色可能不同</small>
                         </div>
-                        <div
-                            class="piano-roll"
-                            :style="[timelineStyle, pianoRollStyle]"
-                            @pointerdown="addNoteAtPointer"
-                        >
-                            <div class="roll-grid" aria-hidden="true">
-                                <i v-for="beat in timelineBeats" :key="beat"></i>
-                            </div>
-                            <div
-                                v-for="note in melody.notes"
-                                :key="note.id"
-                                class="esc-melody-note"
-                                :class="{
-                                    selected: selectedNoteId === note.id,
-                                    rest: note.rest,
-                                    'preview-active': activePreviewNoteIds.includes(note.id),
-                                }"
-                                :style="noteStyle(note)"
-                                @pointerdown.stop="startNoteDrag($event, note)"
+                        <div class="inspector-preview-actions">
+                            <button
+                                type="button"
+                                class="regular-button"
+                                :disabled="locked || !currentMelodyPlayable"
+                                :title="selectedEsc ? `试听 ESC ${selectedEsc.channel + 1} 当前卷帘` : '试听当前卷帘'"
+                                @click="playMelody"
                             >
-                                <span>{{ note.rest ? "休止" : noteName(note.midi) }}</span
-                                ><b>{{ formatBeat(note.duration) }}</b>
-                                <button
-                                    type="button"
-                                    class="note-delete"
-                                    aria-label="删除音符"
-                                    @pointerdown.stop
-                                    @click.stop="removeNote(note.id)"
+                                <span
+                                    class="fas"
+                                    :class="previewMode === 'single' ? 'fa-stop' : 'fa-volume-up'"
+                                    aria-hidden="true"
+                                ></span>
+                                {{ previewMode === "single" ? "停止当前声部" : "试听当前声部" }}
+                            </button>
+                            <button
+                                type="button"
+                                class="regular-button"
+                                :disabled="locked || !canPlayAllMelodies"
+                                title="同时试听所有可编辑电调的旋律"
+                                @click="playAllMelodies"
+                            >
+                                <span
+                                    class="fas"
+                                    :class="previewMode === 'all' ? 'fa-stop' : 'fa-play'"
+                                    aria-hidden="true"
+                                ></span>
+                                {{ previewMode === "all" ? "停止合奏" : "试听合奏" }}
+                            </button>
+                        </div>
+                        <label
+                            >音量
+                            <input v-model.number="previewVolume" aria-label="试听音量" type="range" min="0" max="100"
+                        /></label>
+                        <button
+                            type="button"
+                            class="regular-button"
+                            :aria-pressed="previewMuted"
+                            @click="previewMuted = !previewMuted"
+                        >
+                            {{ previewMuted ? "取消静音" : "静音" }}
+                        </button>
+                    </div>
+                    <div class="timeline-tools">
+                        <label
+                            >工具
+                            <select v-model="editorTool" aria-label="卷帘工具">
+                                <option value="select">选择 / 移动</option>
+                                <option value="note">添加音符</option>
+                                <option value="rest">添加休止</option>
+                            </select></label
+                        >
+                        <label
+                            >吸附
+                            <select v-model.number="snapStep" aria-label="吸附间隔">
+                                <option :value="0.0625">1/16 拍</option>
+                                <option :value="0.125">1/8 拍</option>
+                                <option :value="0.25">1/4 拍</option>
+                                <option :value="0.5">1/2 拍</option>
+                            </select></label
+                        >
+                        <label
+                            >缩放
+                            <input v-model.number="zoomPixels" type="range" min="8" max="160" aria-label="卷帘缩放"
+                        /></label>
+                        <button type="button" class="regular-button" @click="fitTimeline">适应整曲</button>
+                        <button type="button" class="regular-button" @click="locateSelectedNote">定位音符</button>
+                        <label><input v-model="autoFollow" type="checkbox" />跟随播放</label>
+                    </div>
+                    <div ref="pianoRollWrap" class="piano-roll-wrap">
+                        <div class="piano-roll-content" :style="{ width: `${timelineWidth + 32}px` }">
+                            <div class="roll-time-ruler" :style="timelineStyle" aria-hidden="true">
+                                <span
+                                    v-for="tick in timelineTicks"
+                                    :key="tick.beat"
+                                    :style="{ left: `${tick.beat * zoomPixels}px` }"
+                                    >{{ tick.beat + 1 }} 拍<small>{{ tick.seconds }}s</small></span
                                 >
-                                    ×
-                                </button>
+                            </div>
+                            <div class="roll-pitch-grid">
+                                <div class="piano-roll-labels" :style="pianoRollStyle" aria-hidden="true">
+                                    <span v-for="row in noteRows" :key="row">{{
+                                        row % 12 === 0 ? noteName(row) : ""
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="piano-roll"
+                                    :style="[timelineStyle, pianoRollStyle]"
+                                    @pointerdown="addNoteAtPointer"
+                                >
+                                    <div
+                                        v-if="previewShowsTimeline && playing"
+                                        class="timeline-playhead"
+                                        :style="{ left: `${Math.max(0, previewBeat) * zoomPixels}px` }"
+                                        aria-hidden="true"
+                                    ></div>
+                                    <div class="roll-grid" aria-hidden="true">
+                                        <i v-for="beat in timelineBeats" :key="beat"></i>
+                                    </div>
+                                    <div
+                                        v-for="note in melody.notes"
+                                        :key="note.id"
+                                        class="esc-melody-note"
+                                        role="button"
+                                        :tabindex="selectedNoteId === note.id ? 0 : -1"
+                                        :aria-label="`${note.rest ? '休止' : noteName(note.midi)}，起点 ${note.start} 拍，时长 ${note.duration} 拍`"
+                                        :title="`${noteName(note.midi)} · ${note.start} 拍 · ${note.duration} 拍`"
+                                        @focus="selectedNoteId = note.id"
+                                        @keydown="onNoteKeydown($event, note)"
+                                        :class="{
+                                            selected: selectedNoteId === note.id,
+                                            rest: note.rest,
+                                            'preview-active': activePreviewNoteIds.includes(note.id),
+                                        }"
+                                        :style="noteStyle(note)"
+                                        @pointerdown.stop="startNoteDrag($event, note)"
+                                    >
+                                        <span>{{ note.rest ? "休止" : noteName(note.midi) }}</span
+                                        ><b>{{ formatBeat(note.duration) }}</b>
+                                        <button
+                                            type="button"
+                                            class="note-delete"
+                                            aria-label="删除音符"
+                                            @pointerdown.stop
+                                            @click.stop="removeNote(note.id)"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-
                     <div class="editor-legend">
                         <span><i class="legend-note"></i> 音符</span><span><i class="legend-rest"></i> 休止</span
-                        ><span>点击空白处添加，拖动调整音高和起点</span>
+                        ><span>选择工具后点击空白处添加；方向键移动，Alt + 左右键选择音符，Delete 删除</span>
                     </div>
 
                     <div class="note-inspector">
@@ -456,38 +586,6 @@
                                         <span class="fas fa-trash" aria-hidden="true"></span> 删除
                                     </button>
                                 </div>
-                            </div>
-                            <div class="inspector-preview-actions">
-                                <button
-                                    type="button"
-                                    class="regular-button"
-                                    :disabled="locked || !currentMelodyPlayable"
-                                    :title="
-                                        selectedEsc ? `试听 ESC ${selectedEsc.channel + 1} 当前卷帘` : '试听当前卷帘'
-                                    "
-                                    @click="playMelody"
-                                >
-                                    <span
-                                        class="fas"
-                                        :class="previewMode === 'single' ? 'fa-stop' : 'fa-volume-up'"
-                                        aria-hidden="true"
-                                    ></span>
-                                    {{ previewMode === "single" ? "停止单路" : "单路播放" }}
-                                </button>
-                                <button
-                                    type="button"
-                                    class="regular-button"
-                                    :disabled="locked || !canPlayAllMelodies"
-                                    title="同时试听所有可编辑电调的旋律"
-                                    @click="playAllMelodies"
-                                >
-                                    <span
-                                        class="fas"
-                                        :class="previewMode === 'all' ? 'fa-stop' : 'fa-play'"
-                                        aria-hidden="true"
-                                    ></span>
-                                    {{ previewMode === "all" ? "停止全部" : "全部播放" }}
-                                </button>
                             </div>
                         </div>
 
@@ -548,6 +646,62 @@
                             </div>
                         </section>
                     </div>
+                    <details class="note-event-list">
+                        <summary>音符列表 · 精确编辑（{{ melody.notes.length }}）</summary>
+                        <div class="note-event-scroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>音符</th>
+                                        <th>起点 / 拍</th>
+                                        <th>时长 / 拍</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(note, index) in melody.notes" :key="note.id">
+                                        <td>
+                                            <button type="button" class="text-button" @click="selectNoteFromList(note)">
+                                                {{ index + 1 }} · {{ noteName(note.midi) }}
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                :step="snapStep"
+                                                :value="note.start"
+                                                :aria-label="`音符 ${index + 1} 起点`"
+                                                @change="editNoteFromList(note, { start: Number($event.target.value) })"
+                                            />
+                                        </td>
+                                        <td>
+                                            <input
+                                                type="number"
+                                                min="0.0625"
+                                                step="0.0625"
+                                                :value="note.duration"
+                                                :aria-label="`音符 ${index + 1} 时长`"
+                                                @change="
+                                                    editNoteFromList(note, { duration: Number($event.target.value) })
+                                                "
+                                            />
+                                        </td>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                class="text-button"
+                                                :aria-label="`删除音符 ${index + 1}`"
+                                                @click="removeNote(note.id)"
+                                            >
+                                                删除
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
                 </section>
 
                 <aside class="esc-melody-targets">
@@ -585,22 +739,25 @@
                                 >音符数量、时长和目标容量均通过
                             </li>
                         </ul>
-                        <div class="matrix-row">
-                            <span><i class="firmware-dot bluejay"></i>Bluejay</span
-                            ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
-                        </div>
-                        <div class="matrix-row">
-                            <span><i class="firmware-dot am32"></i>AM32</span
-                            ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
-                        </div>
-                        <div class="matrix-row">
-                            <span><i class="firmware-dot ox32"></i>OX32</span
-                            ><span class="matrix-cap">读写 · 128 B · 配置页 CRC</span>
-                        </div>
-                        <div class="matrix-row matrix-row-disabled">
-                            <span><i class="firmware-dot blheli"></i>BLHeli_32</span
-                            ><span class="matrix-cap">仅识别 / 试听</span>
-                        </div>
+                        <details class="compatibility-help">
+                            <summary>支持的固件与容量说明</summary>
+                            <div class="matrix-row">
+                                <span><i class="firmware-dot bluejay"></i>Bluejay</span
+                                ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
+                            </div>
+                            <div class="matrix-row">
+                                <span><i class="firmware-dot am32"></i>AM32</span
+                                ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
+                            </div>
+                            <div class="matrix-row">
+                                <span><i class="firmware-dot ox32"></i>OX32</span
+                                ><span class="matrix-cap">读写 · 128 B · 配置页 CRC</span>
+                            </div>
+                            <div class="matrix-row matrix-row-disabled">
+                                <span><i class="firmware-dot blheli"></i>BLHeli_32</span
+                                ><span class="matrix-cap">仅识别 / 试听</span>
+                            </div>
+                        </details>
                     </section>
 
                     <section class="target-panel esc-list-panel">
@@ -682,27 +839,10 @@
                             <p v-if="esc.melodyReadError" class="esc-record-reason">{{ esc.melodyReadError }}</p>
                         </article>
                     </section>
-
-                    <section class="target-panel melody-contribution-panel">
-                        <span class="melody-contribution-icon fas fa-compact-disc" aria-hidden="true"></span>
-                        <div class="melody-contribution-copy">
-                            <span class="melody-contribution-eyebrow">COMMUNITY LIBRARY</span>
-                            <strong>音乐投稿</strong>
-                            <small>分享你的电调开机旋律，优秀作品将收录到旋律库。</small>
-                        </div>
-                        <button
-                            type="button"
-                            class="regular-button melody-contribution-button"
-                            @click="openContributionDialog"
-                        >
-                            <span class="fab fa-qq" aria-hidden="true"></span>
-                            联系投稿
-                        </button>
-                    </section>
                 </aside>
             </main>
 
-            <footer class="esc-melody-actionbar" :inert="draftModalOpen ? '' : undefined">
+            <footer class="esc-melody-actionbar" :inert="modalOpen ? '' : undefined">
                 <div class="actionbar-status">
                     <span class="fas fa-shield-alt" aria-hidden="true"></span><span>{{ actionbarStatusText }}</span>
                 </div>
@@ -1486,6 +1626,14 @@
                             <li v-for="error in codePreview.errors" :key="error">{{ error }}</li>
                         </ul>
                     </div>
+                    <div v-if="codeDiscardConfirm" class="code-discard-confirm" role="alert">
+                        <strong>代码更改尚未保存到旋律。</strong
+                        ><button type="button" class="regular-button" @click="codeDiscardConfirm = false">
+                            继续编辑</button
+                        ><button type="button" class="danger-button" @click="closeCodeDialog({ discard: true })">
+                            放弃更改并关闭
+                        </button>
+                    </div>
                     <div v-if="multiCodeMode" class="safety-dialog-footer rtttl-code-footer rtttl-code-footer-multi">
                         <span class="safety-hint"
                             ><span class="fas fa-info-circle" aria-hidden="true"></span> 同时试听只使用 Web
@@ -1684,6 +1832,20 @@ export default defineComponent({
         const lastDraftSavedAt = ref(null);
         const selectedNoteId = ref(melody.value.notes[0]?.id || null);
         const pianoRollWrap = ref(null);
+        const zoomPixels = ref(56);
+        const editorTool = ref("select");
+        const snapStep = ref(0.125);
+        const autoFollow = ref(true);
+        const workspaceView = ref("editor");
+        const previewVolume = ref(70);
+        const previewMuted = ref(false);
+        const previewOutput = ref(null);
+        const previewElapsedMs = ref(0);
+        const previewShowsTimeline = ref(false);
+        const codeDiscardConfirm = ref(false);
+        let codeBaseline = "";
+        let previewClock = null;
+        let previewRequest = 0;
         const history = ref([]);
         const future = ref([]);
         const scanning = ref(false);
@@ -1721,7 +1883,25 @@ export default defineComponent({
             () => melody.value.notes.find((note) => note.id === selectedNoteId.value) || null,
         );
         const timelineBeats = computed(() => Math.max(8, Math.ceil(melodyDurationBeats(melody.value) + 1)));
-        const timelineStyle = computed(() => ({ "--timeline-beats": timelineBeats.value }));
+        const timelineWidth = computed(() => timelineBeats.value * zoomPixels.value);
+        const timelineStyle = computed(() => ({
+            "--timeline-beats": timelineBeats.value,
+            width: `${timelineWidth.value}px`,
+            flex: `0 0 ${timelineWidth.value}px`,
+        }));
+        const timelineTicks = computed(() => {
+            const step = Math.max(1, Math.ceil(72 / zoomPixels.value), Math.ceil(timelineBeats.value / 512));
+            return Array.from({ length: Math.ceil(timelineBeats.value / step) }, (_, index) => ({
+                beat: index * step,
+                seconds: ((melody.value.waitMs + (index * step * 60000) / melody.value.bpm) / 1000).toFixed(1),
+            }));
+        });
+        const previewBeat = computed(() => ((previewElapsedMs.value - melody.value.waitMs) * melody.value.bpm) / 60000);
+        const presetSessionName = computed(() => presetTrackSession.value?.name || "");
+        watch([previewVolume, previewMuted], () => {
+            if (previewOutput.value)
+                previewOutput.value.gain.value = previewMuted.value ? 0 : previewVolume.value / 100;
+        });
         const writableEscs = computed(() => escs.value.filter((esc) => esc.canWrite));
         const pendingFirmwareConfirmationEscs = computed(() =>
             escs.value.filter(
@@ -2078,6 +2258,77 @@ export default defineComponent({
         }
         function closeSafety() {
             if (!writing.value && !backingUp.value) safetyOpen.value = false;
+        }
+        const modalKey = computed(() =>
+            draftNameDialogOpen.value
+                ? "draft-name-title"
+                : draftDeleteTarget.value
+                    ? "draft-delete-title"
+                    : contributionDialogOpen.value
+                        ? "melody-contribution-title"
+                        : codeDialogOpen.value
+                            ? "rtttl-code-title"
+                            : firmwareConfirmOpen.value
+                                ? "firmware-confirm-title"
+                                : syncConfirmOpen.value
+                                    ? "sync-confirm-title"
+                                    : restoreOpen.value
+                                        ? "restore-title"
+                                        : safetyOpen.value
+                                            ? "safety-title"
+                                            : "",
+        );
+        const modalOpen = computed(() => Boolean(modalKey.value));
+        let modalReturnFocus = null;
+        watch(modalKey, async (key, previous) => {
+            if (key) {
+                if (!previous) modalReturnFocus = document.activeElement;
+                await nextTick();
+                document
+                    .querySelector(
+                        `.safety-overlay[aria-labelledby="${key}"] button:not([disabled]), .safety-overlay[aria-labelledby="${key}"] input:not([disabled])`,
+                    )
+                    ?.focus();
+            } else {
+                await nextTick();
+                modalReturnFocus?.focus?.();
+                modalReturnFocus = null;
+            }
+        });
+        function handleDialogKeydown(event) {
+            if (!modalKey.value || event.defaultPrevented) return;
+            const overlay = document.querySelector(`.safety-overlay[aria-labelledby="${modalKey.value}"]`);
+            if (event.key === "Tab" && overlay) {
+                trapDialogFocus({
+                    currentTarget: overlay,
+                    shiftKey: event.shiftKey,
+                    preventDefault: () => event.preventDefault(),
+                });
+                return;
+            }
+            if (
+                event.key !== "Escape" ||
+                writing.value ||
+                backingUp.value ||
+                restoring.value ||
+                restoreBackingUp.value ||
+                firmwareConfirming.value
+            )
+                return;
+            event.preventDefault();
+            const close = {
+                "draft-name-title": closeDraftNameDialog,
+                "draft-delete-title": closeDeleteDraftDialog,
+                "melody-contribution-title": closeContributionDialog,
+                "rtttl-code-title": closeCodeDialog,
+                "safety-title": closeSafety,
+                "restore-title": closeRestoreDialog,
+                "sync-confirm-title": cancelSyncAll,
+                "firmware-confirm-title": () => {
+                    firmwareConfirmOpen.value = false;
+                },
+            };
+            close[modalKey.value]?.();
         }
         const controller = ref(null);
         const audioContext = ref(null);
@@ -3035,12 +3286,67 @@ export default defineComponent({
             selectedNoteId.value = note.id;
         }
 
+        function fitTimeline() {
+            zoomPixels.value = Math.max(
+                8,
+                Math.min(160, ((pianoRollWrap.value?.clientWidth || 640) - 32) / timelineBeats.value),
+            );
+        }
+        function locateSelectedNote() {
+            if (!selectedNote.value || !pianoRollWrap.value) return;
+            const wrap = pianoRollWrap.value;
+            wrap.scrollLeft = Math.max(0, selectedNote.value.start * zoomPixels.value - wrap.clientWidth / 3);
+            wrap.scrollTop = Math.max(
+                0,
+                (ESC_MELODY_MAX_MIDI - (selectedNote.value.midi ?? 60) + 0.5) * PIANO_ROLL_ROW_HEIGHT -
+                    wrap.clientHeight / 2,
+            );
+        }
+        function selectNoteFromList(note) {
+            selectedNoteId.value = note.id;
+            locateSelectedNote();
+            void nextTick(() => document.querySelector('.esc-melody-note[tabindex="0"]')?.focus());
+        }
+        function editNoteFromList(note, patch) {
+            selectedNoteId.value = note.id;
+            updateSelected(patch);
+        }
+        function onNoteKeydown(event, note) {
+            if (locked.value) return;
+            const ordered = [...melody.value.notes].sort((a, b) => a.start - b.start);
+            selectedNoteId.value = note.id;
+            if (event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+                event.preventDefault();
+                const index = ordered.findIndex((item) => item.id === note.id);
+                selectNoteFromList(
+                    ordered[Math.max(0, Math.min(ordered.length - 1, index + (event.key === "ArrowRight" ? 1 : -1)))],
+                );
+                return;
+            }
+            const patches = {
+                ArrowLeft: { start: Math.max(0, note.start - snapStep.value) },
+                ArrowRight: { start: note.start + snapStep.value },
+                ArrowUp: { midi: Math.min(ESC_MELODY_MAX_MIDI, (note.midi ?? 60) + 1) },
+                ArrowDown: { midi: Math.max(ESC_MELODY_MIN_MIDI, (note.midi ?? 60) - 1) },
+            };
+            if (patches[event.key]) {
+                event.preventDefault();
+                updateSelected(patches[event.key]);
+                locateSelectedNote();
+            } else if (["Delete", "Backspace"].includes(event.key)) {
+                event.preventDefault();
+                removeNote(note.id);
+                void nextTick(() => document.querySelector('.esc-melody-note[tabindex="0"]')?.focus());
+            } else if (["Enter", " "].includes(event.key)) event.preventDefault();
+        }
         function addNoteAtPointer(event) {
+            if (editorTool.value === "select" || locked.value) return;
             if (event.target !== event.currentTarget && !event.target.classList.contains("roll-grid")) return;
             const rect = event.currentTarget.getBoundingClientRect();
             const start = Math.max(
                 0,
-                Math.floor(((event.clientX - rect.left) / rect.width) * timelineBeats.value * 8) / 8,
+                Math.floor((((event.clientX - rect.left) / rect.width) * timelineBeats.value) / snapStep.value) *
+                    snapStep.value,
             );
             const row = Math.max(
                 0,
@@ -3048,18 +3354,25 @@ export default defineComponent({
             );
             clearActiveLibrarySource();
             pushHistory();
-            const note = createNote({ midi: noteRows[row], start, duration: 1, rest: false });
+            const note = createNote({ midi: noteRows[row], start, duration: 1, rest: editorTool.value === "rest" });
             melody.value.notes.push(note);
             melody.value = normalizeMelody(melody.value);
             selectedNoteId.value = note.id;
         }
 
         function startNoteDrag(event, note) {
+            if (locked.value) return;
             selectedNoteId.value = note.id;
-            clearActiveLibrarySource();
-            pushHistory();
+            event.currentTarget.focus();
             const rect = event.currentTarget.parentElement.getBoundingClientRect();
-            dragState = { noteId: note.id, startX: event.clientX, startY: event.clientY, rect, initial: { ...note } };
+            dragState = {
+                changed: false,
+                noteId: note.id,
+                startX: event.clientX,
+                startY: event.clientY,
+                rect,
+                initial: { ...note },
+            };
             window.addEventListener("pointermove", onNoteDrag);
             window.addEventListener("pointerup", stopNoteDrag, { once: true });
         }
@@ -3070,7 +3383,16 @@ export default defineComponent({
             if (!note) return;
             const deltaBeat = ((event.clientX - dragState.startX) / dragState.rect.width) * timelineBeats.value;
             const deltaRow = Math.round(((event.clientY - dragState.startY) / dragState.rect.height) * noteRows.length);
-            note.start = Math.max(0, Math.round((dragState.initial.start + deltaBeat) * 8) / 8);
+            const start = Math.max(
+                0,
+                Math.round((dragState.initial.start + deltaBeat) / snapStep.value) * snapStep.value,
+            );
+            if (!dragState.changed && (start !== note.start || deltaRow !== 0)) {
+                clearActiveLibrarySource();
+                pushHistory();
+                dragState.changed = true;
+            }
+            note.start = start;
             if (!note.rest) {
                 note.midi = Math.max(
                     ESC_MELODY_MIN_MIDI,
@@ -3108,7 +3430,7 @@ export default defineComponent({
             const top = ((ESC_MELODY_MAX_MIDI - (note.midi ?? 60) + 0.5) / noteRows.length) * 100;
             return {
                 left: `${(note.start / timelineBeats.value) * 100}%`,
-                width: `${Math.max(3, (note.duration / timelineBeats.value) * 100)}%`,
+                width: `${(note.duration / timelineBeats.value) * 100}%`,
                 top: `${Math.max(1, Math.min(99, top))}%`,
             };
         }
@@ -3233,10 +3555,20 @@ export default defineComponent({
             if (showPresetTrackTabs.value || (!syncAll.value && editableEscs.value.length > 1)) {
                 initializeMultiCodeEditor();
             } else initializeSingleCodeEditor();
+            codeDiscardConfirm.value = false;
+            codeBaseline = JSON.stringify([rtttlCode.value, multiCodeEntries.value.map((entry) => entry.code)]);
             codeDialogOpen.value = true;
         }
 
-        function closeCodeDialog() {
+        function closeCodeDialog({ discard = false } = {}) {
+            if (
+                !discard &&
+                JSON.stringify([rtttlCode.value, multiCodeEntries.value.map((entry) => entry.code)]) !== codeBaseline
+            ) {
+                codeDiscardConfirm.value = true;
+                return;
+            }
+            codeDiscardConfirm.value = false;
             stopPreview();
             codeDialogOpen.value = false;
             multiCodeEntries.value = [];
@@ -3357,7 +3689,7 @@ export default defineComponent({
             } else {
                 saved = saveSingleCode();
             }
-            if (saved) closeCodeDialog();
+            if (saved) closeCodeDialog({ discard: true });
         }
 
         function mirrorPresetTrackToRoll(track) {
@@ -3442,6 +3774,7 @@ export default defineComponent({
 
         async function startAudioPreview(entries, { highlight = false, mode = "single" } = {}) {
             stopPreview();
+            const request = previewRequest;
             const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
             if (!AudioContext) {
                 showMessage("当前浏览器不支持 Web Audio 试听。", "error");
@@ -3450,6 +3783,10 @@ export default defineComponent({
             audioContext.value ||= new AudioContext();
             try {
                 const context = await ensureAudioContextRunning(audioContext.value);
+                if (request !== previewRequest) return;
+                previewOutput.value = context.createGain();
+                previewOutput.value.gain.value = previewMuted.value ? 0 : previewVolume.value / 100;
+                previewOutput.value.connect(context.destination);
                 const startAt = context.currentTime + 0.04;
                 const channelGain = previewGainForChannelCount(entries.length);
                 let maxDuration = 0;
@@ -3465,6 +3802,7 @@ export default defineComponent({
                             start: startAt + waitSeconds + note.start * beatSeconds,
                             duration: note.duration * beatSeconds,
                             gain: channelGain,
+                            destination: previewOutput.value,
                         });
                         audioNodes.push(tone.oscillator);
                         if (highlight) {
@@ -3479,6 +3817,17 @@ export default defineComponent({
                 activeCodePreviewIds.value = entries.map((entry) => entry.id).filter(Boolean);
                 previewMode.value = mode;
                 playing.value = true;
+                previewShowsTimeline.value = highlight;
+                const clockStart = Date.now() + 40;
+                previewClock = window.setInterval(() => {
+                    previewElapsedMs.value = Math.max(0, Date.now() - clockStart);
+                    const wrap = pianoRollWrap.value;
+                    if (highlight && autoFollow.value && wrap) {
+                        const x = Math.max(0, previewBeat.value) * zoomPixels.value;
+                        if (x < wrap.scrollLeft || x > wrap.scrollLeft + wrap.clientWidth - 80)
+                            wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 3);
+                    }
+                }, 40);
                 previewTimer = window.setTimeout(() => {
                     if (playing.value) stopPreview();
                 }, maxDuration + 160);
@@ -3506,6 +3855,13 @@ export default defineComponent({
         }
 
         function stopPreview() {
+            previewRequest += 1;
+            clearInterval(previewClock);
+            previewClock = null;
+            previewElapsedMs.value = 0;
+            previewShowsTimeline.value = false;
+            previewOutput.value?.disconnect?.();
+            previewOutput.value = null;
             if (previewTimer !== null) {
                 window.clearTimeout(previewTimer);
                 previewTimer = null;
@@ -3944,10 +4300,12 @@ export default defineComponent({
         }
 
         onMounted(() => {
+            document.addEventListener("keydown", handleDialogKeydown);
             GUI.content_ready();
             void nextTick(scrollMelodyIntoView);
         });
         onBeforeUnmount(() => {
+            document.removeEventListener("keydown", handleDialogKeydown);
             flushCurrentDraft();
             stopPreview();
             stopNoteDrag();
@@ -4067,6 +4425,25 @@ export default defineComponent({
             currentMelodyPlayable,
             canPlayAllMelodies,
             locked,
+            modalOpen,
+            codeDiscardConfirm,
+            workspaceView,
+            zoomPixels,
+            editorTool,
+            snapStep,
+            autoFollow,
+            previewVolume,
+            previewMuted,
+            previewShowsTimeline,
+            previewBeat,
+            timelineWidth,
+            timelineTicks,
+            presetSessionName,
+            fitTimeline,
+            locateSelectedNote,
+            onNoteKeydown,
+            selectNoteFromList,
+            editNoteFromList,
             arrangementLabel,
             assignmentRows,
             assignmentWarnings,

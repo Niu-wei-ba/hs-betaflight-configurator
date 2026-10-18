@@ -2628,3 +2628,75 @@
     .safety-dialog > .channel-plan, .safety-dialog > .operation-progress { margin: 12px 18px; }
     .device-readiness p { margin: 8px 0 0; line-height: 1.6; }
 }
+
+.tab-esc_melody {
+    container-type: inline-size;
+    --esc-ink: var(--text);
+    --esc-muted: var(--surface-800);
+    --esc-line: var(--surface-400);
+    --esc-panel: var(--surface-50);
+    --esc-soft: var(--surface-100);
+    .esc-melody-shell { padding-bottom: 12px; }
+    .esc-melody-workspace { grid-template-columns: 188px minmax(0, 1fr) 246px; align-items: start; }
+    .esc-melody-workspace > * { min-width: 0; }
+    .esc-melody-header { flex-wrap: wrap; }
+    .esc-melody-workflow { position: static; transform: none; margin-left: auto; max-width: none; }
+    .esc-melody-actionbar { position: sticky; left: auto; right: auto; bottom: 0; background: var(--esc-panel); flex-wrap: wrap; }
+    .actionbar-actions { flex-wrap: wrap; }
+    .workbench-mobile-nav { display: none; }
+    .transport-strip, .timeline-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px; border-bottom: 1px solid var(--esc-line); background: var(--esc-panel); }
+    .transport-title { flex: 1 1 160px; min-width: 0; }
+    .transport-title strong, .transport-title small { display: block; overflow-wrap: anywhere; }
+    .transport-title small { margin-top: 4px; color: var(--esc-muted); font-size: 11px; }
+    .transport-strip label, .timeline-tools label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+    .transport-strip input[type="range"] { width: 65px; }
+    .transport-strip .inspector-preview-actions { width: auto; }
+    .timeline-tools input[type="range"] { width: 80px; }
+    .timeline-tools select { height: 30px; border: 1px solid var(--esc-line); background: var(--esc-panel); color: var(--esc-ink); }
+    .piano-roll-wrap { display: block; overflow: auto; padding: 0; height: clamp(240px, 38vh, 360px); background: var(--esc-panel); }
+    .piano-roll-content { min-width: 100%; }
+    .roll-pitch-grid { display: flex; align-items: start; }
+    .roll-time-ruler { position: sticky; top: 0; z-index: 6; height: 34px; margin-left: 32px; background: var(--esc-soft); border-bottom: 1px solid var(--esc-line); }
+    .roll-time-ruler > span { position: absolute; font-size: 10px; padding-left: 4px; border-left: 1px solid var(--esc-line); height: 100%; }
+    .roll-time-ruler small { display: block; color: var(--esc-muted); font-variant-numeric: tabular-nums; }
+    .piano-roll-labels { position: sticky; left: 0; z-index: 4; flex-basis: 32px; background: var(--esc-panel); color: var(--esc-muted); }
+    .piano-roll { background: var(--esc-soft); }
+    .esc-melody-note { box-sizing: border-box; min-width: 0; padding: 0 1px; gap: 0; overflow: hidden; font-size: 10px; }
+    .esc-melody-note b, .esc-melody-note .note-delete { display: none; }
+    .esc-melody-note:hover .note-delete { display: none; }
+    .esc-melody-note span { overflow: hidden; text-overflow: clip; }
+    .esc-melody-note:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--esc-amber); outline-offset: 2px; }
+    .timeline-playhead { position: absolute; top: 0; bottom: 0; width: 2px; z-index: 5; background: var(--esc-ink); pointer-events: none; }
+    .editor-legend { flex-wrap: wrap; color: var(--esc-muted); font-size: 11px; }
+    .note-event-list { border-top: 1px solid var(--esc-line); padding: 10px; font-size: 12px; }
+    .note-event-list summary, .compatibility-help summary { cursor: pointer; padding: 6px 0; }
+    .note-event-scroll { max-height: 200px; overflow: auto; }
+    .note-event-list table { width: 100%; border-collapse: collapse; text-align: left; }
+    .note-event-list td, .note-event-list th { padding: 5px; border-bottom: 1px solid var(--esc-line); }
+    .note-event-list input { width: 80px; min-height: 30px; color: var(--esc-ink); background: var(--esc-panel); border: 1px solid var(--esc-line); }
+    .melody-contribution-panel { border-top: 1px solid var(--esc-line); box-shadow: none; background: var(--esc-soft); }
+    .melody-contribution-eyebrow, .melody-contribution-icon { display: none; }
+    .code-discard-confirm { padding: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--esc-soft); border-left: 3px solid var(--esc-amber); }
+    .safety-hint, .matrix-cap, .esc-record-meta, .melody-library-source, .draft-storage-note { color: var(--esc-muted); font-size: 11px; }
+}
+@container (max-width: 1120px) {
+    .tab-esc_melody .esc-melody-workspace { grid-template-columns: 180px minmax(0, 1fr); }
+    .tab-esc_melody .esc-melody-targets { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .tab-esc_melody .esc-melody-targets .channel-plan { grid-row: span 2; }
+}
+@container (max-width: 720px) {
+    .tab-esc_melody .workbench-mobile-nav { display: flex; gap: 6px; }
+    .tab-esc_melody .workbench-mobile-nav button { flex: 1; padding: 10px 5px; border: 1px solid var(--esc-line); background: var(--esc-panel); color: var(--esc-ink); }
+    .tab-esc_melody .workbench-mobile-nav button[aria-pressed="true"] { border-bottom: 3px solid var(--esc-amber); }
+    .tab-esc_melody .esc-melody-workspace { display: block; }
+    .tab-esc_melody .esc-melody-workspace > * { display: none; }
+    .tab-esc_melody .esc-melody-workspace[data-view="library"] > .esc-melody-sidebar { display: flex; }
+    .tab-esc_melody .esc-melody-workspace[data-view="targets"] > .esc-melody-targets { display: flex; }
+    .tab-esc_melody .esc-melody-workspace[data-view="editor"] > .esc-melody-editor { display: block; }
+    .tab-esc_melody .esc-melody-workspace[data-view="editor"] > .editor-panel { display: block; }
+    .tab-esc_melody .esc-melody-workflow { width: 100%; }
+    .tab-esc_melody .esc-melody-actionbar { gap: 6px; padding: 10px; }
+    .tab-esc_melody .actionbar-status, .tab-esc_melody .safety-write-blocker { max-width: none; font-size: 11px; }
+    .tab-esc_melody .inline-melody-settings-fields { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .tab-esc_melody .transport-title { flex-basis: 100%; }
+}

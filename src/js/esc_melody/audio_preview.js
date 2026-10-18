@@ -17,7 +17,10 @@ export function previewGainForChannelCount(channelCount) {
     return ESC_PREVIEW_GAIN / Math.sqrt(Math.max(1, Number(channelCount) || 1));
 }
 
-export function scheduleEscPreviewTone(context, { midi, start, duration, gain = ESC_PREVIEW_GAIN }) {
+export function scheduleEscPreviewTone(
+    context,
+    { midi, start, duration, gain = ESC_PREVIEW_GAIN, destination = context.destination },
+) {
     const toneDuration = Math.max(0.012, Number(duration) || 0);
     const toneStart = Math.max(context.currentTime, Number(start) || context.currentTime);
     const toneEnd = toneStart + toneDuration;
@@ -34,7 +37,7 @@ export function scheduleEscPreviewTone(context, { midi, start, duration, gain = 
     gainNode.gain.setValueAtTime(Math.max(0.0002, gain), releaseStart);
     gainNode.gain.exponentialRampToValueAtTime(0.0001, toneEnd);
     oscillator.connect(gainNode);
-    gainNode.connect(context.destination);
+    gainNode.connect(destination);
     oscillator.start(toneStart);
     oscillator.stop(toneEnd + 0.02);
 
