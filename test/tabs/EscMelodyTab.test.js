@@ -169,6 +169,56 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
+    it("separates offline encoding from device and operation readiness", async () => {
+        const { app, container } = await mountTab();
+        expect(container.querySelector(".validation-badge").textContent).toContain("编码通过");
+        expect(container.querySelector(".device-readiness").textContent).toContain("未连接");
+        expect(container.textContent).not.toContain("原生等待");
+        expect(container.querySelector(".channel-plan").textContent).toContain("未分配");
+        app.unmount();
+    });
+
+    it.each([2, 4, 6, 8])("shows and edits voice allocation for %i channels", async (count) => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(createWritableEscs(Array(count).fill(60)));
+        const { app, container } = await mountTab();
+        findButton(container, "扫描电调").click();
+        await vi.waitFor(() => expect(container.querySelectorAll(".channel-plan tbody tr")).toHaveLength(count));
+        findButton(container, "Bad Apple").click();
+        await nextTick();
+        const voices = container.querySelectorAll(".channel-plan select");
+        expect(voices).toHaveLength(count);
+        expect([...voices].map((input) => Number(input.value))).toEqual(Array.from({ length: count }, (_, i) => i % 4));
+        expect(container.querySelector(".channel-plan").textContent).toContain("多声部合奏");
+        if (count === 2) expect(container.querySelector(".channel-plan").textContent).toContain("缺少声部 3、4");
+        if (count > 4) expect(container.querySelector(".channel-plan").textContent).toContain("将分配到多路电调");
+        voices[0].value = "3";
+        voices[0].dispatchEvent(new Event("change"));
+        await nextTick();
+        expect(container.querySelector(".channel-plan select").value).toBe("3");
+        if (count === 4) expect(container.querySelector(".channel-plan").textContent).toContain("缺少声部 1");
+        app.unmount();
+    });
+
+    it("keeps unsupported mixed-firmware channels out of the voice allocation", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const escs = createWritableEscs([60, 60, 60]);
+        escs[1].firmwareFamily = "blheli32";
+        escs[1].firmwareLabel = "BLHeli_32";
+        escs[1].canWrite = false;
+        escs[1].melodyReadStatus = "unsupported";
+        scanEscs.mockResolvedValue(escs);
+        const { app, container } = await mountTab();
+        findButton(container, "扫描电调").click();
+        await vi.waitFor(() => expect(container.querySelectorAll(".channel-plan tbody tr")).toHaveLength(3));
+        findButton(container, "Bad Apple").click();
+        await nextTick();
+        expect(container.querySelectorAll(".channel-plan select")).toHaveLength(2);
+        expect(container.querySelector(".channel-plan tbody tr:nth-child(2)").textContent).toContain("未参与");
+        expect(container.querySelector(".channel-plan").textContent).toContain("ESC 2 未参与写入");
+        app.unmount();
+    });
+
     it("opens the music contribution popup with the QQ group QR code", async () => {
         const { app, container } = await mountTab();
         const contributionButton = [...container.querySelectorAll("button")].find((button) =>
@@ -317,7 +367,7 @@ describe("EscMelodyTab", () => {
         await nextTick();
         expect(container.querySelector(".safety-write-melody").textContent).toContain("Two-Tigers");
         findButton(container, "备份到本机").click();
-        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toContain("已持久保存"));
         for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
         await nextTick();
         findButton(container, "开始写入").click();
@@ -1147,7 +1197,7 @@ describe("EscMelodyTab", () => {
         findButton(container, "安全写入").click();
         await nextTick();
         findButton(container, "备份到本机").click();
-        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toContain("已持久保存"));
         for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
         await nextTick();
         findButton(container, "开始写入").click();
@@ -1183,7 +1233,7 @@ describe("EscMelodyTab", () => {
         await nextTick();
         expect(container.querySelector(".safety-dialog").textContent).toContain("逐路写入 2 路电调");
         findButton(container, "备份到本机").click();
-        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toContain("已持久保存"));
         for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
         await nextTick();
         findButton(container, "开始写入").click();
@@ -1229,7 +1279,7 @@ describe("EscMelodyTab", () => {
         findButton(container, "安全写入").click();
         await nextTick();
         findButton(container, "备份到本机").click();
-        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toContain("已持久保存"));
         for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
         await nextTick();
         findButton(container, "开始写入").click();
@@ -1633,9 +1683,9 @@ describe("EscMelodyTab", () => {
         const startRestore = findButton(container, "开始恢复");
         expect(startRestore.disabled).toBe(true);
         findButton(container, "备份当前状态").click();
-        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/));
         await vi.waitFor(() =>
-            expect(container.querySelector(".restore-current-backup").textContent).toContain("已保存并下载"),
+            expect(container.querySelector(".restore-current-backup").textContent).toMatch(/已(?:持久)?保存并下载/),
         );
         expect(startRestore.disabled).toBe(true);
 
@@ -1684,7 +1734,7 @@ describe("EscMelodyTab", () => {
         expect([...safetyInputs].slice(0, 3).every((input) => input.checked)).toBe(true);
 
         findButton(container, "备份当前状态").click();
-        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/));
         await vi.waitFor(() => expect(safetyInputs[3].checked).toBe(true));
 
         expect([...safetyInputs].slice(0, 3).every((input) => input.checked)).toBe(true);
@@ -1747,7 +1797,7 @@ describe("EscMelodyTab", () => {
         findButton(container, "安全写入").click();
         await nextTick();
         findButton(container, "备份到本机").click();
-        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toContain("已持久保存"));
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/));
         for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
         await nextTick();
         findButton(container, "开始写入").click();
@@ -1795,9 +1845,9 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() => expect(scanEscs).toHaveBeenCalledOnce());
         await selectRestoreFile(container, restorePackage);
         findButton(container, "备份当前状态").click();
-        await vi.waitFor(() => expect(backupEscs).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toMatch(/已(?:持久)?保存并下载/));
         await vi.waitFor(() =>
-            expect(container.querySelector(".restore-current-backup").textContent).toContain("已保存并下载"),
+            expect(container.querySelector(".restore-current-backup").textContent).toMatch(/已(?:持久)?保存并下载/),
         );
         for (const input of container.querySelectorAll(".restore-safety-section .safety-check input:not([disabled])")) {
             input.click();

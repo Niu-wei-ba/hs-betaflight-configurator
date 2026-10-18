@@ -68,7 +68,7 @@
                             type="button"
                             class="regular-button esc-scan-action"
                             aria-label="扫描电调"
-                            :disabled="!connected || scanning || locked"
+                            :disabled="!connected || scanning || locked || !!writeRecoveryTargets.length"
                             @click="scanEscs"
                         >
                             <span class="fas fa-sync-alt" :class="{ spinning: scanning }" aria-hidden="true"></span>
@@ -551,11 +551,25 @@
                 </section>
 
                 <aside class="esc-melody-targets">
+                    <section class="target-panel device-readiness" aria-label="设备与操作状态">
+                        <div class="panel-heading">
+                            <strong>设备与操作</strong><span>{{ deviceReadiness }}</span>
+                        </div>
+                        <p role="status">{{ operationReadiness }}</p>
+                    </section>
+                    <EscChannelPlan
+                        :rows="assignmentRows"
+                        :mode-label="arrangementLabel"
+                        :voice-count="presetTrackTabs.length"
+                        :warnings="assignmentWarnings"
+                        :editable="!locked && !writeRecoveryTargets.length"
+                        @assign="assignVoice"
+                    />
                     <section class="target-panel">
                         <div class="panel-heading">
                             <span>目标兼容性</span
                             ><span class="validation-badge" :class="{ valid: validation.valid }">{{
-                                validation.valid ? "可写入" : "需调整"
+                                validation.valid ? "编码通过" : "编码需调整"
                             }}</span>
                         </div>
                         <div class="compat-summary">
@@ -573,11 +587,11 @@
                         </ul>
                         <div class="matrix-row">
                             <span><i class="firmware-dot bluejay"></i>Bluejay</span
-                            ><span class="matrix-cap">读写 · 128 B · 原生等待</span>
+                            ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
                         </div>
                         <div class="matrix-row">
                             <span><i class="firmware-dot am32"></i>AM32</span
-                            ><span class="matrix-cap">读写 · 128 B · 休止等待</span>
+                            ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
                         </div>
                         <div class="matrix-row">
                             <span><i class="firmware-dot ox32"></i>OX32</span
@@ -727,8 +741,19 @@
                         :disabled="!connected || !escs.length || locked"
                         @click="chooseRestoreFile"
                     >
-                        <span class="fas fa-history" aria-hidden="true"></span> 恢复 EEPROM</button
-                    ><button
+                        <span class="fas fa-history" aria-hidden="true"></span> 恢复 EEPROM
+                    </button>
+                    <button
+                        v-if="writeRecoveryTargets.length"
+                        type="button"
+                        class="primary-button"
+                        :disabled="locked"
+                        @click="openSafety"
+                    >
+                        安全写入 · 待恢复
+                    </button>
+                    <button
+                        v-else
                         type="button"
                         class="primary-button"
                         :disabled="!connected || locked || !pendingWriteEscs.length || !writeValidation.valid"
@@ -998,15 +1023,36 @@
                                 <p>将逐路写入 {{ pendingWriteEscs.length }} 路电调，四项全部确认后才能继续。</p>
                             </div>
                         </div>
-                        <button type="button" class="icon-button" aria-label="关闭" @click="safetyOpen = false">
+                        <button
+                            type="button"
+                            class="icon-button"
+                            aria-label="关闭"
+                            @click="closeSafety"
+                            :disabled="writing || backingUp"
+                        >
                             ×
                         </button>
                     </div>
+                    <EscChannelPlan
+                        :rows="assignmentRows"
+                        :mode-label="arrangementLabel"
+                        :voice-count="presetTrackTabs.length"
+                        :warnings="assignmentWarnings"
+                    />
+                    <label v-if="assignmentWarnings.length" class="safety-check"
+                        ><input v-model="assignmentAccepted" type="checkbox" :disabled="writing || backingUp" /><span
+                            >我已核对缺失或重复声部及未参与通道，本次按以上分配写入。</span
+                        ></label
+                    >
+                    <EscOperationProgress :rows="writeProgressRows" />
+                    <p v-if="writeResult?.ok" class="validation-ok" role="status">
+                        本次写入已完成，全部目标均已读回校验。
+                    </p>
                     <label v-for="check in safetyCheckItems" :key="check.id" class="safety-check"
                         ><input
                             v-model="safetyChecks[check.id]"
                             type="checkbox"
-                            :disabled="check.id === 'backupReady'"
+                            :disabled="check.id === 'backupReady' || writing || backingUp"
                         /><span class="check-box"><span class="fas fa-check" aria-hidden="true"></span></span
                         ><span
                             ><strong>{{ check.title }}</strong
@@ -1046,7 +1092,13 @@
                         <span class="safety-hint"
                             ><span class="fas fa-info-circle" aria-hidden="true"></span> 试听只使用 Web
                             Audio，不会向电机发送 DShot 命令。</span
-                        ><button type="button" class="regular-button" @click="safetyOpen = false">取消</button
+                        ><button
+                            type="button"
+                            class="regular-button"
+                            @click="closeSafety"
+                            :disabled="writing || backingUp"
+                        >
+                            取消</button
                         ><button
                             type="button"
                             class="primary-button"
@@ -1054,7 +1106,7 @@
                             @click="performWrite"
                         >
                             <span class="fas fa-bolt" aria-hidden="true"></span
-                            >{{ writing ? "串行写入中" : "开始写入" }}
+                            >{{ writing ? "串行操作中" : "开始写入" }}
                         </button>
                     </div>
                 </section>
@@ -1388,7 +1440,7 @@
                                         {{ formatDuration(item.preview.durationMs) }}</span
                                     ><strong>{{ item.preview.encodedLength }}/{{ item.capacity }} B</strong
                                     ><span :class="item.preview.valid ? 'code-valid' : 'code-adjust'">{{
-                                        item.preview.valid ? "可写入" : "需调整"
+                                        item.preview.valid ? "编码通过" : "编码需调整"
                                     }}</span>
                                 </div>
                                 <ul v-if="!item.preview.error && item.preview.errors.length" class="rtttl-code-errors">
@@ -1414,7 +1466,7 @@
                                 {{ formatDuration(codePreview.durationMs) }}</span
                             ><strong>{{ codePreview.encodedLength }}/128 B</strong
                             ><span :class="codePreview.valid ? 'code-valid' : 'code-adjust'">{{
-                                codePreview.valid ? "可写入" : "需调整"
+                                codePreview.valid ? "编码通过" : "编码需调整"
                             }}</span>
                         </div>
                         <div
@@ -1547,6 +1599,8 @@
 <script>
 import { computed, defineComponent, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import BaseTab from "./BaseTab.vue";
+import EscChannelPlan from "../esc-melody/EscChannelPlan.vue";
+import EscOperationProgress from "../esc-melody/EscOperationProgress.vue";
 import GUI from "../../js/gui.js";
 import {
     cloneMelody,
@@ -1614,7 +1668,7 @@ const PIANO_ROLL_ROW_HEIGHT = 16;
 
 export default defineComponent({
     name: "EscMelodyTab",
-    components: { BaseTab },
+    components: { BaseTab, EscChannelPlan, EscOperationProgress },
     setup() {
         const model = inject("betaflightModel", null);
         const melody = ref(cloneMelody(PRESET_MELODIES[0]));
@@ -1635,6 +1689,9 @@ export default defineComponent({
         const scanning = ref(false);
         const selectedEscId = ref(null);
         const presetTrackSession = ref(null);
+        const voiceAssignments = reactive({});
+        const assignmentAccepted = ref(false);
+        const writeProgressRows = ref([]);
         const activePresetTrackIndex = ref(0);
         const melodyConflict = ref(false);
         const syncConfirmOpen = ref(false);
@@ -1813,7 +1870,9 @@ export default defineComponent({
                 connected.value &&
                 Object.values(safetyChecks).every(Boolean) &&
                 backupStatus.value.valid &&
-                writeValidation.value.valid
+                writeValidation.value.valid &&
+                (!assignmentWarnings.value.length || assignmentAccepted.value) &&
+                !writeRecoveryTargets.value.length
             );
         });
         const backupSummary = computed(() => {
@@ -1919,6 +1978,107 @@ export default defineComponent({
         const writeRecoveryTargets = computed(() =>
             writeResult.value?.ok === false ? (writeResult.value.rollback ?? writeResult.value.written ?? []) : [],
         );
+        const arrangementLabel = computed(() =>
+            showPresetTrackTabs.value ? "多声部合奏" : syncAll.value ? "同曲同步" : "各路独立",
+        );
+        const deviceReadiness = computed(() => {
+            if (!connected.value) return "未连接";
+            if (scanning.value) return "扫描中";
+            if (!escs.value.length) return "待扫描";
+            if (pendingFirmwareConfirmationCount.value) return "待确认";
+            return writableEscs.value.length ? `${writableEscs.value.length} 路已验证` : "不支持写入";
+        });
+        const operationReadiness = computed(() => {
+            if (writeRecoveryTargets.value.length) return "需要恢复受影响通道";
+            if (writing.value) return "串行操作中，请保持连接与供电";
+            if (writeResult.value?.ok) return "本次目标已读回校验";
+            if (safetyWriteDisabledReason.value) return safetyWriteDisabledReason.value;
+            return safetyReady.value ? "检查与备份已完成，可开始写入" : "待安全检查与备份";
+        });
+        function voiceIndexForEsc(esc) {
+            const count = presetTrackSession.value?.tracks.length || 0;
+            if (!count) return null;
+            const index = [...editableEscs.value]
+                .sort((a, b) => a.channel - b.channel)
+                .findIndex((item) => item.id === esc.id);
+            return index < 0 ? null : (voiceAssignments[esc.id] ?? index % count);
+        }
+        const assignmentRows = computed(() =>
+            [...displayedEscs.value]
+                .sort((a, b) => a.channel - b.channel)
+                .map((esc) => {
+                    const editable = esc.canWrite && isEscMelodyEditable(esc);
+                    const voiceIndex = editable ? voiceIndexForEsc(esc) : null;
+                    const result = editable
+                        ? validateMelody(esc.editorMelody, {
+                            firmware: esc.firmwareFamily,
+                            capacity: esc.capacity || 128,
+                        })
+                        : null;
+                    return {
+                        id: esc.id,
+                        channel: esc.channel,
+                        firmware: esc.firmwareLabel,
+                        editable,
+                        voiceIndex,
+                        voiceLabel: !editable
+                            ? "未参与"
+                            : voiceIndex !== null
+                                ? `声部 ${voiceIndex + 1}`
+                                : esc.editorMelody.name,
+                        capacity: result ? `${result.encodedLength}/${esc.capacity || 128} B` : "",
+                        status: !editable
+                            ? esc.canWrite
+                                ? "音乐待处理"
+                                : firmwareConfirmationLabel(esc)
+                            : !result.valid
+                                ? "编码需调整"
+                                : pendingWriteEscIds.value.has(esc.id)
+                                    ? "将写入"
+                                    : "无修改",
+                    };
+                }),
+        );
+        const assignmentWarnings = computed(() => {
+            const warnings = [];
+            const inactive = assignmentRows.value.filter((row) => !row.editable);
+            if (inactive.length)
+                warnings.push(`${inactive.map((row) => `ESC ${row.channel + 1}`).join("、")} 未参与写入。`);
+            if (showPresetTrackTabs.value && assignmentRows.value.length) {
+                const used = assignmentRows.value.filter((row) => row.editable).map((row) => row.voiceIndex);
+                const missing = presetTrackTabs.value.filter((track) => !used.includes(track.index));
+                if (missing.length)
+                    warnings.push(`缺少声部 ${missing.map((track) => track.index + 1).join("、")}，无法完整合奏。`);
+                const repeated = [...new Set(used.filter((voice, i) => used.indexOf(voice) !== i))];
+                if (repeated.length)
+                    warnings.push(`声部 ${repeated.map((voice) => voice + 1).join("、")} 将分配到多路电调。`);
+            }
+            return warnings;
+        });
+        watch(
+            () =>
+                JSON.stringify(
+                    assignmentRows.value.map(({ id, voiceIndex, editable }) => ({ id, voiceIndex, editable })),
+                ),
+            () => {
+                assignmentAccepted.value = false;
+            },
+        );
+        function assignVoice(id, voice) {
+            if (
+                locked.value ||
+                writeRecoveryTargets.value.length ||
+                !Number.isInteger(voice) ||
+                !presetTrackSession.value?.tracks[voice]
+            )
+                return;
+            voiceAssignments[id] = voice;
+            assignmentAccepted.value = false;
+            syncPresetTracksToEscs();
+        }
+        function closeSafety() {
+            if (!writing.value && !backingUp.value) safetyOpen.value = false;
+        }
         const controller = ref(null);
         const audioContext = ref(null);
         const audioNodes = [];
@@ -2053,7 +2213,7 @@ export default defineComponent({
 
         const safetyCheckItems = [
             { id: "unlocked", title: "飞控已锁定（未解锁）", description: "确认当前不会发送解锁命令。" },
-            { id: "propsRemoved", title: "桨叶已拆除", description: "四个电机和所有外露桨叶都已移除。" },
+            { id: "propsRemoved", title: "桨叶已拆除", description: "确认所有电机上的桨叶均已拆除。" },
             { id: "powerStable", title: "ESC 稳定供电", description: "使用限流电源，连接和电压保持稳定。" },
             {
                 id: "backupReady",
@@ -2161,7 +2321,7 @@ export default defineComponent({
             if (!session || !editableEscs.value.length) return;
             const targets = [...editableEscs.value].sort((left, right) => left.channel - right.channel);
             for (const [index, esc] of targets.entries()) {
-                const track = session.tracks[index % session.tracks.length];
+                const track = session.tracks[voiceAssignments[esc.id] ?? index % session.tracks.length];
                 esc.editorMelody = cloneMelody(track.melody);
                 esc.editorHistory = cloneMelodyHistory(track.history);
                 esc.editorFuture = cloneMelodyHistory(track.future);
@@ -2229,6 +2389,7 @@ export default defineComponent({
         }
 
         function clearPresetTrackSession() {
+            Object.keys(voiceAssignments).forEach((key) => delete voiceAssignments[key]);
             presetTrackSession.value = null;
             activePresetTrackIndex.value = 0;
         }
@@ -2501,6 +2662,7 @@ export default defineComponent({
             if (tracks.length > 1) {
                 stopPreview();
                 syncEditorState();
+                Object.keys(voiceAssignments).forEach((key) => delete voiceAssignments[key]);
                 presetTrackSession.value = {
                     presetId: preset.id,
                     name: preset.name,
@@ -3502,6 +3664,24 @@ export default defineComponent({
         }
 
         function handleControllerProgress(progress) {
+            if (
+                [
+                    "write",
+                    "verify",
+                    "written",
+                    "failed",
+                    "recover",
+                    "recoverVerify",
+                    "recovered",
+                    "recoverFailed",
+                ].includes(progress?.phase)
+            ) {
+                const row = writeProgressRows.value.find((item) => item.channel === progress.channel);
+                if (row) {
+                    row.state = progress.phase;
+                    row.error = progress.error || "";
+                }
+            }
             if (progress?.phase === "restore" || progress?.phase === "recover") {
                 restoreProgress.value = progress;
             }
@@ -3565,7 +3745,12 @@ export default defineComponent({
         }
 
         async function scanEscs() {
-            if (!connected.value || scanning.value) return;
+            if (!connected.value || scanning.value || locked.value) return;
+            if (writeRecoveryTargets.value.length) {
+                showMessage("请先恢复受影响通道，原始备份必须保留。", "error");
+                return;
+            }
+            writeProgressRows.value = [];
             stopPreview();
             scanning.value = true;
             writeResult.value = null;
@@ -3613,6 +3798,7 @@ export default defineComponent({
                 return;
             }
             writeResult.value = null;
+            writeProgressRows.value = [];
             if (!escs.value.length) {
                 showMessage("请先扫描电调后再安全写入。", "error");
                 return;
@@ -3677,9 +3863,17 @@ export default defineComponent({
             activeBackup.value = persisted.backup;
             if (!safetyReady.value) return;
             writing.value = true;
+            writeProgressRows.value = targets.map((esc) => ({ channel: esc.channel, state: "pending" }));
             try {
                 acquireSerialLock();
                 writeResult.value = await controller.value.writeMelody(targets, (esc) => esc.editorMelody);
+                for (const row of writeProgressRows.value) {
+                    if (writeResult.value.written.some((esc) => esc.channel === row.channel)) row.state = "written";
+                    else if (writeResult.value.failed?.channel === row.channel) {
+                        row.state = "failed";
+                        row.error = writeResult.value.error?.message;
+                    } else row.state = "skipped";
+                }
                 if (writeResult.value.ok) {
                     for (const esc of writeResult.value.written) {
                         esc.currentMelody = cloneMelody(esc.editorMelody);
@@ -3699,11 +3893,25 @@ export default defineComponent({
                     activeBackup.value = null;
                     lastBackupFilename.value = "";
                     showMessage(`已串行写入并校验 ${writeResult.value.written.length} 路电调。`, "success");
-                    safetyOpen.value = false;
+                    // Keep verified channel results visible until the user closes the task.
                 } else {
                     showMessage(writeResult.value.error?.message || "写入失败，已停止后续通道。", "error");
                 }
             } catch (error) {
+                const touched = targets.filter((esc) => esc.writeTouched);
+                writeResult.value = {
+                    ok: false,
+                    error,
+                    written: targets.filter((esc) => esc.verified),
+                    rollback: touched,
+                    failed: targets.find((esc) => esc.writeTouched && !esc.verified),
+                };
+                for (const row of writeProgressRows.value)
+                    if (row.state === "pending") row.state = "skipped";
+                    else if (!["written", "recovered"].includes(row.state)) {
+                        row.state = "failed";
+                        row.error = error.message;
+                    }
                 showMessage(error?.message || "写入失败，串口已恢复普通 MSP。", "error");
             } finally {
                 releaseSerialLock();
@@ -3718,6 +3926,11 @@ export default defineComponent({
             try {
                 acquireSerialLock();
                 const recovered = await controller.value.recoverEscs(targets);
+                for (const row of writeProgressRows.value)
+                    if (recovered.some((esc) => esc.channel === row.channel)) {
+                        row.state = "recovered";
+                        row.error = "";
+                    }
                 refreshEditorsAfterRestore(recovered);
                 invalidateMelodyBackupGate();
                 showMessage(`已恢复并校验 ${targets.length} 路受影响电调的原始 EEPROM。`, "success");
@@ -3854,6 +4067,15 @@ export default defineComponent({
             currentMelodyPlayable,
             canPlayAllMelodies,
             locked,
+            arrangementLabel,
+            assignmentRows,
+            assignmentWarnings,
+            assignmentAccepted,
+            assignVoice,
+            deviceReadiness,
+            operationReadiness,
+            writeProgressRows,
+            closeSafety,
             writeResult,
             writeRecoveryTargets,
             loadCurrentMelody,

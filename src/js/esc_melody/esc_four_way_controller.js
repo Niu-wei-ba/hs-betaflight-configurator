@@ -472,6 +472,7 @@ export class EscFourWayController {
             await this.session.send(FOUR_WAY_COMMANDS.devicePageErase, [esc.erasePage]);
         }
         await this.writeMemoryImage(esc.settingsOffset, patched);
+        this.report({ phase: "verify", channel: esc.channel });
         const readBack = await this.readMemoryImage(esc.settingsOffset, patched.length);
         esc.currentEeprom = new Uint8Array(readBack);
         if (!equalBytes(patched, readBack)) throw new Error(`ESC ${esc.channel + 1} read-back verification failed`);
@@ -516,9 +517,11 @@ export class EscFourWayController {
                     await this.writeSelectedEsc(esc, typeof melody === "function" ? melody(esc) : melody);
                     esc.status = "verified";
                     written.push(esc);
+                    this.report({ phase: "written", channel: esc.channel });
                     rollback.push(esc);
                 } catch (error) {
                     esc.status = "failed";
+                    this.report({ phase: "failed", channel: esc.channel, error: error.message });
                     if (esc.writeTouched && !rollback.includes(esc)) rollback.push(esc);
                     return { ok: false, error, failed: esc, written, rollback };
                 }
@@ -548,8 +551,14 @@ export class EscFourWayController {
             for (let index = 0; index < targets.length; index += 1) {
                 const esc = targets[index];
                 this.report({ phase: "recover", channel: esc.channel, index, total: targets.length });
-                await this.selectEscWithInitRecovery(esc, { recovery: true });
-                recovered.push(await this.recoverSelectedEsc(esc));
+                try {
+                    await this.selectEscWithInitRecovery(esc, { recovery: true });
+                    recovered.push(await this.recoverSelectedEsc(esc));
+                    this.report({ phase: "recovered", channel: esc.channel });
+                } catch (error) {
+                    this.report({ phase: "recoverFailed", channel: esc.channel, error: error.message });
+                    throw error;
+                }
             }
             return recovered;
         } finally {
@@ -628,6 +637,7 @@ export class EscFourWayController {
             await this.session.send(FOUR_WAY_COMMANDS.devicePageErase, [esc.erasePage]);
         }
         await this.writeMemoryImage(esc.settingsOffset, esc.originalEeprom);
+        this.report({ phase: "recoverVerify", channel: esc.channel });
         const check = await this.readMemoryImage(esc.settingsOffset, esc.originalEeprom.length);
         if (!equalBytes(esc.originalEeprom, check)) throw new Error("Backup recovery verification failed");
         if (Number.isInteger(esc.settingsChecksumAddress)) {

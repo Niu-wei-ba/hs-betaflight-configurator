@@ -2604,3 +2604,27 @@
         }
     }
 }
+
+.tab-esc_melody {
+    .channel-plan, .device-readiness, .operation-progress {
+        padding: 12px;
+        border: 1px solid var(--esc-line);
+        background: var(--esc-panel);
+        color: var(--esc-ink);
+        font-size: 12px;
+    }
+    .channel-plan-scroll { overflow-x: auto; }
+    .channel-plan table { width: 100%; border-collapse: collapse; text-align: left; }
+    .channel-plan th, .channel-plan td { padding: 8px 4px; border-bottom: 1px solid var(--esc-line); vertical-align: top; }
+    .channel-plan small { display: block; color: var(--esc-muted); font-weight: normal; margin-top: 3px; }
+    .channel-plan select { width: 100%; min-height: 30px; color: var(--esc-ink); background: var(--esc-panel); border: 1px solid var(--esc-line); }
+    .assignment-warning { padding: 8px; background: var(--esc-soft); border-left: 3px solid var(--esc-amber); line-height: 1.6; }
+    .workbench-help { color: var(--esc-muted); line-height: 1.6; }
+    .operation-progress ol { list-style: none; margin: 0; padding: 0; }
+    .operation-progress li { display: grid; grid-template-columns: 70px 1fr; padding: 7px; border-bottom: 1px solid var(--esc-line); }
+    .operation-progress small { grid-column: 1 / -1; overflow-wrap: anywhere; }
+    .operation-progress [data-state="failed"], .operation-progress [data-state="recoverFailed"] { border-left: 3px solid var(--error-500, var(--esc-amber)); }
+    .operation-progress [data-state="recovered"], .operation-progress [data-state="written"] { border-left: 3px solid var(--success-500, var(--esc-amber)); }
+    .safety-dialog > .channel-plan, .safety-dialog > .operation-progress { margin: 12px 18px; }
+    .device-readiness p { margin: 8px 0 0; line-height: 1.6; }
+}
