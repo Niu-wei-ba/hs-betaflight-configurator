@@ -245,10 +245,19 @@ export class EscFourWayController {
                     this.assertEscFingerprint(esc, current);
                     this.activeChannel = esc.channel;
                     await this.verifyConfirmedFirmware(esc, firmwareFamily);
+                    if (esc.confirmationStatus !== ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED) {
+                        throw new Error(esc.confirmationReason || "固件布局未验证。");
+                    }
                     confirmed.push(esc);
                 } catch (error) {
                     if (isTransportFailure(error)) throw error;
-                    this.lockConfirmationFailure(esc, error?.message || "固件类型或配置布局验证失败。");
+                    this.lockConfirmationFailure(
+                        esc,
+                        error?.message || "固件类型或配置布局验证失败。",
+                        esc.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED
+                            ? ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED
+                            : ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED,
+                    );
                     failed.push({ esc, error });
                 }
             }
@@ -300,9 +309,10 @@ export class EscFourWayController {
             if (!/^Bluejay(?:\s|\(|$)/i.test(name)) {
                 return this.lockConfirmationFailure(esc, `未检测到 Bluejay 固件标识（返回：${name || "空"}）。`);
             }
-            const header = await this.session.send(FOUR_WAY_COMMANDS.deviceRead, [3], esc.settingsOffset);
+            const header = await this.readMemoryImage(esc.settingsOffset, 3);
             applyEscFirmwareFamily(esc, ESC_FIRMWARE.BLUEJAY, {
-                version: `${header.params[0]}.${header.params[1]}`,
+                ...validateSettingsHeader(header, ESC_FIRMWARE.BLUEJAY),
+                firmwareName: name,
                 layout: `Pseudo-EEPROM 0x${esc.settingsOffset.toString(16).toUpperCase()} + 0x70 · 128 B melody + rests`,
                 reason: "",
             });
@@ -323,11 +333,11 @@ export class EscFourWayController {
             esc.settingsOffset = am32Layout.settingsOffset;
             esc.settingsPageSize = am32Layout.pageSize;
             esc.melodyRelativeOffset = 0x30;
-            const header = await this.session.send(FOUR_WAY_COMMANDS.deviceRead, [5], esc.settingsOffset);
+            const header = await this.readMemoryImage(esc.settingsOffset, 5);
+            const layout = validateSettingsHeader(header, ESC_FIRMWARE.AM32);
             applyEscFirmwareFamily(esc, ESC_FIRMWARE.AM32, {
-                version: `${header.params[3]}.${header.params[4]}`,
-                settingsLength: header.params[1] >= 3 ? 0xc0 : 0xb0,
-                layout: `Flash 0x${esc.settingsOffset.toString(16).toUpperCase()} + 0x30 · ${header.params[1] >= 3 ? 0xc0 : 0xb0} B · page ${am32Layout.pageSize / 1024} KB`,
+                ...layout,
+                layout: `Flash 0x${esc.settingsOffset.toString(16).toUpperCase()} + 0x30 · ${layout.settingsLength} B · page ${am32Layout.pageSize / 1024} KB`,
                 reason: "",
             });
             esc.layoutVerified = true;
@@ -378,12 +388,10 @@ export class EscFourWayController {
         try {
             const melodyBytes = await this.readMemoryImage(esc.settingsOffset + esc.melodyRelativeOffset, capacity);
             let currentWaitBytes = null;
-            let waitMs;
             if (Number.isInteger(esc.waitRelativeOffset)) {
                 currentWaitBytes = await this.readMemoryImage(esc.settingsOffset + esc.waitRelativeOffset, 2);
-                waitMs = currentWaitBytes[0] | (currentWaitBytes[1] << 8);
             }
-            return this.storeCurrentMelody(esc, melodyBytes, currentWaitBytes, waitMs);
+            return this.storeCurrentMelody(esc, melodyBytes, currentWaitBytes);
         } catch (error) {
             if (isTransportFailure(error)) throw error;
             esc.currentMelody = null;
@@ -423,6 +431,7 @@ export class EscFourWayController {
     }
 
     async backupSelectedEsc(esc) {
+        if (esc.writeTouched || esc.restoreTouched) throw new Error("请先恢复受影响通道，不能覆盖原始备份。");
         if (!esc?.canBackup) throw new Error(`ESC ${esc?.channel + 1} does not support backups`);
         if (!esc.settingsOffset || !esc.settingsLength) throw new Error("ESC settings layout is incomplete");
         const image = await this.readMemoryImage(esc.settingsOffset, esc.settingsLength);
@@ -434,7 +443,6 @@ export class EscFourWayController {
         }
         if (esc.waitRelativeOffset !== undefined) {
             esc.originalWaitBytes = esc.originalEeprom.slice(esc.waitRelativeOffset, esc.waitRelativeOffset + 2);
-            esc.waitMs = esc.originalWaitBytes[0] | (esc.originalWaitBytes[1] << 8);
         }
         esc.backedUp = true;
         return esc.originalEeprom;
@@ -443,7 +451,9 @@ export class EscFourWayController {
     async writeEsc(esc, melody) {
         await this.enter();
         try {
-            return await this.writeSelectedEsc(esc, melody);
+            const result = await this.writeSelectedEsc(esc, melody);
+            esc.writeTouched = false;
+            return result;
         } finally {
             await this.exit();
         }
@@ -456,6 +466,8 @@ export class EscFourWayController {
         if (!esc.backedUp) await this.backupSelectedEsc(esc);
 
         const patched = patchSettingsImage(esc.originalEeprom, esc, encoded.bytes, encoded.waitMs);
+        esc.writeTouched = true;
+        esc.verified = false;
         if (esc.erasePage !== undefined) {
             await this.session.send(FOUR_WAY_COMMANDS.devicePageErase, [esc.erasePage]);
         }
@@ -470,16 +482,15 @@ export class EscFourWayController {
             esc,
             encoded.bytes,
             Number.isInteger(esc.waitRelativeOffset) ? encodeWaitMs(encoded.waitMs) : null,
-            Number.isInteger(esc.waitRelativeOffset) ? encoded.waitMs : undefined,
         );
         esc.verified = true;
         return { esc, encoded };
     }
 
-    async selectEscWithInitRecovery(esc) {
+    async selectEscWithInitRecovery(esc, options) {
         for (let recovery = 0; ; recovery += 1) {
             try {
-                return await this.selectEsc(esc);
+                return await this.selectEsc(esc, options);
             } catch (error) {
                 if (!isRetryableInitFailure(error) || recovery >= this.writeInitRecoveryAttempts) throw error;
 
@@ -495,6 +506,7 @@ export class EscFourWayController {
     async writeMelody(escs, melody) {
         const writable = (escs || []).filter((esc) => esc.canWrite);
         const written = [];
+        const rollback = [];
         await this.enter();
         try {
             for (let index = 0; index < writable.length; index += 1) {
@@ -504,12 +516,15 @@ export class EscFourWayController {
                     await this.writeSelectedEsc(esc, typeof melody === "function" ? melody(esc) : melody);
                     esc.status = "verified";
                     written.push(esc);
+                    rollback.push(esc);
                 } catch (error) {
                     esc.status = "failed";
-                    return { ok: false, error, failed: esc, written };
+                    if (esc.writeTouched && !rollback.includes(esc)) rollback.push(esc);
+                    return { ok: false, error, failed: esc, written, rollback };
                 }
             }
-            return { ok: true, written };
+            for (const esc of written) esc.writeTouched = false;
+            return { ok: true, written, rollback };
         } finally {
             await this.exit();
         }
@@ -518,7 +533,7 @@ export class EscFourWayController {
     async recoverEsc(esc) {
         await this.enter();
         try {
-            await this.selectEscWithInitRecovery(esc);
+            await this.selectEscWithInitRecovery(esc, { recovery: true });
             return await this.recoverSelectedEsc(esc);
         } finally {
             await this.exit();
@@ -533,7 +548,7 @@ export class EscFourWayController {
             for (let index = 0; index < targets.length; index += 1) {
                 const esc = targets[index];
                 this.report({ phase: "recover", channel: esc.channel, index, total: targets.length });
-                await this.selectEscWithInitRecovery(esc);
+                await this.selectEscWithInitRecovery(esc, { recovery: true });
                 recovered.push(await this.recoverSelectedEsc(esc));
             }
             return recovered;
@@ -626,6 +641,7 @@ export class EscFourWayController {
         }
         this.applyRestoredSettings(esc, check, esc.currentSettingsChecksum);
         esc.restoreTouched = false;
+        esc.writeTouched = false;
         return esc;
     }
 
@@ -642,12 +658,7 @@ export class EscFourWayController {
             ? esc.currentEeprom.slice(esc.waitRelativeOffset, esc.waitRelativeOffset + 2)
             : null;
         try {
-            this.storeCurrentMelody(
-                esc,
-                melodyBytes,
-                waitBytes,
-                waitBytes ? waitBytes[0] | (waitBytes[1] << 8) : undefined,
-            );
+            this.storeCurrentMelody(esc, melodyBytes, waitBytes);
         } catch (error) {
             esc.currentMelodyBytes = new Uint8Array(melodyBytes);
             esc.currentWaitBytes = waitBytes ? new Uint8Array(waitBytes) : null;
@@ -660,10 +671,9 @@ export class EscFourWayController {
         return esc.currentEeprom;
     }
 
-    storeCurrentMelody(esc, melodyBytes, waitBytes = null, waitMs) {
+    storeCurrentMelody(esc, melodyBytes, waitBytes = null) {
         const currentMelody = decodeFirmwareMelody(melodyBytes, {
             name: `ESC ${esc.channel + 1}`,
-            waitMs,
         });
         esc.currentMelodyBytes = new Uint8Array(melodyBytes);
         esc.currentWaitBytes = waitBytes ? new Uint8Array(waitBytes) : null;
@@ -673,14 +683,31 @@ export class EscFourWayController {
         return currentMelody;
     }
 
-    async selectEsc(esc) {
+    async selectEsc(esc, { recovery = false } = {}) {
         if (!this.session) throw new Error("ESC 4-way session is not active");
         const channel = Number(esc?.channel);
         if (!Number.isInteger(channel) || channel < 0) throw new Error("ESC channel is invalid");
         const response = await this.initFlash(channel);
         const selected = decodeEscInfo(response.params, channel);
-        if (esc.signature !== undefined && selected.signature !== esc.signature) {
-            throw new Error(`ESC ${channel + 1} identity changed; write was cancelled`);
+        try {
+            this.assertEscFingerprint(esc, selected);
+            if ([ESC_FIRMWARE.BLUEJAY, ESC_FIRMWARE.AM32].includes(esc.firmwareFamily)) {
+                // An interrupted erase can destroy the identity stored in the settings page.
+                // Only this operation's touched channels may recover using their original image.
+                const fromBackup = recovery && (esc.writeTouched || esc.restoreTouched);
+                const layout = await this.readSelectedLayout(esc, fromBackup ? esc.originalEeprom : null);
+                for (const key of ["version", "settingsLength", "layoutRevision", "firmwareName"]) {
+                    if (esc[key] !== undefined && layout[key] !== esc[key]) {
+                        throw new Error(
+                            `ESC ${channel + 1} firmware or settings layout changed; scan and back up again`,
+                        );
+                    }
+                }
+            }
+        } catch (error) {
+            this.lockConfirmationFailure(esc, error.message);
+            esc.backedUp = false;
+            throw error;
         }
         if (esc.firmwareFamily === ESC_FIRMWARE.OX32) {
             const bytes = await this.readMemoryImage(OX32_HANDSHAKE_OFFSET, OX32_HANDSHAKE_LENGTH);
@@ -694,6 +721,30 @@ export class EscFourWayController {
         }
         this.activeChannel = channel;
         return response;
+    }
+
+    /**
+     * Recheck the firmware header and mapped layout without granting new permissions.
+     * @param {object} esc
+     * @param {Uint8Array|null} backup Original image of a touched channel, only during recovery.
+     */
+    async readSelectedLayout(esc, backup = null) {
+        const bluejay = esc.firmwareFamily === ESC_FIRMWARE.BLUEJAY;
+        if (!bluejay) {
+            const mapping = getAm32LayoutForEsc(esc);
+            if (!mapping || mapping.settingsOffset !== esc.settingsOffset) throw new Error("AM32 配置地址不匹配。");
+        }
+        const size = bluejay ? 3 : 5;
+        if (backup && backup.length !== esc.settingsLength) throw new Error("原始备份长度不匹配。");
+        const header = backup ? backup.slice(0, size) : await this.readMemoryImage(esc.settingsOffset, size);
+        const layout = validateSettingsHeader(header, esc.firmwareFamily);
+        if (bluejay) {
+            const bytes = backup ? backup.slice(0x60, 0x70) : await this.readMemoryImage(esc.settingsOffset + 0x60, 16);
+            const name = decodeNullTerminated(bytes);
+            if (!/^Bluejay(?:\s|\(|$)/i.test(name)) throw new Error("Bluejay 固件标识已变化，请重新扫描。");
+            layout.firmwareName = name;
+        }
+        return layout;
     }
 
     async readMemoryImage(address, length) {
@@ -760,6 +811,32 @@ export function equalBytes(a, b) {
     const right = b instanceof Uint8Array ? b : new Uint8Array(b || []);
     if (left.length !== right.length) return false;
     return left.every((value, index) => value === right[index]);
+}
+
+/**
+ * Validate the known EEPROM schemas before deriving addresses or write permissions.
+ * @param {Uint8Array} header
+ * @param {string} family
+ * @returns {{version: string, layoutRevision: number, settingsLength: number}}
+ */
+function validateSettingsHeader(header, family) {
+    const bluejay = family === ESC_FIRMWARE.BLUEJAY;
+    const major = header[bluejay ? 0 : 3];
+    const minor = header[bluejay ? 1 : 4];
+    const revision = header[bluejay ? 2 : 1];
+    if (
+        header.length !== (bluejay ? 3 : 5) ||
+        major === 255 ||
+        minor === 255 ||
+        (!major && !minor) ||
+        (bluejay ? revision === 0 || revision === 255 : header[0] !== 1 || ![1, 2, 3].includes(revision))
+    )
+        throw new Error(`${bluejay ? "Bluejay" : "AM32"} 配置头无效或布局版本未支持，读写保持锁定。`);
+    return {
+        version: `${major}.${minor}`,
+        layoutRevision: revision,
+        settingsLength: bluejay ? 0xff : revision === 3 ? 0xc0 : 0xb0,
+    };
 }
 
 export function patchSettingsImage(original, esc, melodyBytes, waitMs = 0) {

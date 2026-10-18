@@ -92,9 +92,10 @@ export function melodyDurationMs(melody) {
     return waitMs + (melodyDurationBeats(melody) * 60000) / bpm;
 }
 
-export function validateMelody(melody, { capacity = ESC_MELODY_CAPACITY, firmware = "am32" } = {}) {
+export function validateMelody(melody, { capacity = ESC_MELODY_CAPACITY } = {}) {
     const normalized = normalizeMelody(melody);
-    const rtttl = melodyToRtttl(normalized, { includeWait: firmware !== "bluejay" });
+    // Bluejay v0.21 plays rests in the melody; 0xF0 is only editor metadata.
+    const rtttl = melodyToRtttl(normalized, { includeWait: true });
     // The upstream encoder expects at least one note token.  An empty draft is
     // still a valid editor state, so report it through normal validation
     // instead of passing an empty sequence to the encoder.
@@ -301,11 +302,13 @@ export function encodeFirmwareMelody(melody, firmware = "bluejay", capacity = ES
     };
 }
 
-export function decodeFirmwareMelody(bytes, { name = "Imported", waitMs } = {}) {
+export function decodeFirmwareMelody(bytes, { name = "Imported" } = {}) {
     const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
     if (view.length < 4 || view.every((byte) => byte === 0 || byte === 0xff)) return null;
+    // Playback rests are authoritative; stale editor metadata must not add or remove a delay.
+    let waitMs = 0;
+    for (let i = 4; i + 1 < view.length && view[i] && view[i + 1] === 0; i += 2) waitMs += view[i];
     const melody = rtttlToMelody(Rtttl.fromBluejayStartupMelody(view, name));
-    if (waitMs === undefined) return melody;
     return normalizeMelody({ ...melody, waitMs });
 }
 

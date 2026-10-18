@@ -1723,6 +1723,53 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
+    it("recovers an erased first channel even when no channel completed writing", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const scanned = createWritableEscs([60]);
+        scanEscs.mockResolvedValue(scanned);
+        backupEscs.mockImplementation(async (targets) => {
+            for (const esc of targets) {
+                esc.originalEeprom = new Uint8Array(esc.settingsLength).fill(0x42);
+                esc.backedUp = true;
+            }
+        });
+        writeMelody.mockImplementation(async ([esc]) => ({
+            ok: false,
+            written: [],
+            failed: esc,
+            rollback: [esc],
+            error: new Error("failed after erase"),
+        }));
+        recoverEscs.mockImplementation(async (targets) => targets);
+        const { app, container } = await mountTab();
+        findButton(container, "扫描电调").click();
+        await vi.waitFor(() => expect(container.querySelectorAll(".melody-write-mark")).toHaveLength(1));
+        findButton(container, "安全写入").click();
+        await nextTick();
+        findButton(container, "备份到本机").click();
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toContain("已持久保存"));
+        for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
+        await nextTick();
+        findButton(container, "开始写入").click();
+        await vi.waitFor(() => expect(container.querySelector(".write-failure")).not.toBeNull());
+        expect(findButton(container, "恢复受影响通道").disabled).toBe(false);
+        expect(findButton(container, "开始写入").disabled).toBe(true);
+        expect(findButton(container, "备份到本机").disabled).toBe(true);
+
+        container.querySelector('.safety-overlay[aria-labelledby="safety-title"] [aria-label="关闭"]').click();
+        await nextTick();
+        findButton(container, "安全写入").click();
+        await nextTick();
+        expect(findButton(container, "恢复受影响通道").disabled).toBe(false);
+        findButton(container, "恢复受影响通道").click();
+        await vi.waitFor(() => expect(recoverEscs).toHaveBeenCalledOnce());
+        expect(recoverEscs.mock.calls[0][0].map((esc) => esc.channel)).toEqual([0]);
+        await vi.waitFor(() => expect(container.querySelector(".write-failure")).toBeNull());
+        expect(findButton(container, "开始写入").disabled).toBe(true);
+        expect(findButton(container, "备份到本机").disabled).toBe(false);
+        app.unmount();
+    });
+
     it("offers rollback for all touched channels after a partial EEPROM restore failure", async () => {
         globalThis.CONFIGURATOR.connectionValid = true;
         const scannedEscs = createWritableEscs([60, 67]);

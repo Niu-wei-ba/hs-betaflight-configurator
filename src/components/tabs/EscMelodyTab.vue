@@ -1020,7 +1020,7 @@
                         <button
                             type="button"
                             class="regular-button compact-button"
-                            :disabled="backingUp || !writableEscs.length"
+                            :disabled="backingUp || writing || !writableEscs.length || !!writeRecoveryTargets.length"
                             @click="backupAll"
                         >
                             <span class="fas fa-download" aria-hidden="true"></span
@@ -1031,8 +1031,15 @@
                         <strong><span class="fas fa-exclamation-triangle" aria-hidden="true"></span> 写入已停止</strong
                         ><span>第 {{ (writeResult.failed?.channel || 0) + 1 }} 路写入失败，后续通道未继续。</span
                         ><small>{{ writeResult.error?.message || "4-way 通讯或读回校验失败。" }}</small
-                        ><button type="button" class="regular-button compact-button" @click="recoverWritten">
-                            <span class="fas fa-undo" aria-hidden="true"></span> 恢复已写入通道
+                        ><button
+                            type="button"
+                            class="regular-button compact-button"
+                            :disabled="writing || !writeRecoveryTargets.length"
+                            @click="recoverWritten"
+                        >
+                            <span class="fas fa-undo" aria-hidden="true"></span> 恢复受影响通道（{{
+                                writeRecoveryTargets.length
+                            }}）
                         </button>
                     </div>
                     <div class="safety-dialog-footer">
@@ -1043,7 +1050,7 @@
                         ><button
                             type="button"
                             class="primary-button"
-                            :disabled="!safetyReady || writing"
+                            :disabled="!safetyReady || writing || !!writeRecoveryTargets.length"
                             @click="performWrite"
                         >
                             <span class="fas fa-bolt" aria-hidden="true"></span
@@ -1909,6 +1916,9 @@ export default defineComponent({
             return "";
         });
         const writeResult = ref(null);
+        const writeRecoveryTargets = computed(() =>
+            writeResult.value?.ok === false ? (writeResult.value.rollback ?? writeResult.value.written ?? []) : [],
+        );
         const controller = ref(null);
         const audioContext = ref(null);
         const audioNodes = [];
@@ -2093,11 +2103,11 @@ export default defineComponent({
         function isEscMelodyEditable(esc) {
             return Boolean(
                 esc?.editorMelody &&
-                    [
-                        ESC_MELODY_READ_STATUS.LOADED,
-                        ESC_MELODY_READ_STATUS.EMPTY,
-                        ESC_MELODY_READ_STATUS.REPLACEMENT,
-                    ].includes(esc.melodyReadStatus),
+                [
+                    ESC_MELODY_READ_STATUS.LOADED,
+                    ESC_MELODY_READ_STATUS.EMPTY,
+                    ESC_MELODY_READ_STATUS.REPLACEMENT,
+                ].includes(esc.melodyReadStatus),
             );
         }
 
@@ -3598,6 +3608,10 @@ export default defineComponent({
         }
 
         function openSafety() {
+            if (writeRecoveryTargets.value.length) {
+                safetyOpen.value = true;
+                return;
+            }
             writeResult.value = null;
             if (!escs.value.length) {
                 showMessage("请先扫描电调后再安全写入。", "error");
@@ -3645,7 +3659,7 @@ export default defineComponent({
         }
 
         async function performWrite() {
-            if (!controller.value) return;
+            if (!controller.value || writeRecoveryTargets.value.length) return;
             syncEditorState();
             const targets = [...pendingWriteEscs.value];
             if (!targets.length || !writeValidation.value.valid) {
@@ -3698,12 +3712,15 @@ export default defineComponent({
         }
 
         async function recoverWritten() {
-            if (!writeResult.value?.written?.length || !controller.value) return;
+            const targets = [...writeRecoveryTargets.value];
+            if (!targets.length || !controller.value) return;
             writing.value = true;
             try {
                 acquireSerialLock();
-                await controller.value.recoverEscs(writeResult.value.written);
-                showMessage("已恢复本次写入前保存的 EEPROM。", "success");
+                const recovered = await controller.value.recoverEscs(targets);
+                refreshEditorsAfterRestore(recovered);
+                invalidateMelodyBackupGate();
+                showMessage(`已恢复并校验 ${targets.length} 路受影响电调的原始 EEPROM。`, "success");
                 writeResult.value = null;
             } catch (error) {
                 showMessage(error?.message || "恢复失败，请保持供电并重试。", "error");
@@ -3838,6 +3855,7 @@ export default defineComponent({
             canPlayAllMelodies,
             locked,
             writeResult,
+            writeRecoveryTargets,
             loadCurrentMelody,
             loadPreset,
             loadDraft,

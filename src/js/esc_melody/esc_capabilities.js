@@ -92,6 +92,8 @@ export function createEscRecord(channel, info = {}) {
         firmwareFamily,
         firmwareLabel: capability.label,
         version: info.version || "--",
+        layoutRevision: info.layoutRevision,
+        firmwareName: info.firmwareName,
         layout: info.layout || capability.layout,
         canRead: info.canRead ?? capability.canRead,
         canBackup: info.canBackup ?? capability.canBackup,
@@ -128,6 +130,7 @@ export function createEscRecord(channel, info = {}) {
         melodyReadStatus: info.melodyReadStatus || ESC_MELODY_READ_STATUS.IDLE,
         melodyReadError: info.melodyReadError || "",
         melodyDirty: Boolean(info.melodyDirty),
+        writeTouched: Boolean(info.writeTouched),
         // Discovery is deliberately not an authorization decision. A scan may
         // suggest a family, but only an explicit user confirmation followed by
         // a layout probe permits EEPROM access.
