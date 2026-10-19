@@ -2,6 +2,7 @@ import { createApp, nextTick } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEscBackupPackage } from "../../src/js/esc_melody/backups.js";
 
+const controllerProgress = vi.hoisted(() => ({ send: null }));
 const contentReady = vi.fn();
 const scanEscs = vi.hoisted(() => vi.fn());
 const confirmFirmware = vi.hoisted(() => vi.fn());
@@ -17,6 +18,9 @@ vi.mock("../../src/js/gui.js", () => ({
 
 vi.mock("../../src/js/esc_melody/esc_four_way_controller.js", () => ({
     EscFourWayController: class {
+        constructor({ onProgress }) {
+            controllerProgress.send = onProgress;
+        }
         scan() {
             return scanEscs();
         }
@@ -268,6 +272,186 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
+    it("persists favorites and scopes recent and multi-voice library results", async () => {
+        const { app, container } = await mountTab();
+        container.querySelector('[aria-label="收藏 Two-Tigers"]').click();
+        await nextTick();
+        const scope = container.querySelector("#melody-library-scope");
+        scope.value = "favorites";
+        scope.dispatchEvent(new Event("change"));
+        await nextTick();
+        expect(container.querySelectorAll(".library-preset-row")).toHaveLength(1);
+        scope.value = "all";
+        scope.dispatchEvent(new Event("change"));
+        await nextTick();
+        const voices = container.querySelector("#melody-library-voices");
+        voices.value = "multi";
+        voices.dispatchEvent(new Event("change"));
+        await nextTick();
+        expect(container.querySelectorAll(".library-preset-row").length).toBeGreaterThan(1);
+        expect(container.querySelector(".library-preset-row").textContent).not.toContain("Two-Tigers");
+        findButton(container, "Bad Apple").click();
+        await nextTick();
+        scope.value = "recent";
+        scope.dispatchEvent(new Event("change"));
+        await nextTick();
+        expect(container.querySelectorAll(".library-preset-row")).toHaveLength(1);
+        expect(container.querySelector(".library-preset-row").textContent).toContain("Bad Apple");
+        app.unmount();
+        const reopened = await mountTab();
+        expect(reopened.container.querySelector('[aria-label="收藏 Two-Tigers"]').getAttribute("aria-pressed")).toBe(
+            "true",
+        );
+        reopened.app.unmount();
+    });
+
+    it("preserves an edited multi-voice arrangement when switching presets", async () => {
+        const { app, container } = await mountTab();
+        findButton(container, "Bad Apple").click();
+        await nextTick();
+        container.querySelectorAll(".preset-track-tab")[1].click();
+        await nextTick();
+        findEditorButton(container, "音符").click();
+        await nextTick();
+        const editedCount = container.querySelectorAll(".esc-melody-note").length;
+        findButton(container, "Two-Tigers").click();
+        await nextTick();
+        expect(container.querySelector(".edit-recovery-banner")).not.toBeNull();
+        findButton(container, "恢复上次编辑").click();
+        await nextTick();
+        expect(container.querySelectorAll(".preset-track-tab")).toHaveLength(4);
+        expect(container.querySelectorAll(".esc-melody-note")).toHaveLength(editedCount);
+        expect(container.querySelector(".preset-track-tab.active").textContent).toContain("声部 2");
+        expect(writeMelody).not.toHaveBeenCalled();
+        app.unmount();
+    });
+
+    it("keeps the edited roll unchanged during independent library audition", async () => {
+        const outputs = [];
+        globalThis.AudioContext = class {
+            currentTime = 0;
+            destination = {};
+            createGain() {
+                const output = {
+                    gain: { value: 1, setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+                    connect: vi.fn(),
+                    disconnect: vi.fn(),
+                };
+                outputs.push(output);
+                return output;
+            }
+            createOscillator() {
+                return { frequency: { value: 0 }, connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
+            }
+        };
+        const { app, container } = await mountTab();
+        findEditorButton(container, "音符").click();
+        await nextTick();
+        const notes = [...container.querySelectorAll(".esc-melody-note")].map((note) =>
+            note.getAttribute("aria-label"),
+        );
+        container.querySelector('[aria-label="试听 Bluejay Default"]').click();
+        await Promise.resolve();
+        await Promise.resolve();
+        await nextTick();
+        expect(container.querySelector('[aria-label="试听 Bluejay Default"]').textContent).toContain("停止");
+        expect(
+            [...container.querySelectorAll(".esc-melody-note")].map((note) => note.getAttribute("aria-label")),
+        ).toEqual(notes);
+        const volume = container.querySelector('[aria-label="试听音量"]');
+        volume.value = "25";
+        volume.dispatchEvent(new Event("input"));
+        await nextTick();
+        expect(outputs[0].gain.value).toBe(0.25);
+        findButton(container, "静音").click();
+        await nextTick();
+        expect(outputs[0].gain.value).toBe(0);
+        expect(scanEscs).not.toHaveBeenCalled();
+        expect(writeMelody).not.toHaveBeenCalled();
+        app.unmount();
+    });
+
+    it("shows verified, failed and unexecuted channels, then preserves partial recovery progress", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(createWritableEscs([60, 60, 60]));
+        backupEscs.mockImplementation(async (targets) => {
+            for (const esc of targets) {
+                esc.originalEeprom = new Uint8Array(esc.settingsLength).fill(1);
+                esc.backedUp = true;
+            }
+        });
+        let continueWrite;
+        const gate = new Promise((resolve) => {
+            continueWrite = resolve;
+        });
+        writeMelody.mockImplementation(async (targets) => {
+            controllerProgress.send({ phase: "write", channel: 0 });
+            await gate;
+            controllerProgress.send({ phase: "verify", channel: 0 });
+            return {
+                ok: false,
+                written: [targets[0]],
+                failed: targets[1],
+                rollback: targets.slice(0, 2),
+                error: new Error("verify failed"),
+            };
+        });
+        recoverEscs.mockImplementation(async (targets) => {
+            controllerProgress.send({ phase: "recovered", channel: targets[0].channel });
+            controllerProgress.send({ phase: "recoverFailed", channel: targets[1].channel, error: "link lost" });
+            throw new Error("link lost");
+        });
+        const { app, container } = await mountTab();
+        findButton(container, "扫描电调").click();
+        await vi.waitFor(() => expect(container.querySelectorAll(".melody-write-mark")).toHaveLength(3));
+        findButton(container, "安全写入").click();
+        await nextTick();
+        findButton(container, "备份到本机").click();
+        await vi.waitFor(() => expect(container.querySelector(".safety-backup").textContent).toContain("已持久保存"));
+        for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
+        await nextTick();
+        findButton(container, "开始写入").click();
+        await nextTick();
+        expect(container.querySelector('.operation-progress [data-state="write"]')).not.toBeNull();
+        const close = container.querySelector('[aria-labelledby="safety-title"] [aria-label="关闭"]');
+        expect(close.disabled).toBe(true);
+        close.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+        expect(container.querySelector('[aria-labelledby="safety-title"]')).not.toBeNull();
+        continueWrite();
+        await vi.waitFor(() => expect(container.querySelector(".write-failure")).not.toBeNull());
+        expect([...container.querySelectorAll(".operation-progress li")].map((row) => row.dataset.state)).toEqual([
+            "written",
+            "failed",
+            "skipped",
+        ]);
+        findButton(container, "恢复受影响通道").click();
+        await vi.waitFor(() => expect(container.querySelector('[data-state="recoverFailed"]')).not.toBeNull());
+        expect([...container.querySelectorAll(".operation-progress li")].map((row) => row.dataset.state)).toEqual([
+            "recovered",
+            "recoverFailed",
+            "skipped",
+        ]);
+        expect(findButton(container, "备份到本机").disabled).toBe(true);
+        expect(findButton(container, "开始写入").disabled).toBe(true);
+        app.unmount();
+    });
+
+    it("preserves BPM-only edits that did not create note history", async () => {
+        const { app, container } = await mountTab();
+        const bpm = container.querySelector('.inline-melody-settings input[type="number"]');
+        bpm.value = "137";
+        bpm.dispatchEvent(new Event("input"));
+        bpm.dispatchEvent(new Event("change"));
+        await nextTick();
+        findButton(container, "Bluejay Default").click();
+        await nextTick();
+        expect(container.querySelector(".edit-recovery-banner")).not.toBeNull();
+        findButton(container, "恢复上次编辑").click();
+        await nextTick();
+        expect(container.querySelector('.inline-melody-settings input[type="number"]').value).toBe("137");
+        app.unmount();
+    });
+
     it("opens the music contribution popup with the QQ group QR code", async () => {
         const { app, container } = await mountTab();
         const contributionButton = [...container.querySelectorAll("button")].find((button) =>
@@ -322,7 +506,7 @@ describe("EscMelodyTab", () => {
         const { app, container } = await mountTab();
 
         findButton(container, "扫描电调").click();
-        await vi.waitFor(() => expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true));
+        await vi.waitFor(() => expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync"));
 
         const search = container.querySelector('[aria-label="搜索旋律库"]');
         search.value = "Bad Apple";
@@ -335,8 +519,8 @@ describe("EscMelodyTab", () => {
         results[0].click();
         await nextTick();
 
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false);
-        expect(container.querySelector('[aria-label="页面同步旋律"]').disabled).toBe(true);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("poly");
+        expect(container.querySelector('[aria-label="编排方式"]').disabled).toBe(false);
         expect(container.querySelectorAll(".esc-melody-note")).toHaveLength(34);
 
         const tabs = container.querySelectorAll(".preset-track-tab");
@@ -390,7 +574,7 @@ describe("EscMelodyTab", () => {
         const { app, container } = await mountTab();
 
         findButton(container, "扫描电调").click();
-        await vi.waitFor(() => expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false));
+        await vi.waitFor(() => expect(container.querySelector('[aria-label="编排方式"]').value).toBe("independent"));
 
         const search = container.querySelector('[aria-label="搜索旋律库"]');
         search.value = "Bad Apple";
@@ -398,7 +582,7 @@ describe("EscMelodyTab", () => {
         await nextTick();
         container.querySelector(".melody-preset-list .melody-list-item").click();
         await nextTick();
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("poly");
 
         search.value = "Two-Tigers";
         search.dispatchEvent(new Event("input"));
@@ -406,7 +590,7 @@ describe("EscMelodyTab", () => {
         container.querySelector(".melody-preset-list .melody-list-item").click();
         await nextTick();
 
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync");
         expect(container.querySelectorAll(".preset-track-tab")).toHaveLength(0);
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(0);
         expect(container.querySelectorAll(".melody-write-mark")).toHaveLength(4);
@@ -984,7 +1168,7 @@ describe("EscMelodyTab", () => {
         });
         expect(container.querySelector(".esc-scan-models").textContent).toContain("当前型号");
         expect(container.querySelector(".esc-scan-models").textContent).toContain("STM32F051 · AM32 × 2");
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync");
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(0);
         expect(container.querySelector(".current-source-badge")).toBeNull();
         expect(container.querySelector(".editor-title strong").textContent).toBe("ESC 1");
@@ -1014,7 +1198,7 @@ describe("EscMelodyTab", () => {
         await nextTick();
 
         expect(container.querySelectorAll(".rtttl-code-input")).toHaveLength(1);
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync");
         const dialogToggle = container.querySelector('[aria-label="代码编辑器同步旋律"]');
         expect(dialogToggle.checked).toBe(true);
 
@@ -1034,7 +1218,7 @@ describe("EscMelodyTab", () => {
         reopenedDialogToggle.click();
         await nextTick();
         expect(container.querySelectorAll(".rtttl-code-card .rtttl-code-input")).toHaveLength(2);
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("independent");
 
         let inputs = container.querySelectorAll(".rtttl-code-card .rtttl-code-input");
         expect(inputs[0].value).toBe(inputs[1].value);
@@ -1130,7 +1314,7 @@ describe("EscMelodyTab", () => {
         findButton(container, "扫描电调").click();
         await vi.waitFor(() => expect(container.querySelector(".melody-conflict-notice")).not.toBeNull());
 
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("independent");
         expect(container.querySelector(".editor-channel-tab.active").textContent).toContain("ESC 1");
         expect(container.querySelector(".esc-melody-note").textContent).toContain("C4");
 
@@ -1155,7 +1339,7 @@ describe("EscMelodyTab", () => {
         expect(container.querySelector(".sync-confirm-dialog")).not.toBeNull();
         findButton(container, "确认应用").click();
         await nextTick();
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync");
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(0);
         expect(container.querySelector(".current-source-badge")).toBeNull();
         expect(container.querySelectorAll(".melody-write-mark")).toHaveLength(2);
@@ -1183,10 +1367,10 @@ describe("EscMelodyTab", () => {
 
         findButton(container, "扫描电调").click();
         await vi.waitFor(() => expect(container.querySelectorAll(".melody-read-mark")).toHaveLength(2));
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync");
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(0);
 
-        container.querySelector('[aria-label="页面同步旋律"]').click();
+        toggleArrangement(container);
         await nextTick();
 
         const tabs = container.querySelectorAll(".editor-channel-tab");
@@ -1277,7 +1461,7 @@ describe("EscMelodyTab", () => {
 
         findButton(container, "扫描电调").click();
         await vi.waitFor(() => expect(container.querySelectorAll(".melody-write-mark")).toHaveLength(2));
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync");
         expect(findButton(container, "安全写入").disabled).toBe(false);
         expect(container.querySelector(".actionbar-status").textContent).toContain("2 路将分别写入");
 
@@ -1436,9 +1620,9 @@ describe("EscMelodyTab", () => {
         findButton(container, "Two-Tigers").click();
         await nextTick();
         expect(container.querySelector(".current-melody-item").classList.contains("active")).toBe(false);
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(true);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync");
 
-        container.querySelector('[aria-label="页面同步旋律"]').click();
+        toggleArrangement(container);
         await nextTick();
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(2);
 
@@ -1462,9 +1646,9 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() => expect(container.querySelectorAll(".melody-read-mark.read-loaded")).toHaveLength(2));
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(0);
         expect(container.querySelector(".current-source-badge")).toBeNull();
-        container.querySelector('[aria-label="页面同步旋律"]').click();
+        toggleArrangement(container);
         await nextTick();
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("independent");
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(2);
         expect(container.querySelector(".current-source-badge").textContent).toContain("ESC 1");
         container.querySelector('[title="RTTTL 代码"]').click();
@@ -1521,7 +1705,7 @@ describe("EscMelodyTab", () => {
 
         findButton(container, "扫描电调").click();
         await vi.waitFor(() => expect(container.querySelectorAll(".melody-read-mark.read-loaded")).toHaveLength(2));
-        container.querySelector('[aria-label="页面同步旋律"]').click();
+        toggleArrangement(container);
         await nextTick();
         container.querySelector('[title="RTTTL 代码"]').click();
         await nextTick();
@@ -1759,7 +1943,7 @@ describe("EscMelodyTab", () => {
         expect(scannedEscs.every((esc) => esc.backedUp === false)).toBe(true);
         expect(scannedEscs.every((esc) => esc.melodyDirty === false)).toBe(true);
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(2);
-        expect(container.querySelector('[aria-label="页面同步旋律"]').checked).toBe(false);
+        expect(container.querySelector('[aria-label="编排方式"]').value).toBe("independent");
         expect(localStorage.getItem("betaflight.esc-melody.eeprom-backups.v1")).toBeTruthy();
 
         app.unmount();
@@ -2013,4 +2197,10 @@ async function selectRestoreFile(container, contents, filename = "betaflight-esc
             expect(container.querySelector(".restore-dialog")).toBeTruthy();
         }
     });
+}
+
+function toggleArrangement(container) {
+    const select = container.querySelector('[aria-label="编排方式"]');
+    select.value = select.value === "sync" ? "independent" : "sync";
+    select.dispatchEvent(new Event("change"));
 }

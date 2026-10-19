@@ -12,6 +12,10 @@
 <script setup lang="ts">
 defineProps({ rows: { type: Array, required: true } });
 const labels = {
+    restore: "从备份恢复中",
+    restoreVerify: "恢复读回校验中",
+    restored: "已恢复并校验",
+    restoreFailed: "恢复失败",
     pending: "待处理",
     write: "写入中",
     verify: "读回校验中",

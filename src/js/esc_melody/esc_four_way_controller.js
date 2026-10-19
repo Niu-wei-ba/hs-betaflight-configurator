@@ -581,9 +581,11 @@ export class EscFourWayController {
                     await this.selectEscWithInitRecovery(esc);
                     await this.restoreBackupSelectedEsc(esc, target.backupEntry);
                     restored.push(esc);
+                    this.report({ phase: "restored", channel: esc.channel });
                     rollback.push(esc);
                 } catch (error) {
                     if (esc) esc.status = "failed";
+                    this.report({ phase: "restoreFailed", channel: esc?.channel, error: error.message });
                     if (esc?.restoreTouched && !rollback.includes(esc)) rollback.push(esc);
                     return { ok: false, error, failed: esc, restored, rollback };
                 }
@@ -609,6 +611,7 @@ export class EscFourWayController {
             await this.session.send(FOUR_WAY_COMMANDS.devicePageErase, [esc.erasePage]);
         }
         await this.writeMemoryImage(esc.settingsOffset, eeprom);
+        this.report({ phase: "restoreVerify", channel: esc.channel });
         const readBack = await this.readMemoryImage(esc.settingsOffset, eeprom.length);
         if (!equalBytes(eeprom, readBack)) {
             throw new Error(`ESC ${esc.channel + 1} EEPROM recovery verification failed`);

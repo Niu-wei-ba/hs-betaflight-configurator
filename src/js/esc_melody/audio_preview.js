@@ -17,6 +17,7 @@ export function previewGainForChannelCount(channelCount) {
     return ESC_PREVIEW_GAIN / Math.sqrt(Math.max(1, Number(channelCount) || 1));
 }
 
+/** Schedule a tone through the supplied preview output (or the default audio destination). */
 export function scheduleEscPreviewTone(
     context,
     { midi, start, duration, gain = ESC_PREVIEW_GAIN, destination = context.destination },

@@ -85,3 +85,14 @@ source/test files passed ESLint, and the production build succeeded.
 BLHeli_32/unknown or unsupported layouts do not gain melody-write support.
 No firmware migration, device flashing or production deployment is performed
 by creating this branch.
+
+## Three-round UI/UX optimization
+
+See [WORKBENCH_UX.md](WORKBENCH_UX.md) for readiness/voice allocation, timeline
+and keyboard editing, operation progress, library browsing and offline workflows.
+Final verification on 2026-10-19 with Node 24: 164 tests passed, all changed
+JavaScript/Vue and the new TypeScript module/test paths passed ESLint, and the
+production build succeeded. Existing unrelated build warnings remain.
+Actual application browser checks covered 1366×768, 1280×720, 390×844, light/dark
+themes, offline entry, library favorites/filtering, polyphonic tabs and Escape
+closure. Hardware scan/write/recovery remains pending real-device validation.
