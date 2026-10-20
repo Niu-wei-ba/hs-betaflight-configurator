@@ -2,6 +2,7 @@ import { createApp, defineComponent, h, nextTick } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import FC from "../../src/js/fc.js";
+import FailsafeTab from "../../src/components/tabs/FailsafeTab.vue";
 
 vi.mock("../../src/js/msp", () => ({ default: { promise: vi.fn(async () => {}) } }));
 vi.mock("../../src/js/msp/MSPHelper", () => ({ mspHelper: {} }));
@@ -45,7 +46,6 @@ describe("Failsafe form firmware compatibility", () => {
 
     async function mountTab(version) {
         FC.CONFIG.apiVersion = version;
-        const { default: FailsafeTab } = await import("../../src/components/tabs/FailsafeTab.vue");
         container = document.createElement("div");
         document.body.appendChild(container);
         app = createApp(FailsafeTab);
