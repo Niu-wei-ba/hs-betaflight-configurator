@@ -125,20 +125,6 @@
                             />
                             {{ scanning ? "扫描中" : connected ? "扫描电调" : "连接后扫描" }}
                         </button>
-                        <button
-                            v-if="pendingFirmwareConfirmationCount"
-                            type="button"
-                            class="regular-button esc-scan-action esc-confirm-action"
-                            :disabled="locked"
-                            @click="firmwareConfirmOpen = true"
-                        >
-                            <UIcon
-                                name="i-lucide-shield-check"
-                                class="fas fa-shield-alt esc-ui-icon"
-                                aria-hidden="true"
-                            />
-                            确认电调类型（{{ pendingFirmwareConfirmationCount }}）
-                        </button>
                     </section>
 
                     <section class="melody-panel">
@@ -852,10 +838,14 @@
                             }}</span>
                         </div>
                         <div class="compat-summary">
-                            <strong>{{ validation.encodedLength }}<small>/128 B</small></strong
-                            ><span>RTTTL 编码容量</span>
+                            <strong
+                                >{{ validation.encodedLength }}<small>/{{ targetCapacity }} B</small></strong
+                            ><span>{{ targetFirmware === "blheli32" ? "BLHeli_32 音符容量" : "RTTTL 编码容量" }}</span>
                         </div>
                         <ul class="validation-list">
+                            <li v-for="warning in validation.warnings || []" :key="warning" class="validation-warning">
+                                {{ warning }}
+                            </li>
                             <li v-for="error in validation.errors" :key="error" class="validation-error">
                                 <UIcon
                                     name="i-lucide-circle-x"
@@ -885,9 +875,9 @@
                                 <span><i class="firmware-dot ox32"></i>OX32</span
                                 ><span class="matrix-cap">读写 · 128 B · 配置页 CRC</span>
                             </div>
-                            <div class="matrix-row matrix-row-disabled">
+                            <div class="matrix-row">
                                 <span><i class="firmware-dot blheli"></i>BLHeli_32</span
-                                ><span class="matrix-cap">仅识别 / 试听</span>
+                                ><span class="matrix-cap">读写 · 48 B · FPV32 / AT32F421 / 32.10</span>
                             </div>
                         </details>
                     </section>
@@ -937,9 +927,9 @@
                             <div class="esc-record-meta">
                                 <span>{{ esc.layout }}</span
                                 ><span
-                                    class="firmware-confirm-mark"
+                                    class="firmware-detection-mark"
                                     :class="`read-${esc.confirmationStatus || 'pending'}`"
-                                    >{{ firmwareConfirmationLabel(esc) }}</span
+                                    >{{ firmwareDetectionLabel(esc) }}</span
                                 >
                                 ><span class="melody-read-mark" :class="`read-${esc.melodyReadStatus}`">{{
                                     melodyReadLabel(esc)
@@ -1204,103 +1194,6 @@
             </div>
 
             <div
-                v-if="firmwareConfirmOpen"
-                class="safety-overlay firmware-confirm-overlay"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="firmware-confirm-title"
-            >
-                <section class="safety-dialog firmware-confirm-dialog">
-                    <div class="safety-dialog-header">
-                        <div>
-                            <UIcon
-                                name="i-lucide-fingerprint"
-                                class="fas fa-fingerprint esc-ui-icon"
-                                aria-hidden="true"
-                            />
-                            <div>
-                                <h2 id="firmware-confirm-title">确认电调类型</h2>
-                                <p>
-                                    扫描仅提供候选。确认后会逐路复核身份与配置布局，验证前不会读取、备份或写入 EEPROM。
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            class="icon-button"
-                            aria-label="关闭"
-                            :disabled="firmwareConfirming"
-                            @click="firmwareConfirmOpen = false"
-                        >
-                            ×
-                        </button>
-                    </div>
-                    <div class="firmware-confirm-list">
-                        <article
-                            v-for="group in firmwareConfirmationGroups"
-                            :key="group.key"
-                            class="firmware-confirm-group"
-                        >
-                            <div class="firmware-confirm-group-title">
-                                <strong>{{ group.channels }}</strong>
-                                <small
-                                    >{{ group.model }} · 签名 {{ group.signature }} · 引脚 {{ group.inputPin }} · 接口
-                                    {{ group.interfaceMode }}</small
-                                >
-                            </div>
-                            <div class="firmware-confirm-controls">
-                                <label>
-                                    <span>固件类型</span>
-                                    <select v-model="firmwareSelections[group.key]" :disabled="firmwareConfirming">
-                                        <option
-                                            v-for="option in firmwareOptionsForGroup(group)"
-                                            :key="option.value"
-                                            :value="option.value"
-                                        >
-                                            {{ option.label }}
-                                        </option>
-                                    </select>
-                                </label>
-                                <label class="firmware-confirm-ack">
-                                    <input
-                                        v-model="firmwareAcknowledged[group.key]"
-                                        type="checkbox"
-                                        :disabled="firmwareConfirming"
-                                    />
-                                    <span>我确认以上 {{ group.escs.length }} 路为所选固件</span>
-                                </label>
-                            </div>
-                            <p>自动候选：{{ group.detectedLabel }}。{{ group.reason }}</p>
-                        </article>
-                    </div>
-                    <div class="safety-dialog-footer">
-                        <button
-                            type="button"
-                            class="regular-button"
-                            :disabled="firmwareConfirming"
-                            @click="firmwareConfirmOpen = false"
-                        >
-                            稍后确认
-                        </button>
-                        <button
-                            type="button"
-                            class="primary-button"
-                            :disabled="firmwareConfirming || !confirmedFirmwareGroupCount"
-                            @click="confirmFirmwareTypes"
-                        >
-                            <UIcon
-                                :name="firmwareConfirming ? 'i-lucide-loader-circle' : 'i-lucide-check'"
-                                class="fas esc-ui-icon"
-                                :class="firmwareConfirming ? 'fa-spinner spinning' : 'fa-check'"
-                                aria-hidden="true"
-                            />
-                            {{ firmwareConfirming ? "正在复核" : `确认并验证（${confirmedFirmwareGroupCount} 组）` }}
-                        </button>
-                    </div>
-                </section>
-            </div>
-
-            <div
                 v-if="safetyOpen"
                 class="safety-overlay"
                 role="dialog"
@@ -1311,16 +1204,22 @@
                     <div class="safety-dialog-header">
                         <div>
                             <UIcon
-                                name="i-lucide-shield-user"
-                                class="fas fa-user-shield esc-ui-icon"
+                                :name="writeResult?.ok ? 'i-lucide-circle-check' : 'i-lucide-shield-user'"
+                                class="fas esc-ui-icon"
+                                :class="writeResult?.ok ? 'fa-check-circle' : 'fa-user-shield'"
                                 aria-hidden="true"
                             />
                             <div>
-                                <h2 id="safety-title">写入前安全检查</h2>
+                                <h2 id="safety-title">{{ writeResult?.ok ? "写入完成" : "写入前安全检查" }}</h2>
                                 <p class="safety-write-melody">
                                     <span>本次写入音乐</span><strong>{{ safetyWriteMelodySummary }}</strong>
                                 </p>
-                                <p>将逐路写入 {{ pendingWriteEscs.length }} 路电调，四项全部确认后才能继续。</p>
+                                <p v-if="writeResult?.ok" role="status">
+                                    已完成 {{ writeResult.written.length }} 路电调写入，全部目标均已读回校验。
+                                </p>
+                                <p v-else>
+                                    将逐路写入 {{ pendingWriteEscs.length }} 路电调，完成以下安全检查后才能继续。
+                                </p>
                             </div>
                         </div>
                         <button
@@ -1334,50 +1233,59 @@
                         </button>
                     </div>
                     <EscChannelPlan
-                        :rows="assignmentRows"
+                        :rows="writeResult?.ok ? completedWriteRows : assignmentRows"
                         :mode-label="arrangementLabel"
                         :voice-count="presetTrackTabs.length"
-                        :warnings="assignmentWarnings"
+                        :warnings="writeResult?.ok ? [] : assignmentWarnings"
                     />
-                    <label v-if="assignmentWarnings.length" class="safety-check"
-                        ><input
-                            v-model="assignmentAccepted"
-                            aria-label="确认声部分配"
-                            type="checkbox"
-                            :disabled="writing || backingUp"
-                        /><span>我已核对缺失或重复声部及未参与通道，本次按以上分配写入。</span></label
-                    >
-                    <EscOperationProgress :rows="writeProgressRows" />
-                    <p v-if="writeResult?.ok" class="validation-ok" role="status">
-                        本次写入已完成，全部目标均已读回校验。
-                    </p>
-                    <label v-for="check in safetyCheckItems" :key="check.id" class="safety-check"
-                        ><input
-                            v-model="safetyChecks[check.id]"
-                            type="checkbox"
-                            :disabled="check.id === 'backupReady' || writing || backingUp"
-                        /><span class="check-box"
-                            ><UIcon name="i-lucide-check" class="fas fa-check esc-ui-icon" aria-hidden="true" /></span
-                        ><span
-                            ><strong>{{ check.title }}</strong
-                            ><small>{{ check.description }}</small></span
-                        ></label
-                    >
-                    <div class="safety-backup">
-                        <div>
-                            <strong>强制本地 EEPROM 备份</strong><small>{{ backupSummary }}</small>
-                        </div>
-                        <button
-                            type="button"
-                            class="regular-button compact-button"
-                            :disabled="backingUp || writing || !writableEscs.length || !!writeRecoveryTargets.length"
-                            @click="backupAll"
+                    <template v-if="!writeResult?.ok">
+                        <p v-for="warning in writeValidation.warnings" :key="warning" class="assignment-warning">
+                            {{ warning }}
+                        </p>
+                        <label v-if="assignmentWarnings.length" class="safety-check"
+                            ><input
+                                v-model="assignmentAccepted"
+                                aria-label="确认声部分配"
+                                type="checkbox"
+                                :disabled="writing || backingUp"
+                            /><span>我已核对缺失或重复声部及未参与通道，本次按以上分配写入。</span></label
                         >
-                            <UIcon name="i-lucide-download" class="fas fa-download esc-ui-icon" aria-hidden="true" />{{
-                                backingUp ? "读取并下载中" : "备份到本机"
-                            }}
-                        </button>
-                    </div>
+                        <EscOperationProgress :rows="writeProgressRows" />
+                        <label v-for="check in safetyCheckItems" :key="check.id" class="safety-check"
+                            ><input
+                                v-model="safetyChecks[check.id]"
+                                type="checkbox"
+                                :disabled="writing || backingUp"
+                            /><span class="check-box"
+                                ><UIcon
+                                    name="i-lucide-check"
+                                    class="fas fa-check esc-ui-icon"
+                                    aria-hidden="true" /></span
+                            ><span
+                                ><strong>{{ check.title }}</strong
+                                ><small>{{ check.description }}</small></span
+                            ></label
+                        >
+                        <div class="safety-backup">
+                            <div>
+                                <strong>本地 EEPROM 备份（可选）</strong><small>{{ backupSummary }}</small>
+                            </div>
+                            <button
+                                type="button"
+                                class="regular-button compact-button"
+                                :disabled="
+                                    backingUp || writing || !writableEscs.length || !!writeRecoveryTargets.length
+                                "
+                                @click="backupAll"
+                            >
+                                <UIcon
+                                    name="i-lucide-download"
+                                    class="fas fa-download esc-ui-icon"
+                                    aria-hidden="true"
+                                />{{ backingUp ? "读取并下载中" : "备份到本机" }}
+                            </button>
+                        </div>
+                    </template>
                     <div v-if="writeResult && !writeResult.ok" class="write-failure">
                         <strong
                             ><UIcon
@@ -1399,26 +1307,36 @@
                         </button>
                     </div>
                     <div class="safety-dialog-footer">
-                        <span class="safety-hint"
-                            ><UIcon name="i-lucide-info" class="fas fa-info-circle esc-ui-icon" aria-hidden="true" />
-                            试听只使用 Web Audio，不会向电机发送 DShot 命令。</span
-                        ><button
-                            type="button"
-                            class="regular-button"
-                            @click="closeSafety"
-                            :disabled="writing || backingUp"
-                        >
-                            取消</button
-                        ><button
-                            type="button"
-                            class="primary-button"
-                            :disabled="!safetyReady || writing || !!writeRecoveryTargets.length"
-                            @click="performWrite"
-                        >
-                            <UIcon name="i-lucide-zap" class="fas fa-bolt esc-ui-icon" aria-hidden="true" />{{
-                                writing ? "串行操作中" : "开始写入"
-                            }}
+                        <button v-if="writeResult?.ok" type="button" class="primary-button" @click="closeSafety">
+                            <UIcon name="i-lucide-check" class="fas fa-check esc-ui-icon" aria-hidden="true" />
+                            完成
                         </button>
+                        <template v-else>
+                            <span class="safety-hint"
+                                ><UIcon
+                                    name="i-lucide-info"
+                                    class="fas fa-info-circle esc-ui-icon"
+                                    aria-hidden="true"
+                                />
+                                试听只使用 Web Audio，不会向电机发送 DShot 命令。</span
+                            ><button
+                                type="button"
+                                class="regular-button"
+                                @click="closeSafety"
+                                :disabled="writing || backingUp"
+                            >
+                                取消</button
+                            ><button
+                                type="button"
+                                class="primary-button"
+                                :disabled="!safetyReady || writing || !!writeRecoveryTargets.length"
+                                @click="performWrite"
+                            >
+                                <UIcon name="i-lucide-zap" class="fas fa-bolt esc-ui-icon" aria-hidden="true" />{{
+                                    writing ? "串行操作中" : "开始写入"
+                                }}
+                            </button>
+                        </template>
                     </div>
                 </section>
             </div>
@@ -1824,7 +1742,7 @@
                             <span
                                 >{{ codePreview.pitchedNoteCount }} 音符 · {{ codePreview.restCount }} 休止 ·
                                 {{ formatDuration(codePreview.durationMs) }}</span
-                            ><strong>{{ codePreview.encodedLength }}/128 B</strong
+                            ><strong>{{ codePreview.encodedLength }}/{{ targetCapacity }} B</strong
                             ><span :class="codePreview.valid ? 'code-valid' : 'code-adjust'">{{
                                 codePreview.valid ? "编码通过" : "编码需调整"
                             }}</span>
@@ -2037,14 +1955,6 @@ import {
 } from "../../js/esc_melody/library_state.ts";
 
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const PITCH_OPTIONS = Array.from(
-    { length: ESC_MELODY_MAX_MIDI - ESC_MELODY_MIN_MIDI + 1 },
-    (_, index) => ESC_MELODY_MIN_MIDI + index,
-);
-const NOTE_ROWS = Array.from(
-    { length: ESC_MELODY_MAX_MIDI - ESC_MELODY_MIN_MIDI + 1 },
-    (_, index) => ESC_MELODY_MAX_MIDI - index,
-);
 const PIANO_ROLL_ROW_HEIGHT = 16;
 
 export default defineComponent({
@@ -2091,10 +2001,6 @@ export default defineComponent({
         const activePresetTrackIndex = ref(0);
         const melodyConflict = ref(false);
         const syncConfirmOpen = ref(false);
-        const firmwareConfirmOpen = ref(false);
-        const firmwareConfirming = ref(false);
-        const firmwareSelections = reactive({});
-        const firmwareAcknowledged = reactive({});
         const connected = computed(() =>
             Boolean(model?.CONFIGURATOR?.connectionValid ?? globalThis.CONFIGURATOR?.connectionValid),
         );
@@ -2110,9 +2016,13 @@ export default defineComponent({
             const writableFamilies = escs.value.filter((esc) => esc.canWrite).map((esc) => esc.firmwareFamily);
             if (writableFamilies.length && writableFamilies.every((family) => family === "bluejay")) return "bluejay";
             if (writableFamilies.length && writableFamilies.every((family) => family === "ox32")) return "ox32";
+            if (writableFamilies.length && writableFamilies.every((family) => family === "blheli32")) return "blheli32";
             return "am32";
         });
-        const validation = computed(() => validateMelody(melody.value, { firmware: targetFirmware.value }));
+        const targetCapacity = computed(() => (targetFirmware.value === "blheli32" ? 48 : 128));
+        const validation = computed(() =>
+            validateMelody(melody.value, { firmware: targetFirmware.value, capacity: targetCapacity.value }),
+        );
         const selectedNote = computed(
             () => melody.value.notes.find((note) => note.id === selectedNoteId.value) || null,
         );
@@ -2137,46 +2047,8 @@ export default defineComponent({
                 previewOutput.value.gain.value = previewMuted.value ? 0 : previewVolume.value / 100;
         });
         const writableEscs = computed(() => escs.value.filter((esc) => esc.canWrite));
-        const pendingFirmwareConfirmationEscs = computed(() =>
-            escs.value.filter(
-                (esc) =>
-                    esc?.status !== "unavailable" &&
-                    [ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING, ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED].includes(
-                        esc.confirmationStatus,
-                    ),
-            ),
-        );
-        const pendingFirmwareConfirmationCount = computed(() => pendingFirmwareConfirmationEscs.value.length);
-        const firmwareConfirmationGroups = computed(() => {
-            const groups = new Map();
-            for (const esc of pendingFirmwareConfirmationEscs.value) {
-                const key = [
-                    esc.signature ?? "--",
-                    esc.inputPin ?? "--",
-                    esc.interfaceMode ?? "--",
-                    esc.detectedFirmwareFamily || esc.firmwareFamily || ESC_FIRMWARE.UNKNOWN,
-                ].join(":");
-                const group = groups.get(key) || {
-                    key,
-                    escs: [],
-                    model: esc.model || "未识别 ESC",
-                    signature: Number.isInteger(esc.signature) ? `0x${esc.signature.toString(16).toUpperCase()}` : "--",
-                    inputPin: esc.inputPin ?? "--",
-                    interfaceMode: esc.interfaceMode ?? "--",
-                    detectedFamily: esc.detectedFirmwareFamily || esc.firmwareFamily || ESC_FIRMWARE.UNKNOWN,
-                    detectedLabel: esc.detectedFirmwareLabel || esc.firmwareLabel || "Unknown",
-                    reason: esc.confirmationReason || "请根据 ESC 固件与型号确认类型。",
-                };
-                group.escs.push(esc);
-                groups.set(key, group);
-            }
-            return [...groups.values()].map((group) => ({
-                ...group,
-                channels: group.escs.map((esc) => `ESC ${esc.channel + 1}`).join("、"),
-            }));
-        });
-        const confirmedFirmwareGroupCount = computed(
-            () => firmwareConfirmationGroups.value.filter((group) => firmwareAcknowledged[group.key]).length,
+        const failedFirmwareDetectionCount = computed(
+            () => escs.value.filter((esc) => esc.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED).length,
         );
         const selectedEsc = computed(() => escs.value.find((esc) => esc.id === selectedEscId.value) || null);
         const displayedEscs = computed(() =>
@@ -2245,7 +2117,8 @@ export default defineComponent({
         );
         const pendingWriteEscIds = computed(() => new Set(pendingWriteEscs.value.map((esc) => esc.id)));
         const safetyWriteMelodySummary = computed(() => {
-            const entries = pendingWriteEscs.value.map((esc) => ({
+            const targets = writeResult.value?.ok ? writeResult.value.written : pendingWriteEscs.value;
+            const entries = targets.map((esc) => ({
                 channel: esc.channel,
                 name: String(esc.editorMelody?.name || "未命名旋律"),
             }));
@@ -2267,14 +2140,16 @@ export default defineComponent({
         });
         const writeValidation = computed(() => {
             const errors = [];
+            const warnings = [];
             for (const esc of pendingWriteEscs.value) {
                 const result = validateMelody(esc.editorMelody, {
                     firmware: esc.firmwareFamily,
                     capacity: esc.capacity || 128,
                 });
                 errors.push(...result.errors.map((error) => `第 ${esc.channel + 1} 路：${error}`));
+                warnings.push(...(result.warnings || []).map((warning) => `第 ${esc.channel + 1} 路：${warning}`));
             }
-            return { valid: pendingWriteEscs.value.length > 0 && errors.length === 0, errors };
+            return { valid: pendingWriteEscs.value.length > 0 && errors.length === 0, errors, warnings };
         });
         const activeBackup = ref(null);
         const lastBackupFilename = ref("");
@@ -2283,7 +2158,6 @@ export default defineComponent({
             return (
                 connected.value &&
                 Object.values(safetyChecks).every(Boolean) &&
-                backupStatus.value.valid &&
                 writeValidation.value.valid &&
                 (!assignmentWarnings.value.length || assignmentAccepted.value) &&
                 !writeRecoveryTargets.value.length
@@ -2294,7 +2168,7 @@ export default defineComponent({
             if (backupStatus.value.valid) {
                 return `${writableEscs.value.length}/${writableEscs.value.length} 路已持久保存并下载 · ${lastBackupFilename.value}`;
             }
-            return "写入前必须读取全部可写电调，并下载 JSON 备份文件";
+            return "未备份也可写入；建议先备份全部可写电调，写入失败时可据此恢复";
         });
 
         const keys = NOTE_NAMES;
@@ -2302,12 +2176,22 @@ export default defineComponent({
         const rtttlBpmMin = RTTTL_BPM_MIN;
         const rtttlBpmMax = RTTTL_BPM_MAX;
         const durations = [0.0625, 0.125, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
-        const pitchOptions = PITCH_OPTIONS;
-        const noteRows = NOTE_ROWS;
-        const pianoRollStyle = {
-            "--note-rows": noteRows.length,
-            "--piano-roll-height": `${noteRows.length * PIANO_ROLL_ROW_HEIGHT}px`,
-        };
+        const pianoMaxMidi = computed(() =>
+            targetFirmware.value === "blheli32" || melody.value.notes.some((note) => note.midi > 98)
+                ? ESC_MELODY_MAX_MIDI
+                : 98,
+        );
+        const pitchOptions = computed(() =>
+            Array.from(
+                { length: pianoMaxMidi.value - ESC_MELODY_MIN_MIDI + 1 },
+                (_, index) => ESC_MELODY_MIN_MIDI + index,
+            ),
+        );
+        const noteRows = computed(() => [...pitchOptions.value].reverse());
+        const pianoRollStyle = computed(() => ({
+            "--note-rows": noteRows.value.length,
+            "--piano-roll-height": `${noteRows.value.length * PIANO_ROLL_ROW_HEIGHT}px`,
+        }));
         const presets = PRESET_MELODIES.map((preset) => ({ ...preset, notes: cloneMelody(preset).notes }));
         const presetQuery = ref("");
         const libraryState = loadLibraryState(presets);
@@ -2437,7 +2321,7 @@ export default defineComponent({
         const codeDialogOpen = ref(false);
         const rtttlCode = ref("");
         const multiCodeEntries = ref([]);
-        const safetyChecks = reactive({ unlocked: false, propsRemoved: false, powerStable: false, backupReady: false });
+        const safetyChecks = reactive({ unlocked: false, propsRemoved: false, powerStable: false });
         const restoreFileInput = ref(null);
         const restoreOpen = ref(false);
         const restoreFileName = ref("");
@@ -2475,8 +2359,8 @@ export default defineComponent({
             if (restoring.value || restoreBackingUp.value) return "正在恢复 EEPROM";
             if (GUI.connect_lock) return "串口正被其他操作占用";
             if (!escs.value.length) return "请先扫描电调";
-            if (!writableEscs.value.length && pendingFirmwareConfirmationCount.value) {
-                return `仍有 ${pendingFirmwareConfirmationCount.value} 路电调待确认类型并验证布局`;
+            if (!writableEscs.value.length && failedFirmwareDetectionCount.value) {
+                return `${failedFirmwareDetectionCount.value} 路固件或布局验证失败，通道保持锁定；请查看失败原因`;
             }
             const unsupportedAm32 = escs.value.find(
                 (esc) =>
@@ -2484,7 +2368,7 @@ export default defineComponent({
                     esc.confirmedFirmwareFamily === ESC_FIRMWARE.AM32,
             );
             if (!writableEscs.value.length && unsupportedAm32) {
-                return "AM32 已确认，但 MCU 配置布局未支持";
+                return "AM32 已识别，但 MCU 配置布局未支持";
             }
             if (!writableEscs.value.length) return "未识别到可写入的电调";
             if (!pendingWriteEscs.value.length) {
@@ -2509,7 +2393,9 @@ export default defineComponent({
             if (!connected.value) return "未连接";
             if (scanning.value) return "扫描中";
             if (!escs.value.length) return "待扫描";
-            if (pendingFirmwareConfirmationCount.value) return "待确认";
+            if (failedFirmwareDetectionCount.value) {
+                return `${writableEscs.value.length} 路已验证 · ${failedFirmwareDetectionCount.value} 路验证失败`;
+            }
             return writableEscs.value.length ? `${writableEscs.value.length} 路已验证` : "不支持写入";
         });
         const operationReadiness = computed(() => {
@@ -2554,7 +2440,7 @@ export default defineComponent({
                         status: !editable
                             ? esc.canWrite
                                 ? "音乐待处理"
-                                : firmwareConfirmationLabel(esc)
+                                : firmwareDetectionLabel(esc)
                             : !result.valid
                                 ? "编码需调整"
                                 : pendingWriteEscIds.value.has(esc.id)
@@ -2563,6 +2449,12 @@ export default defineComponent({
                     };
                 }),
         );
+        const completedWriteRows = computed(() => {
+            const completedIds = new Set((writeResult.value?.written || []).map((esc) => esc.id));
+            return assignmentRows.value
+                .filter((row) => completedIds.has(row.id))
+                .map((row) => ({ ...row, status: "已完成" }));
+        });
         const assignmentWarnings = computed(() => {
             const warnings = [];
             const inactive = assignmentRows.value.filter((row) => !row.editable);
@@ -2612,15 +2504,13 @@ export default defineComponent({
                         ? "melody-contribution-title"
                         : codeDialogOpen.value
                             ? "rtttl-code-title"
-                            : firmwareConfirmOpen.value
-                                ? "firmware-confirm-title"
-                                : syncConfirmOpen.value
-                                    ? "sync-confirm-title"
-                                    : restoreOpen.value
-                                        ? "restore-title"
-                                        : safetyOpen.value
-                                            ? "safety-title"
-                                            : "",
+                            : syncConfirmOpen.value
+                                ? "sync-confirm-title"
+                                : restoreOpen.value
+                                    ? "restore-title"
+                                    : safetyOpen.value
+                                        ? "safety-title"
+                                        : "",
         );
         const modalOpen = computed(() => Boolean(modalKey.value));
         let modalReturnFocus = null;
@@ -2650,14 +2540,7 @@ export default defineComponent({
                 });
                 return;
             }
-            if (
-                event.key !== "Escape" ||
-                writing.value ||
-                backingUp.value ||
-                restoring.value ||
-                restoreBackingUp.value ||
-                firmwareConfirming.value
-            )
+            if (event.key !== "Escape" || writing.value || backingUp.value || restoring.value || restoreBackingUp.value)
                 return;
             event.preventDefault();
             const close = {
@@ -2668,9 +2551,6 @@ export default defineComponent({
                 "safety-title": closeSafety,
                 "restore-title": closeRestoreDialog,
                 "sync-confirm-title": cancelSyncAll,
-                "firmware-confirm-title": () => {
-                    firmwareConfirmOpen.value = false;
-                },
             };
             close[modalKey.value]?.();
         }
@@ -2738,7 +2618,7 @@ export default defineComponent({
             }));
         });
         const codePreview = computed(() => {
-            const primary = parseCodePreview(rtttlCode.value, targetFirmware.value, 128);
+            const primary = parseCodePreview(rtttlCode.value, targetFirmware.value, targetCapacity.value);
             if (primary.error || !sharedCodeTargetPreviews.value.length) return primary;
             const errors = sharedCodeTargetPreviews.value.flatMap(({ esc, preview }) =>
                 preview.errors.map((error) => `ESC ${esc.channel + 1}：${error}`),
@@ -2802,7 +2682,7 @@ export default defineComponent({
             }
             return editableEscs.value
                 .filter((esc) => esc.editorMelody?.notes.some((note) => !note.rest && note.midi !== null))
-                .map((esc) => ({ melody: esc.editorMelody, id: esc.id }));
+                .map((esc) => ({ melody: esc.editorMelody, id: esc.id, firmware: esc.firmwareFamily }));
         });
         const canPlayAllMelodies = computed(() => allMelodyPreviewEntries.value.length > 1);
 
@@ -2810,11 +2690,6 @@ export default defineComponent({
             { id: "unlocked", title: "飞控已锁定（未解锁）", description: "确认当前不会发送解锁命令。" },
             { id: "propsRemoved", title: "桨叶已拆除", description: "确认所有电机上的桨叶均已拆除。" },
             { id: "powerStable", title: "ESC 稳定供电", description: "使用限流电源，连接和电压保持稳定。" },
-            {
-                id: "backupReady",
-                title: "原始 EEPROM 已强制备份到本机",
-                description: "全部通道均已保存到本地历史，并下载可恢复的 JSON 文件。",
-            },
         ];
         const restoreSafetyItems = [
             { id: "unlocked", title: "飞控已锁定（未解锁）", description: "确认当前不会发送解锁命令。" },
@@ -2888,12 +2763,21 @@ export default defineComponent({
 
         function recomputeMelodyMode() {
             const melodyCapable = escs.value.filter((esc) =>
-                [ESC_MELODY_READ_STATUS.LOADED, ESC_MELODY_READ_STATUS.EMPTY, ESC_MELODY_READ_STATUS.ERROR].includes(
-                    esc.melodyReadStatus,
-                ),
+                [
+                    ESC_MELODY_READ_STATUS.LOADED,
+                    ESC_MELODY_READ_STATUS.EMPTY,
+                    ESC_MELODY_READ_STATUS.ERROR,
+                    ESC_MELODY_READ_STATUS.REPLACEMENT,
+                ].includes(esc.melodyReadStatus),
             );
             const editable = escs.value.filter(isEscMelodyEditable);
-            const allMelodiesReadable = melodyCapable.length > 0 && editable.length === melodyCapable.length;
+            const allMelodiesReadable =
+                melodyCapable.length > 0 &&
+                melodyCapable.every(
+                    (esc) =>
+                        esc.melodyReadStatus === ESC_MELODY_READ_STATUS.LOADED ||
+                        esc.melodyReadStatus === ESC_MELODY_READ_STATUS.EMPTY,
+                );
             const sameMelody =
                 editable.length > 0 &&
                 editable.slice(1).every((esc) => melodiesEqual(esc.editorMelody, editable[0].editorMelody));
@@ -3024,6 +2908,11 @@ export default defineComponent({
             }
             if (!loadEscEditor(esc)) {
                 showMessage(`第 ${esc.channel + 1} 路当前音乐无法编辑，请先明确使用当前卷帘替换。`, "error");
+            } else if (esc.melodyReadStatus === ESC_MELODY_READ_STATUS.ERROR) {
+                showMessage(
+                    `第 ${esc.channel + 1} 路原开机音乐损坏（${esc.melodyReadError}），已置为待替换草稿。`,
+                    "info",
+                );
             }
         }
 
@@ -3133,73 +3022,17 @@ export default defineComponent({
             return labels[esc.melodyReadStatus] || "未读取";
         }
 
-        function firmwareConfirmationLabel(esc) {
+        function firmwareDetectionLabel(esc) {
             const labels = {
-                [ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING]: "待确认",
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING]: "未识别",
                 [ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFYING]: "布局验证中",
                 [ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED]: "布局未支持",
-                [ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED]: "确认失败",
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED]: "识别失败",
             };
             if (esc?.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED) {
-                return esc.canWrite ? "已确认可读写" : "已确认 · 受限";
+                return esc.canWrite ? "已识别可读写" : "已识别 · 受限";
             }
-            return labels[esc?.confirmationStatus] || "待确认";
-        }
-
-        function firmwareOptionsForGroup(group) {
-            const arm = Number(group?.interfaceMode) === 4;
-            const options = arm
-                ? [ESC_FIRMWARE.AM32, ESC_FIRMWARE.OX32, ESC_FIRMWARE.BLHELI32, ESC_FIRMWARE.UNKNOWN]
-                : [ESC_FIRMWARE.BLUEJAY, ESC_FIRMWARE.UNKNOWN];
-            return options.map((value) => ({ value, label: restoreFirmwareLabel(value) }));
-        }
-
-        function resetFirmwareConfirmationState({ open = false } = {}) {
-            for (const key of Object.keys(firmwareSelections)) delete firmwareSelections[key];
-            for (const key of Object.keys(firmwareAcknowledged)) delete firmwareAcknowledged[key];
-            firmwareConfirming.value = false;
-            firmwareConfirmOpen.value = open;
-        }
-
-        function initializeFirmwareConfirmationGroups() {
-            resetFirmwareConfirmationState({ open: false });
-            for (const group of firmwareConfirmationGroups.value) {
-                const allowed = firmwareOptionsForGroup(group).map((option) => option.value);
-                firmwareSelections[group.key] = allowed.includes(group.detectedFamily)
-                    ? group.detectedFamily
-                    : allowed[0];
-                firmwareAcknowledged[group.key] = false;
-            }
-        }
-
-        async function confirmFirmwareTypes() {
-            if (!controller.value || firmwareConfirming.value) return;
-            const groups = firmwareConfirmationGroups.value.filter((group) => firmwareAcknowledged[group.key]);
-            if (!groups.length) return;
-            const queue = groups.flatMap((group) =>
-                group.escs.map((esc) => ({ esc, firmwareFamily: firmwareSelections[group.key] })),
-            );
-            firmwareConfirming.value = true;
-            try {
-                acquireSerialLock();
-                const result = await controller.value.confirmFirmware(queue);
-                initializeEscEditorState(result.confirmed);
-                if (result.failed.length) {
-                    showMessage(
-                        `已确认 ${result.confirmed.length} 路；${result.failed.length} 路身份或布局验证失败，已保持锁定。`,
-                        "error",
-                    );
-                } else {
-                    showMessage(`已确认并验证 ${result.confirmed.length} 路电调；当前音乐已读取。`, "success");
-                }
-                initializeFirmwareConfirmationGroups();
-                firmwareConfirmOpen.value = Boolean(pendingFirmwareConfirmationCount.value);
-            } catch (error) {
-                showMessage(error?.message || "固件确认失败，串口已恢复普通 MSP。", "error");
-            } finally {
-                releaseSerialLock();
-                firmwareConfirming.value = false;
-            }
+            return labels[esc?.confirmationStatus] || "未识别";
         }
 
         watch(
@@ -3224,8 +3057,7 @@ export default defineComponent({
             if (!isConnected) {
                 resetRestoreState();
                 safetyOpen.value = false;
-                invalidateMelodyBackupGate();
-                resetFirmwareConfirmationState();
+                invalidateLocalEscBackup();
             }
         });
 
@@ -3671,7 +3503,7 @@ export default defineComponent({
             wrap.scrollLeft = Math.max(0, selectedNote.value.start * zoomPixels.value - wrap.clientWidth / 3);
             wrap.scrollTop = Math.max(
                 0,
-                (ESC_MELODY_MAX_MIDI - (selectedNote.value.midi ?? 60) + 0.5) * PIANO_ROLL_ROW_HEIGHT -
+                (pianoMaxMidi.value - (selectedNote.value.midi ?? 60) + 0.5) * PIANO_ROLL_ROW_HEIGHT -
                     wrap.clientHeight / 2,
             );
         }
@@ -3699,7 +3531,7 @@ export default defineComponent({
             const patches = {
                 ArrowLeft: { start: Math.max(0, note.start - snapStep.value) },
                 ArrowRight: { start: note.start + snapStep.value },
-                ArrowUp: { midi: Math.min(ESC_MELODY_MAX_MIDI, (note.midi ?? 60) + 1) },
+                ArrowUp: { midi: Math.min(pianoMaxMidi.value, (note.midi ?? 60) + 1) },
                 ArrowDown: { midi: Math.max(ESC_MELODY_MIN_MIDI, (note.midi ?? 60) - 1) },
             };
             if (patches[event.key]) {
@@ -3723,11 +3555,19 @@ export default defineComponent({
             );
             const row = Math.max(
                 0,
-                Math.min(noteRows.length - 1, Math.floor(((event.clientY - rect.top) / rect.height) * noteRows.length)),
+                Math.min(
+                    noteRows.value.length - 1,
+                    Math.floor(((event.clientY - rect.top) / rect.height) * noteRows.value.length),
+                ),
             );
             clearActiveLibrarySource();
             pushHistory();
-            const note = createNote({ midi: noteRows[row], start, duration: 1, rest: editorTool.value === "rest" });
+            const note = createNote({
+                midi: noteRows.value[row],
+                start,
+                duration: 1,
+                rest: editorTool.value === "rest",
+            });
             melody.value.notes.push(note);
             melody.value = normalizeMelody(melody.value);
             selectedNoteId.value = note.id;
@@ -3755,7 +3595,9 @@ export default defineComponent({
             const note = melody.value.notes.find((item) => item.id === dragState.noteId);
             if (!note) return;
             const deltaBeat = ((event.clientX - dragState.startX) / dragState.rect.width) * timelineBeats.value;
-            const deltaRow = Math.round(((event.clientY - dragState.startY) / dragState.rect.height) * noteRows.length);
+            const deltaRow = Math.round(
+                ((event.clientY - dragState.startY) / dragState.rect.height) * noteRows.value.length,
+            );
             const start = Math.max(
                 0,
                 Math.round((dragState.initial.start + deltaBeat) / snapStep.value) * snapStep.value,
@@ -3769,7 +3611,7 @@ export default defineComponent({
             if (!note.rest) {
                 note.midi = Math.max(
                     ESC_MELODY_MIN_MIDI,
-                    Math.min(ESC_MELODY_MAX_MIDI, dragState.initial.midi - deltaRow),
+                    Math.min(pianoMaxMidi.value, dragState.initial.midi - deltaRow),
                 );
             }
         }
@@ -3800,7 +3642,7 @@ export default defineComponent({
         }
 
         function noteStyle(note) {
-            const top = ((ESC_MELODY_MAX_MIDI - (note.midi ?? 60) + 0.5) / noteRows.length) * 100;
+            const top = ((pianoMaxMidi.value - (note.midi ?? 60) + 0.5) / noteRows.value.length) * 100;
             return {
                 left: `${(note.start / timelineBeats.value) * 100}%`,
                 width: `${(note.duration / timelineBeats.value) * 100}%`,
@@ -3817,7 +3659,7 @@ export default defineComponent({
             const highest = Math.max(...pitches);
             const lowest = Math.min(...pitches);
             const centreMidi = (highest + lowest) / 2;
-            const centreOffset = (ESC_MELODY_MAX_MIDI - centreMidi + 0.5) * PIANO_ROLL_ROW_HEIGHT;
+            const centreOffset = (pianoMaxMidi.value - centreMidi + 0.5) * PIANO_ROLL_ROW_HEIGHT;
             const maxScroll = Math.max(0, wrap.scrollHeight - wrap.clientHeight);
             wrap.scrollTop = Math.max(0, Math.min(maxScroll, centreOffset - wrap.clientHeight / 2));
         }
@@ -4164,7 +4006,18 @@ export default defineComponent({
                 const channelGain = previewGainForChannelCount(entries.length);
                 let maxDuration = 0;
                 for (const entry of entries) {
-                    const previewMelody = normalizeMelody(entry.melody);
+                    let previewMelody = normalizeMelody(entry.melody);
+                    if ((entry.firmware || targetFirmware.value) === "blheli32") {
+                        const target = validateMelody(previewMelody, { firmware: "blheli32" });
+                        if (target.valid) {
+                            const sourceTones = previewMelody.notes.filter((note) => !note.rest);
+                            previewMelody = normalizeMelody(target.encoded.playbackMelody);
+                            let toneIndex = 0;
+                            for (const note of previewMelody.notes) {
+                                if (!note.rest) note.id = sourceTones[toneIndex++]?.id || note.id;
+                            }
+                        }
+                    }
                     const beatSeconds = 60 / previewMelody.bpm;
                     const waitSeconds = previewMelody.waitMs / 1000;
                     maxDuration = Math.max(maxDuration, melodyDurationMs(previewMelody));
@@ -4270,9 +4123,8 @@ export default defineComponent({
             ownsSerialLock = false;
         }
 
-        function invalidateMelodyBackupGate() {
+        function invalidateLocalEscBackup() {
             for (const esc of writableEscs.value) esc.backedUp = false;
-            safetyChecks.backupReady = false;
             activeBackup.value = null;
             lastBackupFilename.value = "";
         }
@@ -4476,7 +4328,7 @@ export default defineComponent({
                     } else row.state = "skipped";
                 }
                 refreshEditorsAfterRestore(restoreResult.value.restored);
-                invalidateMelodyBackupGate();
+                invalidateLocalEscBackup();
                 resetRestoreSafety();
                 if (restoreResult.value.ok) {
                     showMessage(`已恢复并校验 ${restoreResult.value.restored.length} 路完整 EEPROM。`, "success");
@@ -4484,7 +4336,7 @@ export default defineComponent({
                     showMessage(restoreResult.value.error?.message || "EEPROM 恢复失败，后续通道已停止。", "error");
                 }
             } catch (error) {
-                invalidateMelodyBackupGate();
+                invalidateLocalEscBackup();
                 resetRestoreSafety();
                 restoreResult.value = { ok: false, restored: [], rollback: [], failed: null, error };
                 showMessage(error?.message || "EEPROM 恢复失败，串口已恢复普通 MSP。", "error");
@@ -4503,7 +4355,7 @@ export default defineComponent({
                 acquireSerialLock();
                 const recovered = await controller.value.recoverEscs(targets);
                 refreshEditorsAfterRestore(recovered);
-                invalidateMelodyBackupGate();
+                invalidateLocalEscBackup();
                 restoreResult.value = { ok: true, restored: recovered, rollback: [], rolledBack: true };
                 showMessage("已回滚到本次 EEPROM 恢复开始前的当前状态。", "success");
             } catch (error) {
@@ -4529,7 +4381,6 @@ export default defineComponent({
             scanning.value = true;
             writeResult.value = null;
             safetyOpen.value = false;
-            safetyChecks.backupReady = false;
             activeBackup.value = null;
             lastBackupFilename.value = "";
             escs.value = [];
@@ -4538,20 +4389,21 @@ export default defineComponent({
             codeDialogOpen.value = false;
             melodyConflict.value = false;
             syncConfirmOpen.value = false;
-            resetFirmwareConfirmationState();
             resetRestoreState();
-            controller.value ||= new EscFourWayController({ onProgress: handleControllerProgress });
+            controller.value ||= new EscFourWayController({
+                onProgress: handleControllerProgress,
+                probeAlive: true,
+                passthroughExitDelay: 600,
+            });
             try {
                 acquireSerialLock();
                 escs.value = await controller.value.scan();
                 initializeEscEditorState(escs.value);
-                initializeFirmwareConfirmationGroups();
                 if (identifiedEscCount.value) {
                     showMessage(
-                        `扫描完成：识别到 ${identifiedEscCount.value} 路电调。请确认固件类型，验证布局后才会读取当前音乐。`,
+                        `扫描完成：识别到 ${identifiedEscCount.value} 路电调，${writableEscs.value.length} 路支持写入；已读取支持布局的当前音乐。`,
                         "success",
                     );
-                    firmwareConfirmOpen.value = pendingFirmwareConfirmationCount.value > 0;
                 } else {
                     showMessage(
                         `扫描完成：未识别到电调，已检查 ${escs.value.length} 路通道。请确认电调已稳定供电。`,
@@ -4559,6 +4411,10 @@ export default defineComponent({
                     );
                 }
             } catch (error) {
+                if (error.escs?.length) {
+                    escs.value = error.escs;
+                    initializeEscEditorState(escs.value);
+                }
                 showMessage(error?.message || "4-way 扫描失败，串口已恢复普通 MSP。", "error");
             } finally {
                 releaseSerialLock();
@@ -4596,7 +4452,6 @@ export default defineComponent({
         async function backupAll() {
             if (!controller.value) return;
             backingUp.value = true;
-            safetyChecks.backupReady = false;
             activeBackup.value = null;
             lastBackupFilename.value = "";
             try {
@@ -4609,13 +4464,11 @@ export default defineComponent({
                 if (!persisted.valid) throw new Error(persisted.errors[0]);
                 activeBackup.value = persisted.backup;
                 lastBackupFilename.value = filename;
-                safetyChecks.backupReady = true;
                 showMessage(`原始 EEPROM 已保存到本地历史并下载：${filename}`, "success");
             } catch (error) {
-                safetyChecks.backupReady = false;
                 activeBackup.value = null;
                 lastBackupFilename.value = "";
-                showMessage(error?.message || "本地备份失败，写入已禁用。", "error");
+                showMessage(error?.message || "本地备份失败，仍可继续写入。", "error");
             } finally {
                 releaseSerialLock();
                 backingUp.value = false;
@@ -4623,22 +4476,14 @@ export default defineComponent({
         }
 
         async function performWrite() {
-            if (!controller.value || writeRecoveryTargets.value.length) return;
+            if (!controller.value || writing.value || writeResult.value?.ok || writeRecoveryTargets.value.length)
+                return;
             syncEditorState();
             const targets = [...pendingWriteEscs.value];
             if (!targets.length || !writeValidation.value.valid) {
                 showMessage(writeValidation.value.errors[0] || "当前没有可写入的修改。", "error");
                 return;
             }
-            const persisted = getPersistedEscBackupStatus(activeBackup.value?.id, writableEscs.value);
-            if (!persisted.valid) {
-                safetyChecks.backupReady = false;
-                activeBackup.value = null;
-                lastBackupFilename.value = "";
-                showMessage(`本地 EEPROM 备份校验失败：${persisted.errors[0]} 请重新备份。`, "error");
-                return;
-            }
-            activeBackup.value = persisted.backup;
             if (!safetyReady.value) return;
             writing.value = true;
             writeProgressRows.value = targets.map((esc) => ({ channel: esc.channel, state: "pending" }));
@@ -4654,7 +4499,9 @@ export default defineComponent({
                 }
                 if (writeResult.value.ok) {
                     for (const esc of writeResult.value.written) {
-                        esc.currentMelody = cloneMelody(esc.editorMelody);
+                        if (esc.firmwareFamily === "blheli32" && esc.currentMelody) {
+                            esc.editorMelody = cloneMelody(esc.currentMelody);
+                        } else esc.currentMelody = cloneMelody(esc.editorMelody);
                         esc.originalMelody = cloneMelody(esc.editorMelody);
                         esc.editorSource = { type: "current" };
                         esc.editorDraftId = null;
@@ -4665,9 +4512,14 @@ export default defineComponent({
                     if (writeResult.value.written.some((esc) => esc.id === selectedEscId.value)) {
                         currentDraftId.value = null;
                         setActiveLibrarySource({ type: "current" });
+                        if (selectedEsc.value?.firmwareFamily === "blheli32") {
+                            loadingEditor = true;
+                            melody.value = cloneMelody(selectedEsc.value.editorMelody);
+                            editorBaseline.value = cloneMelody(melody.value);
+                            loadingEditor = false;
+                        }
                     }
                     for (const esc of writableEscs.value) esc.backedUp = false;
-                    safetyChecks.backupReady = false;
                     activeBackup.value = null;
                     lastBackupFilename.value = "";
                     showMessage(`已串行写入并校验 ${writeResult.value.written.length} 路电调。`, "success");
@@ -4710,7 +4562,7 @@ export default defineComponent({
                         row.error = "";
                     }
                 refreshEditorsAfterRestore(recovered);
-                invalidateMelodyBackupGate();
+                invalidateLocalEscBackup();
                 showMessage(`已恢复并校验 ${targets.length} 路受影响电调的原始 EEPROM。`, "success");
                 writeResult.value = null;
             } catch (error) {
@@ -4721,14 +4573,23 @@ export default defineComponent({
             }
         }
 
+        function handleBeforeUnload(event) {
+            if (!stashEditorBeforeSwitch()) {
+                event.preventDefault();
+                event.returnValue = "";
+            }
+        }
+
         onMounted(() => {
+            window.addEventListener("beforeunload", handleBeforeUnload);
             document.addEventListener("keydown", handleDialogKeydown);
             GUI.content_ready();
             void nextTick(scrollMelodyIntoView);
         });
         onBeforeUnmount(() => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
             document.removeEventListener("keydown", handleDialogKeydown);
-            flushCurrentDraft();
+            stashEditorBeforeSwitch();
             stopPreview();
             stopNoteDrag();
             releaseSerialLock();
@@ -4737,6 +4598,7 @@ export default defineComponent({
 
         return {
             melody,
+            targetCapacity,
             drafts,
             draftLimit,
             draftDirty,
@@ -4882,6 +4744,7 @@ export default defineComponent({
             changeArrangement,
             arrangementLabel,
             assignmentRows,
+            completedWriteRows,
             assignmentWarnings,
             assignmentAccepted,
             assignVoice,
@@ -4955,16 +4818,8 @@ export default defineComponent({
             rollbackRestore,
             restoreFirmwareLabel,
             formatRestoreAddress,
-            firmwareConfirmOpen,
-            firmwareConfirming,
-            firmwareSelections,
-            firmwareAcknowledged,
-            firmwareConfirmationGroups,
-            pendingFirmwareConfirmationCount,
-            confirmedFirmwareGroupCount,
-            firmwareOptionsForGroup,
-            firmwareConfirmationLabel,
-            confirmFirmwareTypes,
+            failedFirmwareDetectionCount,
+            firmwareDetectionLabel,
             backupAll,
             performWrite,
             recoverWritten,

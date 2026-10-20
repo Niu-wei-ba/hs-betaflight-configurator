@@ -100,6 +100,7 @@ export function createMelodyDraft({ name = "未命名草稿", melody = {} } = {}
         key: source.key || "C",
         waitMs: source.waitMs ?? 0,
         notes: source.notes || [],
+        blheli32: source.blheli32,
     });
     return saveMelodyDraft({ name: nextMelody.name, melody: nextMelody }, storage);
 }

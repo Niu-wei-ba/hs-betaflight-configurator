@@ -1,3 +1,5 @@
+import { parseBlheli32Settings } from "./blheli32_config.ts";
+
 export const ESC_EEPROM_BACKUPS_KEY = "betaflight.esc-melody.eeprom-backups.v1";
 export const ESC_EEPROM_BACKUP_FORMAT = "betaflight-esc-eeprom-backup";
 export const ESC_EEPROM_BACKUP_VERSION = 1;
@@ -23,7 +25,7 @@ export function createEscBackupPackage(escs, { now = new Date(), id } = {}) {
 
 export function saveEscBackup(backup, storage = globalThis.localStorage) {
     assertEscBackupPackage(backup);
-    if (!storage?.setItem) throw new Error("无法访问浏览器本地存储，写入已禁用。");
+    if (!storage?.setItem) throw new Error("无法访问浏览器本地存储，无法保存本地备份。");
 
     const history = loadEscBackups(storage).filter((item) => item.id !== backup.id);
     history.unshift(backup);
@@ -173,7 +175,7 @@ export function downloadEscBackup(
 ) {
     assertEscBackupPackage(backup);
     if (!documentRef?.createElement || !urlApi?.createObjectURL || !BlobCtor) {
-        throw new Error("当前环境无法下载 EEPROM 备份文件，写入已禁用。");
+        throw new Error("当前环境无法下载 EEPROM 备份文件。");
     }
 
     const filename = createBackupFilename(backup.createdAt);
@@ -246,6 +248,12 @@ export function isEscBackupPackage(backup) {
                 (!Number.isInteger(esc.settingsChecksumAddress) || !isEncodedBytes(esc.settingsChecksum, 4)))
         ) {
             return false;
+        }
+        if (esc.firmwareFamily === "blheli32") {
+            if (esc.settingsLength !== 192 || esc.settingsOffset !== 0x7c00 || esc.melodyRelativeOffset !== 0x90) {
+                return false;
+            }
+            if (!parseBlheli32Settings(hexToBytes(esc.eeprom.data), esc).writable) return false;
         }
         channels.add(esc.channel);
     }

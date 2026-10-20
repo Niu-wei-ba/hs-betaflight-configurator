@@ -136,6 +136,12 @@ export class FourWaySession {
         this.backlog = new Uint8Array();
         this.pending = [];
         this.started = false;
+        this.generation = 0;
+        this.interfaceMode = null;
+        // Serial adapters expose a single writable stream: a retried frame must
+        // wait for the previous write to settle, otherwise the second write hits
+        // a locked stream and reports a partial send.
+        this.writeQueue = Promise.resolve();
         this.onReceive = this.onReceive.bind(this);
         this.onDisconnect = this.onDisconnect.bind(this);
     }
@@ -147,40 +153,94 @@ export class FourWaySession {
         this.started = true;
     }
 
+    /**
+     * @param {number} command
+     * @param {number[] | Uint8Array} params
+     * @param {number} address
+     * @param {number} timeout
+     */
     async send(command, params = [], address = 0, timeout = this.timeout) {
         this.start();
+        const generation = this.generation;
         const frame = createFourWayMessage(command, params, address);
-        return new Promise((resolve, reject) => {
-            const pending = { command, resolve, reject, timer: null };
-            pending.timer = setTimeout(() => {
-                this.pending = this.pending.filter((item) => item !== pending);
-                reject(new Error(`4-way command 0x${command.toString(16)} timed out`));
-            }, timeout);
-            this.pending.push(pending);
-
-            const handleSendResult = (result) => {
-                if (!result || result.bytesSent !== frame.byteLength) {
-                    clearTimeout(pending.timer);
-                    this.pending = this.pending.filter((item) => item !== pending);
-                    reject(new Error("Serial adapter did not send the complete 4-way frame"));
-                }
-            };
-            const handleSendError = (error) => {
-                clearTimeout(pending.timer);
-                this.pending = this.pending.filter((item) => item !== pending);
-                reject(error);
-            };
-            try {
-                const sendResult = this.serial.send(frame, handleSendResult);
-                if (sendResult?.then) sendResult.then(handleSendResult).catch(handleSendError);
-            } catch (error) {
-                handleSendError(error);
-            }
+        if (
+            command === FOUR_WAY_COMMANDS.deviceInitFlash ||
+            command === FOUR_WAY_COMMANDS.deviceReset ||
+            command === FOUR_WAY_COMMANDS.interfaceExit
+        ) {
+            this.interfaceMode = null;
+        }
+        let responseAddress = address;
+        if (command === FOUR_WAY_COMMANDS.devicePageErase) {
+            // Betaflight replies with the page's byte address instead of echoing the request address.
+            if (this.interfaceMode === 1) responseAddress = (frame[5] << 9) & 0xffff;
+            else if (this.interfaceMode === 4) responseAddress = (frame[5] << 10) & 0xffff;
+        }
+        const pending = {
+            command,
+            address,
+            responseAddress,
+            requestedMode: frame[5],
+            resolve: null,
+            reject: null,
+            timer: null,
+        };
+        const sendPromise = new Promise((resolve, reject) => {
+            pending.resolve = resolve;
+            pending.reject = reject;
         });
+        this.pending.push(pending);
+        const isActive = () => this.started && this.generation === generation && this.pending.includes(pending);
+
+        const clearPending = () => {
+            clearTimeout(pending.timer);
+            this.pending = this.pending.filter((item) => item !== pending);
+        };
+        const armAckWindow = () => {
+            if (!this.pending.includes(pending)) return;
+            clearTimeout(pending.timer);
+            pending.timer = setTimeout(() => {
+                clearPending();
+                pending.reject(new Error(`4-way command 0x${command.toString(16)} timed out`));
+            }, timeout);
+        };
+        // Covers a write that never completes; re-armed once the frame is on the wire.
+        armAckWindow();
+
+        let writeHandled = false;
+        const handleWriteResult = (result) => {
+            if (writeHandled || !isActive()) return;
+            writeHandled = true;
+            if (!result || result.bytesSent !== frame.byteLength) {
+                clearPending();
+                pending.reject(new Error("Serial adapter could not send the 4-way frame (port closed or busy)"));
+                return;
+            }
+            armAckWindow();
+        };
+        const handleWriteError = (error) => {
+            if (writeHandled || !isActive()) return;
+            writeHandled = true;
+            clearPending();
+            pending.reject(error);
+        };
+
+        const run = this.writeQueue.then(() => {
+            if (!isActive()) return;
+            return this.serial.send(frame, handleWriteResult);
+        });
+        this.writeQueue = run.then(
+            () => {},
+            () => {},
+        );
+        run.then(handleWriteResult, handleWriteError);
+        return sendPromise;
     }
 
     async stop({ exit = false } = {}) {
-        if (exit && this.started) {
+        const shouldExit = exit && this.started;
+        this.abort(new Error("4-way session stopped"));
+        if (shouldExit) {
             try {
                 await this.send(FOUR_WAY_COMMANDS.interfaceExit, [0]);
             } catch {
@@ -196,11 +256,27 @@ export class FourWaySession {
         const result = parseFourWayMessages(data, this.backlog);
         this.backlog = result.backlog;
         for (const message of result.messages) {
-            const pending = this.pending.find((item) => item.command === message.command);
+            const pending = this.pending.find(
+                (item) =>
+                    item.command === message.command &&
+                    (item.address === undefined ||
+                        item.address === message.address ||
+                        item.responseAddress === message.address),
+            );
             if (!pending) continue;
             clearTimeout(pending.timer);
             this.pending = this.pending.filter((item) => item !== pending);
-            if (message.ack !== FOUR_WAY_ACK.ok) {
+            if (
+                message.ack === FOUR_WAY_ACK.ok ||
+                (message.command === FOUR_WAY_COMMANDS.interfaceTestAlive && message.ack === FOUR_WAY_ACK.generalError)
+            ) {
+                if (message.command === FOUR_WAY_COMMANDS.deviceInitFlash) {
+                    this.interfaceMode = message.params[3] ?? null;
+                } else if (message.command === FOUR_WAY_COMMANDS.interfaceSetMode) {
+                    this.interfaceMode = pending.requestedMode;
+                }
+                pending.resolve(message);
+            } else {
                 const error = new Error(
                     `4-way command 0x${message.command.toString(16)} failed with ACK 0x${message.ack.toString(16)}`,
                 );
@@ -208,8 +284,6 @@ export class FourWaySession {
                 error.command = message.command;
                 error.ack = message.ack;
                 pending.reject(error);
-            } else {
-                pending.resolve(message);
             }
         }
     }
@@ -219,6 +293,7 @@ export class FourWaySession {
     }
 
     abort(error) {
+        this.generation += 1;
         for (const pending of this.pending) {
             clearTimeout(pending.timer);
             pending.reject(error);
@@ -227,6 +302,9 @@ export class FourWaySession {
         this.serial.removeEventListener?.("receive", this.onReceive);
         this.serial.removeEventListener?.("disconnect", this.onDisconnect);
         this.started = false;
+        this.interfaceMode = null;
         this.backlog = new Uint8Array();
+        // Keep an in-flight native write serialized; queued closures must pass
+        // their generation and pending checks before they can send a frame.
     }
 }

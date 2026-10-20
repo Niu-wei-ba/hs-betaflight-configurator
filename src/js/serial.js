@@ -336,5 +336,11 @@ class Serial extends EventTarget {
     }
 }
 
-// Export a singleton instance
-export const serial = new Serial();
+// HMR must retain the live port and subscribers held by modules that have not reloaded.
+/** @type {Serial} */
+export const serial = import.meta.hot?.data?.serial ?? new Serial();
+
+if (import.meta.hot?.data) {
+    import.meta.hot.data.serial = serial;
+    Object.setPrototypeOf(serial, Serial.prototype);
+}

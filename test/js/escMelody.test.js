@@ -1,4 +1,5 @@
 import CryptoES from "crypto-es";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
     ESC_CONFIGURATOR_PRESETS,
@@ -67,6 +68,48 @@ import {
 } from "../../src/js/esc_melody/ox32.js";
 
 describe("ESC melody model", () => {
+    it("encodes melodies dominated by 64th notes without unsupported defaults", () => {
+        const melody = rtttlToMelody("Short:d=64,o=5,b=120:c,d,e,4g");
+        expect(validateMelody(melody).valid).toBe(true);
+        expect(encodeFirmwareMelody(melody).bytes).toHaveLength(128);
+    });
+
+    it("preserves 64th notes and internal rests when decoding ESC bytes", () => {
+        const melody = rtttlToMelody("Short:d=4,o=5,b=120:64c,64d,64p,64e,g,a,b,c6");
+        const decoded = decodeFirmwareMelody(encodeFirmwareMelody(melody).bytes);
+        expect(decoded.notes.map(({ midi, rest }) => ({ midi, rest }))).toEqual(
+            melody.notes.map(({ midi, rest }) => ({ midi, rest })),
+        );
+        decoded.notes.forEach((note, index) => expect(note.duration).toBeCloseTo(melody.notes[index].duration, 2));
+    });
+
+    it("decodes short notes from independent pulse bytes without losing rest or continuation tuples", () => {
+        const bytes = new Uint8Array(128);
+        bytes.set([0, 120, 5, 4, 16, 61, 31, 0, 18, 53, 255, 35, 137, 35]);
+        const melody = decodeFirmwareMelody(bytes);
+        expect(melody.notes.map(({ midi, rest }) => ({ midi, rest }))).toEqual([
+            { midi: 72, rest: false },
+            { midi: null, rest: true },
+            { midi: 74, rest: false },
+            { midi: 79, rest: false },
+        ]);
+        expect(melody.notes.map((note) => note.duration)).toEqual([0.063, 0.063, 0.063, 1]);
+    });
+
+    it.each([25, 120, 900])("preserves dotted 64th notes at %i BPM", (bpm) => {
+        const melody = rtttlToMelody(`Short:d=4,o=5,b=${bpm}:64c.,64p.,64d.,g,a,b,c6`);
+        const decoded = decodeFirmwareMelody(encodeFirmwareMelody(melody).bytes);
+        expect(decoded.notes.map(({ midi, rest }) => ({ midi, rest }))).toEqual(
+            melody.notes.map(({ midi, rest }) => ({ midi, rest })),
+        );
+        decoded.notes.forEach((note, index) => expect(note.duration).toBeCloseTo(melody.notes[index].duration, 2));
+    });
+
+    it("reports encoder exceptions as validation errors", () => {
+        const melody = rtttlToMelody("Short:d=4,o=5,b=120:c");
+        expect(validateMelody(melody, { capacity: 1 })).toMatchObject({ valid: false, encodedLength: 0 });
+    });
+
     it("includes Two Tigers as a valid built-in preset", () => {
         const preset = PRESET_MELODIES.find((melody) => melody.id === "two-tigers");
         const validation = validateMelody(preset);
@@ -538,6 +581,37 @@ describe("4-way protocol", () => {
         await expect(pending).rejects.toThrow("connection was lost");
         expect(session.started).toBe(false);
     });
+
+    it("waits for a stuck frame write to settle before retrying it", async () => {
+        const writes = [];
+        let releaseFirstWrite;
+        const serial = new EventTarget();
+        serial.send = (frame, callback) => {
+            writes.push(frame.byteLength);
+            if (writes.length === 1) {
+                return new Promise((resolve) => {
+                    releaseFirstWrite = () => {
+                        callback({ bytesSent: frame.byteLength });
+                        resolve({ bytesSent: frame.byteLength });
+                    };
+                });
+            }
+            callback({ bytesSent: frame.byteLength });
+            return { bytesSent: frame.byteLength };
+        };
+        const session = new FourWaySession({ serial, timeout: 20 });
+
+        await expect(session.send(FOUR_WAY_COMMANDS.devicePageErase, [24])).rejects.toThrow("timed out");
+        const retry = session.send(FOUR_WAY_COMMANDS.devicePageErase, [24]);
+        await new Promise((resolve) => setTimeout(resolve, 15));
+
+        // The writable stream is still busy with the first frame.
+        expect(writes).toHaveLength(1);
+        releaseFirstWrite();
+        await expect(retry).rejects.toThrow("timed out");
+        expect(writes).toHaveLength(2);
+        session.abort(new Error("test finished"));
+    });
 });
 
 describe("ESC capability matrix", () => {
@@ -554,7 +628,7 @@ describe("ESC capability matrix", () => {
         expect(esc.canRead).toBe(true);
         expect(esc.canBackup).toBe(true);
         expect(esc.canWrite).toBe(false);
-        expect(esc.reason).toContain("AM32");
+        expect(esc.reason).toContain("尚未验证配置");
     });
 
     it("exposes OX32 as a native writable 128-byte melody target", () => {
@@ -648,7 +722,9 @@ describe("ESC 4-way controller integration", () => {
 
         const escs = await controller.scan();
 
-        expect(mspCalls).toEqual([{ code: 245, payload: false }]);
+        expect(mspCalls[0]).toEqual({ code: 245, payload: false });
+        // Leaving passthrough probes MSP so a lost exit frame cannot be mistaken for a dead link.
+        expect(mspCalls.slice(1)).toEqual([{ code: 1, payload: false }]);
         expect(delays).toEqual([25, 4500, 3000]);
         expect(escs).toHaveLength(1);
         expect(session.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(1);
@@ -700,7 +776,7 @@ describe("ESC 4-way controller integration", () => {
         expect(controller.inPassthrough).toBe(false);
     });
 
-    it("keeps a scanned Bluejay ESC locked until firmware confirmation", async () => {
+    it("reads a scanned Bluejay melody in the same session as identification", async () => {
         const current = encodeFirmwareMelody(
             { name: "Current", bpm: 132, notes: [{ midi: 67, start: 0, duration: 1 }] },
             "bluejay",
@@ -725,17 +801,40 @@ describe("ESC 4-way controller integration", () => {
         expect(escs[0]).toMatchObject({
             firmwareFamily: ESC_FIRMWARE.BLUEJAY,
             detectedFirmwareFamily: ESC_FIRMWARE.BLUEJAY,
-            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
-            canRead: false,
-            canWrite: false,
+            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED,
+            canRead: true,
+            canWrite: true,
             version: "0.21",
             waitRelativeOffset: 0xf0,
-            melodyReadStatus: ESC_MELODY_READ_STATUS.IDLE,
+            melodyReadStatus: ESC_MELODY_READ_STATUS.LOADED,
         });
-        expect(escs[0].currentMelody).toBeNull();
-        expect(session.calls.some((call) => call.address === 0x1a70 || call.address === 0x1af0)).toBe(false);
+        expect(escs[0].currentMelody.notes[0].midi).toBe(67);
+        expect(session.calls.some((call) => call.address === 0x1a70)).toBe(true);
         expect(escs[0].backedUp).toBe(false);
         expect(escs.slice(1).every((esc) => esc.status === "unavailable")).toBe(true);
+        expect(session.stops).toEqual([{ exit: true }]);
+    });
+
+    it.each([
+        [255, 255, 255],
+        [0, 21, 0],
+        [0, 255, 208],
+    ])("locks a tagged Bluejay with invalid header %j before reading music", async (...header) => {
+        const session = createSession((command, _params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0xb2, 0xe8, 0, 1]);
+            if (address === 0x1a60) return response(fixedAscii("Bluejay TEST", 16));
+            if (address === 0x1a00) return response(header);
+            throw new Error("An invalid layout must not expose its melody");
+        });
+        const [esc] = await createController([session]).scan({ channels: 1 });
+        expect(esc).toMatchObject({
+            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED,
+            layoutVerified: false,
+            canRead: false,
+            canBackup: false,
+            canWrite: false,
+        });
+        expect(session.calls.some(({ address }) => address === 0x1a70 || address === 0x1af0)).toBe(false);
         expect(session.stops).toEqual([{ exit: true }]);
     });
 
@@ -759,7 +858,7 @@ describe("ESC 4-way controller integration", () => {
             if (command === FOUR_WAY_COMMANDS.deviceRead && address === 0x3060) {
                 return response(Array.from(new TextEncoder().encode("Bluejay TEST\0\0\0\0")));
             }
-            if (command === FOUR_WAY_COMMANDS.deviceRead && address === 0x3000) return response([0, 22, 0]);
+            if (command === FOUR_WAY_COMMANDS.deviceRead && address === 0x3000) return response([0, 21, 208]);
             if (
                 command === FOUR_WAY_COMMANDS.deviceRead &&
                 address === OX32_HANDSHAKE_OFFSET &&
@@ -789,14 +888,15 @@ describe("ESC 4-way controller integration", () => {
             ESC_FIRMWARE.BLHELI32,
             ESC_FIRMWARE.UNKNOWN,
         ]);
-        expect(escs.map((esc) => esc.canWrite)).toEqual([false, false, false, false]);
+        expect(escs.map((esc) => esc.canWrite)).toEqual([true, true, false, false]);
         expect(escs.map((esc) => esc.confirmationStatus)).toEqual([
-            ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
-            ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
-            ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
-            ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
+            ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED,
+            ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED,
+            ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED,
+            ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED,
         ]);
-        expect(session.calls.some((call) => call.address === 0x7c00 || call.address === 0x3070)).toBe(false);
+        expect(session.calls.some((call) => call.address === 0x7c00)).toBe(true);
+        expect(session.calls.some((call) => call.address === 0x3070)).toBe(true);
     });
 
     it("identifies an activated OX32 ESC before the generic ARM families", async () => {
@@ -834,18 +934,18 @@ describe("ESC 4-way controller integration", () => {
             melodyRelativeOffset: 0x44,
             settingsChecksumAddress: 0xf7fc,
             activated: true,
-            canWrite: false,
-            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
-            melodyReadStatus: ESC_MELODY_READ_STATUS.IDLE,
+            canWrite: true,
+            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED,
+            melodyReadStatus: ESC_MELODY_READ_STATUS.LOADED,
         });
-        expect(escs[0].currentMelody).toBeNull();
+        expect(escs[0].currentMelody.notes[0].midi).toBe(72);
         expect(escs.slice(1).every((esc) => esc.status === "unavailable")).toBe(true);
         expect(
             session.calls.some((call) => call.command === FOUR_WAY_COMMANDS.deviceRead && call.address === 0xf800),
         ).toBe(false);
     });
 
-    it("keeps every OX32 scan candidate locked before confirmation", async () => {
+    it("keeps unactivated and unsupported OX32 channels restricted during scan", async () => {
         const handshakes = [
             createOx32Handshake({ activated: false }),
             createOx32Handshake({ bootloaderVersion: "4.00" }),
@@ -870,8 +970,12 @@ describe("ESC 4-way controller integration", () => {
 
         expect(escs.map((esc) => esc.firmwareFamily)).toEqual([ESC_FIRMWARE.OX32, ESC_FIRMWARE.OX32]);
         expect(escs.map((esc) => esc.canWrite)).toEqual([false, false]);
-        expect(escs[0]).toMatchObject({ activated: false, canBackup: false, confirmationStatus: "pending" });
-        expect(escs[1]).toMatchObject({ bootloaderVersion: "4.00", canBackup: false, confirmationStatus: "pending" });
+        expect(escs[0]).toMatchObject({ activated: false, canBackup: true, confirmationStatus: "verified" });
+        expect(escs[1]).toMatchObject({
+            bootloaderVersion: "4.00",
+            canBackup: false,
+            confirmationStatus: "unsupported",
+        });
     });
 
     it("preserves an AM32 candidate when the OX32 handshake probe fails", async () => {
@@ -887,15 +991,15 @@ describe("ESC 4-way controller integration", () => {
         expect(esc).toMatchObject({
             firmwareFamily: ESC_FIRMWARE.AM32,
             status: "ready",
-            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
+            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED,
             canRead: false,
             canBackup: false,
             canWrite: false,
         });
-        expect(esc.confirmationReason).toContain("确认电调固件类型");
+        expect(esc.confirmationReason).toBeTruthy();
     });
 
-    it("confirms a Bluejay layout in a second 4-way session before reading its melody", async () => {
+    it("uses one initialization and one passthrough session to identify and read Bluejay", async () => {
         const current = encodeFirmwareMelody(
             { name: "Current", bpm: 132, notes: [{ midi: 67, start: 0, duration: 1 }] },
             "bluejay",
@@ -910,13 +1014,11 @@ describe("ESC 4-way controller integration", () => {
             throw new Error("Unexpected command");
         };
         const scanSession = createSession(handler);
-        const confirmSession = createSession(handler);
-        const controller = createController([scanSession, confirmSession]);
+        const sessions = [scanSession];
+        const controller = createController(sessions);
         const [esc] = await controller.scan({ channels: 1 });
 
-        const result = await controller.confirmFirmware([{ esc, firmwareFamily: ESC_FIRMWARE.BLUEJAY }]);
-
-        expect(result.failed).toHaveLength(0);
+        expect(sessions).toHaveLength(0);
         expect(esc).toMatchObject({
             confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED,
             confirmedFirmwareFamily: ESC_FIRMWARE.BLUEJAY,
@@ -925,11 +1027,112 @@ describe("ESC 4-way controller integration", () => {
             melodyReadStatus: ESC_MELODY_READ_STATUS.LOADED,
         });
         expect(esc.currentMelody.notes[0].midi).toBe(67);
-        expect(scanSession.calls.some((call) => call.address === 0x1a70)).toBe(false);
-        expect(confirmSession.calls.some((call) => call.address === 0x1a70)).toBe(true);
+        expect(scanSession.calls.some((call) => call.address === 0x1a70)).toBe(true);
+        expect(scanSession.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(1);
+        expect(scanSession.stops).toEqual([{ exit: true }]);
+        expect(
+            scanSession.calls.every(({ command }) =>
+                [FOUR_WAY_COMMANDS.deviceInitFlash, FOUR_WAY_COMMANDS.deviceRead].includes(command),
+            ),
+        ).toBe(true);
     });
 
-    it("confirms matching AM32 channels serially before opening their melody layouts", async () => {
+    it("preserves completed channels and locks the interrupted scan on transport loss", async () => {
+        let channel = 0;
+        const current = encodeFirmwareMelody({ bpm: 120, notes: [{ midi: 60, start: 0, duration: 1 }] }, "bluejay");
+        const session = createSession((command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) {
+                channel = params[0];
+                return response([0xb2, 0xe8, 0, 1]);
+            }
+            if (channel === 1) throw new Error("Serial connection was lost during the 4-way operation");
+            if (address === 0x1a60) return response(fixedAscii("Bluejay TEST", 16));
+            if (address === 0x1a00) return response([0, 21, 208]);
+            if (address === 0x1a70) return response(current.bytes);
+            if (address === 0x1af0) return response([0, 0]);
+            throw new Error("Unexpected command");
+        });
+        const controller = createController([session]);
+        let failure;
+        try {
+            await controller.scan({ channels: 4 });
+        } catch (error) {
+            failure = error;
+        }
+        expect(failure?.message).toContain("connection was lost");
+        expect(failure.escs).toHaveLength(2);
+        expect(failure.escs[0]).toMatchObject({ canWrite: true, melodyReadStatus: "loaded" });
+        expect(failure.escs[1]).toMatchObject({
+            confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED,
+            canRead: false,
+            canBackup: false,
+            canWrite: false,
+        });
+        expect(session.calls.filter(({ command }) => command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(2);
+        expect(session.stops).toEqual([{ exit: true }]);
+    });
+
+    it("recognizes missing Bluejay tags by official code and rechecks that code before backup", async () => {
+        const application = new Uint8Array(
+            readFileSync("test/fixtures/esc_melody/bluejay-B_X_30_24-v0.19.2-application.bin"),
+        );
+        const memory = new Uint8Array(0x3100).fill(255);
+        memory.set(application);
+        memory.set([0, 19, 206], 0x3000);
+        const handler = (command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0xb5, 0xe8, 100, 1]);
+            if (command === FOUR_WAY_COMMANDS.deviceRead)
+                return response(memory.slice(address, address + (params[0] || 256)));
+            throw new Error("Unexpected command");
+        };
+        const sessions = Array.from({ length: 3 }, () => createSession(handler));
+        const allSessions = [...sessions];
+        const controller = createController(sessions);
+        const [esc] = await controller.scan({ channels: 1 });
+        expect(esc).toMatchObject({
+            detectedFirmwareFamily: ESC_FIRMWARE.BLUEJAY,
+            canRead: true,
+            canWrite: true,
+            bluejayIdentity: { method: "officialApplicationSha256", release: "0.19.2", metadataMissing: true },
+        });
+        expect(esc.confirmationReason).toContain("名称标识缺失");
+        expect(esc).toMatchObject({
+            canWrite: true,
+            layoutVerified: true,
+            melodyReadStatus: ESC_MELODY_READ_STATUS.EMPTY,
+        });
+        expect(esc.confirmationReason).toContain("程序指纹核验");
+        await controller.backupEsc(esc);
+        expect(esc.backedUp).toBe(true);
+        expect(esc.originalEeprom.slice(0x60, 0x70)).toEqual(new Uint8Array(16).fill(255));
+        memory[0x2000] ^= 1;
+        await expect(controller.backupEsc(esc)).rejects.toThrow("程序指纹");
+        expect(esc.canWrite).toBe(false);
+        for (const session of allSessions) {
+            expect(
+                session.calls.every(({ command }) =>
+                    [FOUR_WAY_COMMANDS.deviceInitFlash, FOUR_WAY_COMMANDS.deviceRead].includes(command),
+                ),
+            ).toBe(true);
+        }
+    });
+
+    it("keeps a matching version locked when the missing-tag program is not an official build", async () => {
+        const handler = (command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0xb5, 0xe8, 100, 1]);
+            if (address === 0x3000) return response([0, 19, 206]);
+            if (command === FOUR_WAY_COMMANDS.deviceRead) return response(new Uint8Array(params[0] || 256).fill(255));
+            throw new Error("Unexpected command");
+        };
+        const controller = createController([createSession(handler), createSession(handler)]);
+        const [esc] = await controller.scan({ channels: 1 });
+        expect(esc.detectedFirmwareFamily).toBe(ESC_FIRMWARE.BLUEJAY);
+        expect(esc.confirmationReason).toContain("程序指纹");
+        expect(esc.confirmationStatus).toBe(ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED);
+        expect(esc.canWrite).toBe(false);
+    });
+
+    it("identifies and reads AM32 channels serially within one scan session", async () => {
         const current = encodeFirmwareMelody(
             { name: "Current", bpm: 120, notes: [{ midi: 64, start: 0, duration: 1 }] },
             "am32",
@@ -948,24 +1151,15 @@ describe("ESC 4-way controller integration", () => {
             throw new Error(`Unexpected command ${command} at ${address} on ${channel}`);
         };
         const scanSession = createSession(handler);
-        const confirmSession = createSession(handler);
-        const controller = createController([scanSession, confirmSession]);
+        const controller = createController([scanSession]);
         const escs = await controller.scan({ channels: 2 });
-
-        const result = await controller.confirmFirmware(
-            escs.map((esc) => ({ esc, firmwareFamily: ESC_FIRMWARE.AM32 })),
-        );
-
-        expect(result.failed).toHaveLength(0);
         expect(escs.every((esc) => esc.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED)).toBe(true);
         expect(escs.every((esc) => esc.melodyReadStatus === ESC_MELODY_READ_STATUS.LOADED)).toBe(true);
-        expect(confirmSession.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(
-            2,
-        );
-        expect(confirmSession.calls.filter((call) => call.address === 0x7c30)).toHaveLength(2);
+        expect(scanSession.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(2);
+        expect(scanSession.calls.filter((call) => call.address === 0x7c30)).toHaveLength(2);
     });
 
-    it("opens the AM32 NXP MCXA153 melody layout after manual confirmation", async () => {
+    it("opens the AM32 NXP MCXA153 melody layout during scan", async () => {
         const current = encodeFirmwareMelody(
             { name: "Current", bpm: 120, notes: [{ midi: 64, start: 0, duration: 1 }] },
             "am32",
@@ -980,11 +1174,8 @@ describe("ESC 4-way controller integration", () => {
             throw new Error(`Unexpected command at ${address}`);
         };
         const scanSession = createSession(handler);
-        const confirmSession = createSession(handler);
-        const controller = createController([scanSession, confirmSession]);
+        const controller = createController([scanSession]);
         const [esc] = await controller.scan({ channels: 1 });
-
-        await controller.confirmFirmware([{ esc, firmwareFamily: ESC_FIRMWARE.AM32 }]);
 
         expect(esc).toMatchObject({
             confirmationStatus: ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED,
@@ -993,7 +1184,7 @@ describe("ESC 4-way controller integration", () => {
             settingsLength: 0xc0,
             melodyReadStatus: ESC_MELODY_READ_STATUS.LOADED,
         });
-        expect(confirmSession.calls.some((call) => call.address === 0xe030)).toBe(true);
+        expect(scanSession.calls.some((call) => call.address === 0xe030)).toBe(true);
     });
 
     it("backs up, writes, verifies and recovers OX32 settings with the page checksum", async () => {
@@ -1056,6 +1247,146 @@ describe("ESC 4-way controller integration", () => {
         expect(esc.status).toBe("recovered");
     });
 
+    it("retries a dropped page-erase frame instead of aborting the write", async () => {
+        const base = 0x1a00;
+        const memory = new Uint8Array(255).fill(0);
+        memory.set([0, 21, 208]);
+        memory.set(fixedAscii("Bluejay TEST", 16), 0x60);
+        const esc = createBackedUpEsc(0, {
+            firmwareFamily: ESC_FIRMWARE.BLUEJAY,
+            signature: 0xe8b2,
+            inputPin: 0,
+            interfaceMode: 1,
+            version: "0.21",
+            layoutRevision: 208,
+            firmwareName: "Bluejay TEST",
+            settingsOffset: base,
+            settingsLength: memory.length,
+            melodyRelativeOffset: 0x70,
+            erasePage: 13,
+            originalEeprom: new Uint8Array(memory),
+        });
+        let eraseAttempts = 0;
+        const session = createSession((command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0xb2, 0xe8, 0, 1]);
+            if (command === FOUR_WAY_COMMANDS.devicePageErase) {
+                eraseAttempts += 1;
+                if (eraseAttempts === 1) throw new Error("4-way command 0x39 timed out");
+                memory.fill(0xff);
+                return response([0]);
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceRead) {
+                const length = params[0] || 256;
+                return response(memory.slice(address - base, address - base + length));
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceWrite) {
+                memory.set(params, address - base);
+                return response([0]);
+            }
+            throw new Error("Unexpected command");
+        });
+        const controller = createController([session]);
+
+        const result = await controller.writeEsc(esc, {
+            bpm: 120,
+            notes: [{ midi: 60, start: 0, duration: 0.25 }],
+        });
+
+        expect(result.esc.verified).toBe(true);
+        expect(eraseAttempts).toBe(2);
+    });
+
+    it("writes the original settings back when the write fails after erasing", async () => {
+        const base = 0x1a00;
+        const original = new Uint8Array(255).fill(0);
+        original.set([0, 21, 208]);
+        original.set(fixedAscii("Bluejay TEST", 16), 0x60);
+        const memory = new Uint8Array(original);
+        const esc = createBackedUpEsc(0, {
+            firmwareFamily: ESC_FIRMWARE.BLUEJAY,
+            signature: 0xe8b2,
+            inputPin: 0,
+            interfaceMode: 1,
+            version: "0.21",
+            layoutRevision: 208,
+            firmwareName: "Bluejay TEST",
+            settingsOffset: base,
+            settingsLength: memory.length,
+            melodyRelativeOffset: 0x70,
+            erasePage: 13,
+            originalEeprom: original,
+        });
+        let writeAttempts = 0;
+        const session = createSession((command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0xb2, 0xe8, 0, 1]);
+            if (command === FOUR_WAY_COMMANDS.devicePageErase) {
+                memory.fill(0xff);
+                return response([0]);
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceRead) {
+                const length = params[0] || 256;
+                return response(memory.slice(address - base, address - base + length));
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceWrite) {
+                writeAttempts += 1;
+                if (writeAttempts <= 3) throw new Error("4-way command 0x3b timed out");
+                memory.set(params, address - base);
+                return response([0]);
+            }
+            throw new Error("Unexpected command");
+        });
+        const controller = createController([session]);
+
+        await expect(
+            controller.writeEsc(esc, { bpm: 120, notes: [{ midi: 60, start: 0, duration: 0.25 }] }),
+        ).rejects.toThrow("已写回");
+
+        // The blank page must not survive: name, layout tag and settings are restored.
+        expect(new Uint8Array(memory)).toEqual(original);
+        expect(esc.writeTouched).toBe(false);
+        expect(writeAttempts).toBe(4);
+    });
+
+    it("warns that the channel may be erased when the original image cannot be restored", async () => {
+        const base = 0x1a00;
+        const original = new Uint8Array(255).fill(0);
+        original.set([0, 21, 208]);
+        original.set(fixedAscii("Bluejay TEST", 16), 0x60);
+        const memory = new Uint8Array(original);
+        const esc = createBackedUpEsc(0, {
+            firmwareFamily: ESC_FIRMWARE.BLUEJAY,
+            signature: 0xe8b2,
+            inputPin: 0,
+            interfaceMode: 1,
+            version: "0.21",
+            layoutRevision: 208,
+            firmwareName: "Bluejay TEST",
+            settingsOffset: base,
+            settingsLength: memory.length,
+            melodyRelativeOffset: 0x70,
+            erasePage: 13,
+            originalEeprom: original,
+        });
+        const session = createSession((command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0xb2, 0xe8, 0, 1]);
+            if (command === FOUR_WAY_COMMANDS.devicePageErase) {
+                memory.fill(0xff);
+                return response([0]);
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceRead) {
+                const length = params[0] || 256;
+                return response(memory.slice(address - base, address - base + length));
+            }
+            throw new Error("4-way command 0x3b timed out");
+        });
+        const controller = createController([session]);
+
+        await expect(
+            controller.writeEsc(esc, { bpm: 120, notes: [{ midi: 60, start: 0, duration: 0.25 }] }),
+        ).rejects.toThrow("可能已被擦除");
+        expect(esc.writeTouched).toBe(true);
+    });
+
     it("stops serial writes after the first read-back mismatch", async () => {
         const escs = [0, 1, 2].map((channel) =>
             createBackedUpEsc(channel, {
@@ -1082,8 +1413,8 @@ describe("ESC 4-way controller integration", () => {
             if (command === FOUR_WAY_COMMANDS.deviceRead) {
                 if (params[0] === 5)
                     return response((writes.get(selectedChannel) || escs[selectedChannel].originalEeprom).slice(0, 5));
-                const readBack = new Uint8Array(writes.get(selectedChannel));
-                if (selectedChannel === 1) readBack[0] ^= 0xff;
+                const readBack = new Uint8Array(writes.get(selectedChannel) || escs[selectedChannel].originalEeprom);
+                if (selectedChannel === 1 && writes.has(selectedChannel)) readBack[0] ^= 0xff;
                 return response(readBack);
             }
             throw new Error("Unexpected command");
@@ -1098,7 +1429,8 @@ describe("ESC 4-way controller integration", () => {
         expect(result.written.map((esc) => esc.channel)).toEqual([0]);
         expect(Array.from(writes.keys())).toEqual([0, 1]);
         expect(session.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceInitFlash)).toHaveLength(2);
-        expect(session.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceWrite)).toHaveLength(2);
+        // Channel 1 write, then the automatic attempt to write its original image back.
+        expect(session.calls.filter((call) => call.command === FOUR_WAY_COMMANDS.deviceWrite)).toHaveLength(3);
         expect(session.calls.some((call) => call.command === FOUR_WAY_COMMANDS.devicePageErase)).toBe(false);
         expect(session.stops).toEqual([{ exit: true }]);
     });
@@ -1435,7 +1767,7 @@ describe("ESC 4-way controller integration", () => {
         expect(controller.inPassthrough).toBe(false);
     });
 
-    it("does not read the current melody during scan", async () => {
+    it("stops the scan and releases passthrough when reading the current melody times out", async () => {
         const session = createSession((command, _params, address) => {
             if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0xb2, 0xe8, 0, 1]);
             if (command === FOUR_WAY_COMMANDS.deviceRead && address === 0x1a60) {
@@ -1449,9 +1781,8 @@ describe("ESC 4-way controller integration", () => {
         });
         const controller = createController([session]);
 
-        const [esc] = await controller.scan({ channels: 1 });
-        expect(esc.confirmationStatus).toBe(ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING);
-        expect(session.calls.some((call) => call.address === 0x1a70)).toBe(false);
+        await expect(controller.scan({ channels: 1 })).rejects.toThrow("current melody read timed out");
+        expect(session.calls.some((call) => call.address === 0x1a70)).toBe(true);
         expect(session.stops).toEqual([{ exit: true }]);
         expect(controller.inPassthrough).toBe(false);
     });
@@ -1605,11 +1936,9 @@ describe("Bluejay and AM32 compatibility regressions", () => {
             if (command === FOUR_WAY_COMMANDS.deviceRead) return response(header);
             throw new Error("Must not write an invalid layout");
         });
-        const esc = decodeEscInfo([6, 31, 2, 4], 0);
         const controller = createController([session]);
-        const result = await controller.confirmFirmware([{ esc, firmwareFamily: ESC_FIRMWARE.AM32 }]);
-        expect(result.confirmed).toHaveLength(0);
-        expect(result.failed).toHaveLength(1);
+        const [esc] = await controller.scan({ channels: 1 });
+        expect(esc.confirmationStatus).toBe(ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED);
         expect(esc).toMatchObject({ canRead: false, canBackup: false, canWrite: false, layoutVerified: false });
         expect(
             session.calls.some((c) =>
@@ -1635,9 +1964,8 @@ describe("Bluejay and AM32 compatibility regressions", () => {
             throw new Error("Unexpected command");
         };
         const controller = createController([createSession(handler), createSession(handler), createSession(handler)]);
-        const esc = decodeEscInfo([6, 31, 2, 4], 0);
-        const confirmation = await controller.confirmFirmware([{ esc, firmwareFamily: ESC_FIRMWARE.AM32 }]);
-        expect(confirmation.failed).toHaveLength(0);
+        const [esc] = await controller.scan({ channels: 1 });
+        expect(esc.layoutVerified).toBe(true);
         await controller.writeEsc(esc, {
             name: "Delay",
             bpm: 120,
@@ -1779,5 +2107,105 @@ describe("Bluejay and AM32 compatibility regressions", () => {
         await controller.recoverEscs(result.rollback);
         expect(memory).toEqual(original);
         expect(esc.writeTouched).toBe(false);
+    });
+
+    it("reads four hardware-derived Bluejay images without a second confirmation session", async () => {
+        const application = new Uint8Array(
+            readFileSync("test/fixtures/esc_melody/bluejay-B_X_30_24-v0.19.2-application.bin"),
+        );
+        // Create 4 channels matching the report.md matrix
+        const channelsMemory = Array.from({ length: 4 }, () => {
+            const mem = new Uint8Array(0x3100).fill(255);
+            mem.set(application);
+            mem.set([0, 19, 206], 0x3000); // 0.19 layout 206
+            return mem;
+        });
+        // CH1: binary corrupt name
+        channelsMemory[0].set(Buffer.from("00082440680108202000202020202000", "hex"), 0x3060);
+        // CH2: blank name (already 255), melody blank (already 255)
+        // CH3: blank name, corrupt melody BPM 36896 (0x9020)
+        channelsMemory[2].set([0x90, 0x20, 0xcc, 0x07], 0x3070);
+        // CH4: blank name, corrupt melody BPM 61161 (0xeee9)
+        channelsMemory[3].set([0xee, 0xe9, 0x46, 0xf7], 0x3070);
+
+        let activeChannel = 0;
+        let applicationReads = 0;
+
+        const handler = (command, params, address) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) {
+                activeChannel = params[0];
+                return response([0xb5, 0xe8, 100, 1]);
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceRead) {
+                const len = params[0] || 256;
+                if (address < 0x3000) applicationReads += 1;
+                return response(channelsMemory[activeChannel].slice(address, address + len));
+            }
+            if (command === FOUR_WAY_COMMANDS.devicePageErase) {
+                return response([0]);
+            }
+            if (command === FOUR_WAY_COMMANDS.deviceWrite) {
+                channelsMemory[activeChannel].set(params, address);
+                return response([0]);
+            }
+            throw new Error("Unexpected command");
+        };
+
+        const sessions = [];
+        const sessionFactory = () => {
+            const session = createSession(handler);
+            sessions.push(session);
+            return session;
+        };
+        const controller = new EscFourWayController({
+            sessionFactory,
+            passthroughSettleDelay: 0,
+            passthroughExitDelay: 0,
+            delay: () => Promise.resolve(),
+        });
+
+        const escs = await controller.scan({ channels: 4 });
+        expect(escs).toHaveLength(4);
+        expect(sessions).toHaveLength(1);
+        expect(sessions[0].stops).toEqual([{ exit: true }]);
+        expect(
+            sessions[0].calls
+                .filter(({ command }) => command === FOUR_WAY_COMMANDS.deviceInitFlash)
+                .map(({ params }) => params[0]),
+        ).toEqual([0, 1, 2, 3]);
+        expect(
+            sessions[0].calls.every(({ command }) =>
+                [FOUR_WAY_COMMANDS.deviceInitFlash, FOUR_WAY_COMMANDS.deviceRead].includes(command),
+            ),
+        ).toBe(true);
+        expect(applicationReads).toBe(48 * 4);
+        expect(escs.every((esc) => esc.detectedFirmwareFamily === ESC_FIRMWARE.BLUEJAY)).toBe(true);
+        expect(escs[0].bluejayIdentity.metadataCorrupt).toBe(true);
+        expect(escs[1].bluejayIdentity.metadataMissing).toBe(true);
+
+        expect(escs[0].confirmationStatus).toBe(ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED);
+        expect(escs[0].canWrite).toBe(true);
+        expect(escs[0].confirmationReason).toContain("名称标识异常");
+
+        expect(escs[1].confirmationStatus).toBe(ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED);
+        expect(escs[1].canWrite).toBe(true);
+        expect(escs[1].melodyReadStatus).toBe(ESC_MELODY_READ_STATUS.EMPTY);
+
+        expect(escs[2].confirmationStatus).toBe(ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED);
+        expect(escs[2].canWrite).toBe(true);
+        expect(escs[2].melodyReadStatus).toBe(ESC_MELODY_READ_STATUS.ERROR);
+        expect(escs[2].melodyReadError).toContain("Invalid RTTTL BPM: 36896");
+
+        expect(escs[3].confirmationStatus).toBe(ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED);
+        expect(escs[3].canWrite).toBe(true);
+        expect(escs[3].melodyReadStatus).toBe(ESC_MELODY_READ_STATUS.ERROR);
+        expect(escs[3].melodyReadError).toContain("Invalid RTTTL BPM: 61161");
+
+        const writeResult = await controller.writeMelody(escs, {
+            bpm: 120,
+            notes: [{ midi: 60, start: 0, duration: 0.5 }],
+        });
+        expect(writeResult.ok).toBe(true);
+        expect(writeResult.written).toHaveLength(4);
     });
 });

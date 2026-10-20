@@ -59,11 +59,11 @@ const CAPABILITY_MATRIX = {
         canRead: true,
         canBackup: true,
         canWrite: false,
-        capacity: 128,
-        supportsWait: false,
-        layout: "ARM flash · read only",
+        capacity: 48,
+        supportsWait: true,
+        layout: "BLHeli_32 · 48 B notes · encrypted configuration",
         storageCommand: "flash",
-        reason: "BLHeli_32 cannot be written through this tool. Migrate to AM32 with ST-Link or the ESC bootloader.",
+        reason: "BLHeli_32 尚未验证配置；当前支持 FPV32 / AT32F421 / 32.10，其他布局保持锁定。",
     },
     [ESC_FIRMWARE.UNKNOWN]: {
         label: "Unknown",
@@ -126,14 +126,13 @@ export function createEscRecord(channel, info = {}) {
         currentSettingsChecksum: info.currentSettingsChecksum || null,
         currentMelody: info.currentMelody || null,
         currentMelodyBytes: info.currentMelodyBytes || null,
+        currentMelodyMode: info.currentMelodyMode,
         currentWaitBytes: info.currentWaitBytes || null,
         melodyReadStatus: info.melodyReadStatus || ESC_MELODY_READ_STATUS.IDLE,
         melodyReadError: info.melodyReadError || "",
         melodyDirty: Boolean(info.melodyDirty),
         writeTouched: Boolean(info.writeTouched),
-        // Discovery is deliberately not an authorization decision. A scan may
-        // suggest a family, but only an explicit user confirmation followed by
-        // a layout probe permits EEPROM access.
+        // Scan records expose EEPROM access only after identity and layout probes succeed.
         detectedFirmwareFamily: info.detectedFirmwareFamily || firmwareFamily,
         detectedFirmwareLabel: info.detectedFirmwareLabel || capability.label,
         confirmedFirmwareFamily: info.confirmedFirmwareFamily || null,
@@ -184,30 +183,6 @@ export function applyEscFirmwareFamily(esc, firmwareFamily, overrides = {}) {
         firmwareLabel: capability.label,
         reason: overrides.reason ?? capability.reason ?? "",
     });
-    return esc;
-}
-
-/**
- * Keep the low-risk discovery metadata, but remove every EEPROM permission
- * until a person has confirmed the firmware family for this connected session.
- */
-export function lockEscForFirmwareConfirmation(esc) {
-    if (!esc || esc.status === "unavailable") return esc;
-    esc.detectedFirmwareFamily = esc.firmwareFamily || ESC_FIRMWARE.UNKNOWN;
-    esc.detectedFirmwareLabel = getEscCapabilities(esc.detectedFirmwareFamily).label;
-    esc.confirmedFirmwareFamily = null;
-    esc.confirmationStatus = ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING;
-    esc.confirmationReason = "请确认电调固件类型；确认并验证布局前不会读取、备份或写入 EEPROM。";
-    esc.layoutVerified = false;
-    esc.canRead = false;
-    esc.canBackup = false;
-    esc.canWrite = false;
-    esc.backedUp = false;
-    esc.currentMelody = null;
-    esc.currentMelodyBytes = null;
-    esc.currentWaitBytes = null;
-    esc.melodyReadStatus = ESC_MELODY_READ_STATUS.IDLE;
-    esc.melodyReadError = "";
     return esc;
 }
 

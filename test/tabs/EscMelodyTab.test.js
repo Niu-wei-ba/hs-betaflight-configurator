@@ -5,16 +5,16 @@ import { createEscBackupPackage } from "../../src/js/esc_melody/backups.js";
 const controllerProgress = vi.hoisted(() => ({ send: null }));
 const contentReady = vi.fn();
 const scanEscs = vi.hoisted(() => vi.fn());
-const confirmFirmware = vi.hoisted(() => vi.fn());
 const backupEscs = vi.hoisted(() => vi.fn());
 const writeMelody = vi.hoisted(() => vi.fn());
 const restoreBackup = vi.hoisted(() => vi.fn());
 const recoverEscs = vi.hoisted(() => vi.fn());
 const clipboard = vi.hoisted(() => ({ readText: vi.fn(), writeText: vi.fn() }));
 
-vi.mock("../../src/js/gui.js", () => ({
-    default: { active_tab: null, connect_lock: false, content_ready: contentReady },
-}));
+vi.mock("../../src/js/gui.js", async () => {
+    const { reactive } = await import("vue");
+    return { default: reactive({ active_tab: null, connect_lock: false, content_ready: contentReady }) };
+});
 
 vi.mock("../../src/js/esc_melody/esc_four_way_controller.js", () => ({
     EscFourWayController: class {
@@ -23,10 +23,6 @@ vi.mock("../../src/js/esc_melody/esc_four_way_controller.js", () => ({
         }
         scan() {
             return scanEscs();
-        }
-
-        confirmFirmware(queue) {
-            return confirmFirmware(queue);
         }
 
         backupEscs(escs) {
@@ -61,7 +57,6 @@ describe("EscMelodyTab", () => {
         globalThis.CONFIGURATOR = { connectionValid: false };
         contentReady.mockClear();
         scanEscs.mockReset();
-        confirmFirmware.mockReset();
         backupEscs.mockReset();
         writeMelody.mockReset();
         restoreBackup.mockReset();
@@ -87,10 +82,143 @@ describe("EscMelodyTab", () => {
         const container = document.createElement("div");
         document.body.appendChild(container);
         const app = createApp(EscMelodyTab);
-        app.mount(container);
+        const vm = app.mount(container);
         await nextTick();
-        return { app, container };
+        return { app, container, vm };
     }
+
+    it("shows native BLHeli32 capacity, keeps B7 intact, and blocks an oversized melody", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const { decodeBlheli32Melody } = await import("../../src/js/esc_melody/blheli32_melody.ts");
+        const notes = new Uint8Array(48).fill(255);
+        notes[0] = 0xfb;
+        const esc = {
+            ...createWritableEscs([60])[0],
+            model: "FPV32",
+            firmwareFamily: "blheli32",
+            firmwareLabel: "BLHeli_32",
+            version: "32.10",
+            capacity: 48,
+            currentMelody: decodeBlheli32Melody(notes, { mode: 0x80 }),
+        };
+        scanEscs.mockResolvedValue([esc]);
+        const { app, vm, container } = await mountTab();
+        try {
+            await vm.scanEscs();
+            expect(vm.targetFirmware).toBe("blheli32");
+            expect(vm.targetCapacity).toBe(48);
+            expect(vm.melody.notes[0].midi).toBe(107);
+            expect(container.querySelector(".compat-summary").textContent).toContain("/48 B");
+            expect(container.querySelector(".piano-roll").getAttribute("style")).toContain("--note-rows: 57");
+            vm.melody.notes = Array.from({ length: 49 }, (_, i) => ({ id: `too-many-${i}`, midi: 60, start: i, duration: 1 }));
+            await nextTick();
+            expect(container.querySelector(".validation-badge").textContent).toContain("编码需调整");
+            expect(vm.writeValidation.valid).toBe(false);
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("preserves completed scan channels when a later channel loses the transport", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const completed = createWritableEscs([60])[0];
+        const error = new Error("4-way command 0x3a timed out");
+        error.escs = [
+            completed,
+            {
+                ...createWritableEscs([64])[0],
+                id: "esc-1",
+                channel: 1,
+                canRead: false,
+                canWrite: false,
+                canBackup: false,
+                currentMelody: null,
+                melodyReadStatus: "idle",
+                confirmationStatus: "failed",
+            },
+        ];
+        scanEscs.mockRejectedValue(error);
+        const { app, vm, container } = await mountTab();
+        try {
+            await vm.scanEscs();
+            expect(vm.escs[0].editorMelody.notes[0].midi).toBe(60);
+            expect(vm.escs[1].canWrite).toBe(false);
+            expect(vm.operationMessage).toContain("timed out");
+            expect(vm.locked).toBe(false);
+            expect(container.querySelector(".firmware-confirm-dialog")).toBeNull();
+            expect(scanEscs).toHaveBeenCalledOnce();
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("preserves an edited preset across tab unmount and remount", async () => {
+        const { app, vm } = await mountTab();
+        vm.melody.bpm = 177;
+        await nextTick();
+        app.unmount();
+        const reopened = await mountTab();
+        try {
+            expect(reopened.vm.editRecovery).not.toBeNull();
+            reopened.vm.restoreEditorRecovery();
+            expect(reopened.vm.melody.bpm).toBe(177);
+        } finally {
+            reopened.app.unmount();
+        }
+    });
+
+    it("preserves all edited voices and the active voice when leaving the tab", async () => {
+        const { app, vm, container } = await mountTab();
+        findButton(container, "Bad Apple").click();
+        await nextTick();
+        container.querySelectorAll(".preset-track-tab")[1].click();
+        await nextTick();
+        vm.melody.bpm = 177;
+        await nextTick();
+        app.unmount();
+        const reopened = await mountTab();
+        try {
+            reopened.vm.restoreEditorRecovery();
+            expect(reopened.vm.presetTrackTabs).toHaveLength(4);
+            expect(reopened.vm.activePresetTrackIndex).toBe(1);
+            expect(reopened.vm.melody.bpm).toBe(177);
+        } finally {
+            reopened.app.unmount();
+        }
+    });
+
+    it("saves the current edit before browser unload and removes the listener on unmount", async () => {
+        const { app, vm } = await mountTab();
+        vm.melody.bpm = 177;
+        await nextTick();
+        window.dispatchEvent(new Event("beforeunload", { cancelable: true }));
+        const saved = localStorage.getItem("betaflight.esc-melody.edit-recovery.v1");
+        expect(saved).toContain('"bpm":177');
+        app.unmount();
+        localStorage.removeItem("betaflight.esc-melody.edit-recovery.v1");
+        window.dispatchEvent(new Event("beforeunload", { cancelable: true }));
+        expect(localStorage.getItem("betaflight.esc-melody.edit-recovery.v1")).toBeNull();
+    });
+
+    it("requests browser unload protection when the edited melody cannot be persisted", async () => {
+        const { app, vm } = await mountTab();
+        vm.melody.bpm = 177;
+        await nextTick();
+        const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+            throw new Error("storage full");
+        });
+        try {
+            const event = new Event("beforeunload", { cancelable: true });
+            window.dispatchEvent(event);
+            expect(event.defaultPrevented).toBe(true);
+            expect(vm.operationMessage).toContain("storage full");
+        } finally {
+            write.mockRestore();
+            app.unmount();
+        }
+    });
 
     it("keeps offline editing available while locking the hardware safety flow", async () => {
         const { app, container } = await mountTab();
@@ -125,52 +253,86 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
-    it("requires a grouped firmware confirmation before scanned ESCs become editable", async () => {
+    it("opens scanned melodies immediately without a firmware confirmation dialog", async () => {
         globalThis.CONFIGURATOR.connectionValid = true;
-        const candidates = createWritableEscs([60, 64]).map((esc) => ({
-            ...esc,
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60, 64]).map((esc) => ({
+                ...esc,
+                confirmationStatus: "verified",
+                layoutVerified: true,
+            })),
+        );
+        const { app, container, vm } = await mountTab();
+        try {
+            await vm.scanEscs();
+            expect(vm.escs.map((esc) => esc.editorMelody.notes[0].midi)).toEqual([60, 64]);
+            expect(container.querySelector(".firmware-confirm-dialog")).toBeNull();
+            expect(container.textContent).not.toContain("确认电调类型");
+            expect(container.textContent).not.toContain("确认并验证");
+            expect(container.textContent).toContain("已识别可读写");
+            expect(scanEscs).toHaveBeenCalledOnce();
+            expect(backupEscs).not.toHaveBeenCalled();
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("shows failed scan reasons without reopening a dialog or repeating requests", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60, 64]).map((esc) => ({
+                ...esc,
+                canRead: false,
+                canWrite: false,
+                canBackup: false,
+                currentMelody: null,
+                melodyReadStatus: "idle",
+                confirmationStatus: "failed",
+                confirmationReason: `ESC ${esc.channel + 1} 程序指纹不匹配`,
+            })),
+        );
+        const { app, container, vm } = await mountTab();
+        try {
+            await vm.scanEscs();
+            expect(container.querySelector(".firmware-confirm-dialog")).toBeNull();
+            expect(container.querySelector(".device-readiness").textContent).toContain("2 路验证失败");
+            expect(container.querySelector(".safety-write-blocker").textContent).toContain("通道保持锁定");
+            expect(container.textContent).toContain("ESC 1 程序指纹不匹配");
+            expect(container.textContent).toContain("ESC 2 程序指纹不匹配");
+            expect(findButton(container, "扫描电调").disabled).toBe(false);
+            expect(scanEscs).toHaveBeenCalledOnce();
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("keeps failed channels locked alongside editable scan results", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const records = createWritableEscs([60, 64]);
+        Object.assign(records[1], {
+            confirmationStatus: "failed",
             canRead: false,
             canBackup: false,
             canWrite: false,
             currentMelody: null,
             melodyReadStatus: "idle",
-            detectedFirmwareFamily: "am32",
-            detectedFirmwareLabel: "AM32",
-            confirmedFirmwareFamily: null,
-            confirmationStatus: "pending",
-            confirmationReason: "请确认电调固件类型；确认并验证布局前不会读取、备份或写入 EEPROM。",
-            layoutVerified: false,
-        }));
-        scanEscs.mockResolvedValue(candidates);
-        confirmFirmware.mockImplementation(async (queue) => {
-            queue.forEach(({ esc }) => {
-                esc.confirmedFirmwareFamily = "am32";
-                esc.confirmationStatus = "verified";
-                esc.layoutVerified = true;
-                esc.canRead = true;
-                esc.canBackup = true;
-                esc.canWrite = true;
-                esc.melodyReadStatus = "loaded";
-                esc.currentMelody = createCurrentMelody(esc.channel, 60 + esc.channel * 4);
-            });
-            return { confirmed: queue.map(({ esc }) => esc), failed: [] };
+            confirmationReason: "配置布局无效",
         });
-        const { app, container } = await mountTab();
-
-        findButton(container, "扫描电调").click();
-        await vi.waitFor(() => expect(container.querySelector(".firmware-confirm-dialog")).not.toBeNull());
-        expect(container.querySelectorAll(".firmware-confirm-group")).toHaveLength(1);
-        expect(findButton(container, "安全写入").disabled).toBe(true);
-
-        container.querySelector(".firmware-confirm-ack input").click();
-        await nextTick();
-        findButton(container, "确认并验证").click();
-        await vi.waitFor(() => expect(confirmFirmware).toHaveBeenCalledOnce());
-        expect(confirmFirmware.mock.calls[0][0]).toHaveLength(2);
-        await vi.waitFor(() => expect(container.querySelector(".firmware-confirm-dialog")).toBeNull());
-        expect(container.textContent).toContain("已确认可读写");
-
-        app.unmount();
+        scanEscs.mockResolvedValue(records);
+        const { app, container, vm } = await mountTab();
+        try {
+            await vm.scanEscs();
+            const buttons = container.querySelectorAll(".esc-record-select");
+            expect(buttons[0].disabled).toBe(false);
+            expect(buttons[1].disabled).toBe(true);
+            expect(vm.escs[0].editorMelody.notes[0].midi).toBe(60);
+            expect(container.textContent).toContain("配置布局无效");
+            expect(container.textContent).not.toContain("确认电调类型");
+        } finally {
+            app.unmount();
+        }
     });
 
     it("separates offline encoding from device and operation readiness", async () => {
@@ -1422,7 +1584,7 @@ describe("EscMelodyTab", () => {
             }
         });
         writeMelody.mockImplementation(async (targets) => ({ ok: true, written: targets }));
-        const { app, container } = await mountTab();
+        const { app, container, vm } = await mountTab();
 
         findButton(container, "扫描电调").click();
         await vi.waitFor(() => expect(container.querySelector(".melody-conflict-notice")).not.toBeNull());
@@ -1442,6 +1604,25 @@ describe("EscMelodyTab", () => {
         expect(writeMelody.mock.calls[0][0].map((esc) => esc.channel)).toEqual([0]);
         expect(backupEscs.mock.calls[0][0].map((esc) => esc.channel)).toEqual([0, 1]);
         expect(findButton(container, "安全写入").disabled).toBe(true);
+
+        await vi.waitFor(() => expect(container.querySelector("#safety-title").textContent).toBe("写入完成"));
+        const completed = container.querySelector('.safety-overlay[aria-labelledby="safety-title"]');
+        expect(completed.querySelectorAll(".channel-plan tbody tr")).toHaveLength(1);
+        expect(completed.querySelector(".channel-plan tbody tr").textContent).toContain("已完成");
+        expect(completed.querySelector(".safety-write-melody").textContent).toContain(scannedEscs[0].editorMelody.name);
+        expect(completed.textContent).toContain("已完成 1 路电调写入");
+        expect(completed.textContent).not.toContain("将写入");
+        expect(completed.textContent).not.toContain("无修改");
+        expect(completed.querySelector(".safety-check")).toBeNull();
+        expect(completed.querySelector(".safety-backup")).toBeNull();
+        expect(completed.querySelectorAll(".safety-dialog-footer button")).toHaveLength(1);
+        expect(completed.querySelector(".safety-dialog-footer button").textContent.trim()).toBe("完成");
+        await vm.performWrite();
+        expect(writeMelody).toHaveBeenCalledOnce();
+        completed.querySelector(".safety-dialog-footer button").click();
+        await nextTick();
+        expect(container.querySelector('.safety-overlay[aria-labelledby="safety-title"]')).toBeNull();
+        expect(writeMelody).toHaveBeenCalledOnce();
 
         app.unmount();
     });
@@ -1480,6 +1661,25 @@ describe("EscMelodyTab", () => {
         expect(melodyForEsc(targets[0]).notes[0].midi).toBe(64);
         expect(melodyForEsc(targets[1]).notes[0].midi).toBe(64);
         expect(backupEscs.mock.calls[0][0].map((esc) => esc.channel)).toEqual([0, 1]);
+
+        await vi.waitFor(() => expect(container.querySelector("#safety-title").textContent).toBe("写入完成"));
+        const completed = container.querySelector('.safety-overlay[aria-labelledby="safety-title"]');
+        expect(completed.textContent).toContain("已完成 2 路电调写入");
+        expect(
+            [...completed.querySelectorAll(".channel-plan tbody tr td:last-child")].map((cell) => cell.textContent),
+        ).toEqual(["已完成", "已完成"]);
+        expect(completed.textContent).not.toContain("开始写入");
+        expect(completed.textContent).not.toContain("取消");
+        findButton(container, "完成").click();
+        await nextTick();
+        findButton(container, "安全写入").click();
+        await nextTick();
+        expect(container.querySelector("#safety-title").textContent).toBe("写入前安全检查");
+        expect(
+            container.querySelectorAll('.safety-overlay[aria-labelledby="safety-title"] .safety-check'),
+        ).toHaveLength(3);
+        expect(findButton(container, "开始写入")).not.toBeNull();
+        expect(writeMelody).toHaveBeenCalledOnce();
 
         app.unmount();
     });
@@ -1529,16 +1729,10 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
-    it("requires a downloaded and persisted local backup before every EEPROM write", async () => {
+    it("writes without a local EEPROM backup when the safety checks pass", async () => {
         globalThis.CONFIGURATOR.connectionValid = true;
         const scannedEscs = createWritableEscs();
         scanEscs.mockResolvedValue(scannedEscs);
-        backupEscs.mockImplementation(async (escs) => {
-            for (const esc of escs) {
-                esc.originalEeprom = new Uint8Array(esc.settingsLength).fill(esc.channel + 1);
-                esc.backedUp = true;
-            }
-        });
         writeMelody.mockResolvedValue({ ok: true, written: scannedEscs });
         const { app, container } = await mountTab();
 
@@ -1548,43 +1742,32 @@ describe("EscMelodyTab", () => {
         await nextTick();
         findButton(container, "安全写入").click();
         await nextTick();
-        findButton(container, "备份到本机").click();
-        await vi.waitFor(() => {
-            expect(backupEscs).toHaveBeenCalledOnce();
-            expect(container.querySelector(".esc-melody-notice").textContent).toContain("已保存到本地历史并下载");
-        });
-
-        expect(URL.createObjectURL).toHaveBeenCalledOnce();
-        expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledOnce();
-        const storedBackups = JSON.parse(localStorage.getItem("betaflight.esc-melody.eeprom-backups.v1"));
-        expect(storedBackups).toHaveLength(1);
-        expect(storedBackups[0].escs).toHaveLength(2);
+        expect(container.querySelector(".safety-backup").textContent).toContain("本地 EEPROM 备份（可选）");
+        expect(container.querySelector(".safety-backup small").textContent).toContain("未备份也可写入");
 
         for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
         await nextTick();
-        const writeButton = findButton(container, "开始写入");
-        expect(writeButton.disabled).toBe(false);
+        expect(findButton(container, "开始写入").disabled).toBe(false);
+        findButton(container, "开始写入").click();
 
-        localStorage.clear();
-        writeButton.click();
-        await vi.waitFor(() =>
-            expect(container.querySelector(".esc-melody-notice").textContent).toContain("本地 EEPROM 备份校验失败"),
-        );
-        expect(writeMelody).not.toHaveBeenCalled();
-        expect(findButton(container, "开始写入").disabled).toBe(true);
+        await vi.waitFor(() => expect(writeMelody).toHaveBeenCalledOnce());
+        expect(backupEscs).not.toHaveBeenCalled();
+        expect(localStorage.getItem("betaflight.esc-melody.eeprom-backups.v1")).toBeNull();
 
         app.unmount();
     });
 
-    it("keeps EEPROM writing disabled when the mandatory backup download fails", async () => {
+    it("allows EEPROM writing when the optional local backup download fails", async () => {
         globalThis.CONFIGURATOR.connectionValid = true;
-        scanEscs.mockResolvedValue(createWritableEscs());
+        const scannedEscs = createWritableEscs();
+        scanEscs.mockResolvedValue(scannedEscs);
         backupEscs.mockImplementation(async (escs) => {
             for (const esc of escs) {
                 esc.originalEeprom = new Uint8Array(esc.settingsLength).fill(0xa5);
                 esc.backedUp = true;
             }
         });
+        writeMelody.mockResolvedValue({ ok: true, written: scannedEscs });
         URL.createObjectURL.mockImplementation(() => {
             throw new Error("download blocked");
         });
@@ -1601,9 +1784,13 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() =>
             expect(container.querySelector(".esc-melody-notice").textContent).toContain("download blocked"),
         );
-        expect(findButton(container, "开始写入").disabled).toBe(true);
-        expect(container.querySelector(".safety-backup small").textContent).toContain("必须读取全部可写电调");
-        expect(writeMelody).not.toHaveBeenCalled();
+        expect(container.querySelector(".safety-backup small").textContent).toContain("未备份也可写入");
+
+        for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
+        await nextTick();
+        expect(findButton(container, "开始写入").disabled).toBe(false);
+        findButton(container, "开始写入").click();
+        await vi.waitFor(() => expect(writeMelody).toHaveBeenCalledOnce());
 
         app.unmount();
     });
@@ -2057,8 +2244,9 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() => expect(recoverEscs).toHaveBeenCalledOnce());
         expect(recoverEscs.mock.calls[0][0].map((esc) => esc.channel)).toEqual([0]);
         await vi.waitFor(() => expect(container.querySelector(".write-failure")).toBeNull());
-        expect(findButton(container, "开始写入").disabled).toBe(true);
+        // Recovery clears the destroyed local backup state but no longer blocks a retry.
         expect(findButton(container, "备份到本机").disabled).toBe(false);
+        expect(findButton(container, "开始写入").disabled).toBe(false);
         app.unmount();
     });
 
