@@ -52,9 +52,8 @@
 import { ref, reactive, onMounted, onUnmounted } from "vue";
 import { clamp } from "@/js/utils/common";
 
-// i18n from parent window
-const i18n = globalThis.opener?.i18n;
-const t = (key) => i18n?.getMessage(key) ?? key;
+// ReceiverTab hands its translator to the child before the popup's modules load.
+const t = (key) => (globalThis.i18n ?? globalThis.opener?.i18n)?.getMessage(key) ?? key;
 
 const CHANNEL_MIN_VALUE = 1000;
 const CHANNEL_MID_VALUE = 1500;
