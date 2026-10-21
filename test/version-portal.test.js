@@ -45,7 +45,7 @@ describe("version portal browser fallback", () => {
         expect(timers.timeouts).toEqual([{ id: 1, callback: expect.any(Function), delay: 10_000 }]);
         timers.intervals[0].callback();
         expect(dom.window.document.getElementById("fallback-countdown").textContent).toContain("9 秒");
-        expect(dom.window.document.querySelector(".close").getAttribute("aria-label")).toContain("2026.6.1");
+        expect(dom.window.document.querySelector(".close").getAttribute("aria-label")).toContain("2026.6.2");
     });
 
     it("remembers a manual switch to 2025.12.2 and cancels the portal countdown", () => {
