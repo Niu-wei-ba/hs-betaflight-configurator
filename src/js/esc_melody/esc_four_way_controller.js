@@ -73,6 +73,7 @@ export class EscFourWayController {
         this.inPassthrough = false;
         this.activeChannel = null;
         this.connectedEscCount = null;
+        this.passthroughSettleUntil = 0;
     }
 
     async enter() {
@@ -100,34 +101,49 @@ export class EscFourWayController {
             }
         });
         this.connectedEscCount = decodeConnectedEscCount(response);
-        this.session = this.sessionFactory({ serial: this.serial });
-        this.session.start();
         this.inPassthrough = true;
-        this.activeChannel = null;
-        if (this.probeAlive) {
-            const probed = await this.probePassthroughReady(this.session);
-            if (!probed && this.passthroughSettleDelay > 0) {
+        try {
+            this.session = this.sessionFactory({ serial: this.serial });
+            this.session.start();
+            this.activeChannel = null;
+            this.passthroughSettleUntil = Date.now() + this.passthroughSettleDelay;
+            if (this.probeAlive) {
+                const probed = await this.probePassthroughAlive(this.session);
+                if (!probed && this.passthroughSettleDelay > 0) {
+                    await this.waitForPassthroughSettle();
+                }
+            } else if (this.passthroughSettleDelay > 0) {
                 await this.delay(this.passthroughSettleDelay);
+                this.passthroughSettleUntil = 0;
             }
-        } else if (this.passthroughSettleDelay > 0) {
-            await this.delay(this.passthroughSettleDelay);
+            return this.session;
+        } catch (error) {
+            // MSP has already entered 4-way, even if no usable session was created.
+            await this.exit().catch(() => {});
+            throw error;
         }
-        return this.session;
     }
 
-    async probePassthroughReady(session) {
+    async probePassthroughAlive(session) {
         const deadline = Date.now() + Math.min(this.passthroughSettleDelay, 1500);
         await this.delay(100);
         while (Date.now() < deadline) {
             try {
-                await session.send(FOUR_WAY_COMMANDS.interfaceTestAlive, [0], 0, 250);
-                return true;
+                const response = await session.send(FOUR_WAY_COMMANDS.interfaceTestAlive, [0], 0, 250);
+                return response.ack === FOUR_WAY_ACK.ok;
             } catch (error) {
                 if (isTransportFailure(error)) throw error;
                 await this.delay(50);
             }
         }
         return false;
+    }
+
+    /** Alive only proves interface health; an OX32 may still reject flash initialization. */
+    async waitForPassthroughSettle() {
+        const remaining = this.passthroughSettleUntil - Date.now();
+        if (remaining > 0) await this.delay(remaining);
+        this.passthroughSettleUntil = 0;
     }
 
     async waitForMspIdle() {
@@ -188,13 +204,20 @@ export class EscFourWayController {
 
     async initFlash(channel, { armRecovery = true } = {}) {
         let lastError;
-        for (const retryDelay of this.initRetryDelays) {
+        const retryDelays = [...this.initRetryDelays];
+        while (retryDelays.length) {
+            const retryDelay = retryDelays.shift();
             if (retryDelay > 0) await this.delay(retryDelay);
             try {
                 return await this.session.send(FOUR_WAY_COMMANDS.deviceInitFlash, [channel]);
             } catch (error) {
                 lastError = error;
                 if (isTransportFailure(error) || error?.ack === FOUR_WAY_ACK.invalidChannel) throw error;
+                if (isRetryableInitFailure(error) && this.passthroughSettleUntil > Date.now()) {
+                    // Stay in this session until the startup window ends, before reset/reconnect recovery.
+                    await this.waitForPassthroughSettle();
+                    retryDelays.unshift(0);
+                }
             }
         }
         if (armRecovery && isRetryableInitFailure(lastError)) return this.initArmWithRecovery(channel);
@@ -603,8 +626,7 @@ export class EscFourWayController {
             // Always try to put the original image back before reporting failure.
             const restored = await this.restoreAfterFailedWrite(esc);
             if (!restored) {
-                const state =
-                    esc.firmwareFamily === ESC_FIRMWARE.BLHELI32 ? "配置状态不确定" : "可能已被擦除";
+                const state = esc.firmwareFamily === ESC_FIRMWARE.BLHELI32 ? "配置状态不确定" : "可能已被擦除";
                 throw new Error(
                     `${error.message}；原始 EEPROM 未能写回，第 ${esc.channel + 1} 路${state}，请保持供电并立即重试恢复。`,
                     { cause: error },
@@ -752,7 +774,7 @@ export class EscFourWayController {
         }
 
         const { eeprom, settingsChecksum } = decodeEscBackupEntry(backupEntry);
-        if (esc.firmwareFamily === ESC_FIRMWARE.BLHELI32) this.assertBlheli32Settings(esc, eeprom);
+        await this.assertRestorePayload(esc, eeprom, settingsChecksum);
         esc.operationBackup = {
             image: esc.originalEeprom ? new Uint8Array(esc.originalEeprom) : null,
             settingsChecksum: esc.originalSettingsChecksum ? new Uint8Array(esc.originalSettingsChecksum) : null,
@@ -792,6 +814,47 @@ export class EscFourWayController {
         this.applyRestoredSettings(esc, readBack, checksumReadBack);
         esc.restoreTouched = false;
         return esc;
+    }
+
+    /**
+     * Validate the configuration bytes, independently of the backup's JSON identity fields.
+     * @param {object} esc
+     * @param {Uint8Array} image
+     * @param {Uint8Array|null} checksum
+     * @returns {Promise<void>}
+     */
+    async assertRestorePayload(esc, image, checksum) {
+        if (image.length !== esc.settingsLength) throw new Error("备份配置长度与电调布局不匹配。");
+        if (esc.firmwareFamily === ESC_FIRMWARE.BLHELI32) {
+            this.assertBlheli32Settings(esc, image);
+        } else if ([ESC_FIRMWARE.BLUEJAY, ESC_FIRMWARE.AM32].includes(esc.firmwareFamily)) {
+            const bluejay = esc.firmwareFamily === ESC_FIRMWARE.BLUEJAY;
+            const header = image.slice(0, bluejay ? 3 : 5);
+            const layout = bluejay
+                ? await this.readBluejayIdentity(esc, {
+                    header,
+                    nameBytes: image.slice(0x60, 0x70),
+                    forceRecheck: true,
+                })
+                : validateSettingsHeader(header, esc.firmwareFamily);
+            for (const key of ["version", "settingsLength", "layoutRevision"]) {
+                if (esc[key] !== undefined && layout[key] !== esc[key]) {
+                    throw new Error("备份内部固件版本或布局与当前电调不匹配。");
+                }
+            }
+            if (bluejay) {
+                const tags = await this.readMemoryImage(esc.settingsOffset + 0x40, 32);
+                if (!equalBytes(image.slice(0x40, 0x60), tags)) {
+                    throw new Error("备份内部型号或芯片标识与当前电调不匹配。");
+                }
+            }
+        } else if (esc.firmwareFamily === ESC_FIRMWARE.OX32) {
+            if (!equalBytes(createOx32ChecksumTrailer(image), checksum)) {
+                throw new Error("备份内部 OX32 配置与 CRC 校验值不匹配。");
+            }
+        } else {
+            throw new Error("未支持的备份固件类型，已取消恢复。");
+        }
     }
 
     async recoverSelectedEsc(esc) {
@@ -1106,6 +1169,7 @@ export class EscFourWayController {
         this.session = null;
         this.inPassthrough = false;
         this.activeChannel = null;
+        this.passthroughSettleUntil = 0;
         if (session) {
             try {
                 await session.stop({ exit: shouldExit });

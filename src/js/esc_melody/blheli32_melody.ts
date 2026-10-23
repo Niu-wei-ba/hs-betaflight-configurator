@@ -2,14 +2,14 @@ export const BLHELI32_MELODY_CAPACITY = 48;
 const TONE_DENOMINATORS = [8, 4, 2, 1];
 const REST_DENOMINATORS = [128, 64, 32, 16, 8, 4, 2, 1];
 
-interface Note {
+export interface Note {
     id?: string;
     midi: number | null;
     start: number;
     duration: number;
     rest?: boolean;
 }
-interface Melody {
+export interface Melody {
     name?: string;
     bpm: number;
     waitMs?: number;
@@ -27,7 +27,7 @@ function fingerprint(melody: Melody): string {
 }
 
 // Official parser 0x100570330: integer 500/denominator, scaled by max(Length,1)/8.
-function durationMs(denominator: number, length: number): number {
+export function durationMs(denominator: number, length: number): number {
     return Math.floor((Math.floor(500 / denominator) * Math.max(length, 1)) / 8);
 }
 
@@ -76,12 +76,21 @@ export function decodeBlheli32Melody(bytes: Uint8Array, { mode, name = "BLHeli_3
     return melody;
 }
 
-export function encodeBlheli32Melody(melody: Melody) {
+export function encodeBlheli32Melody(melody: Melody, { length: requiredLength }: { length?: number } = {}) {
+    if (
+        requiredLength !== undefined &&
+        (!Number.isInteger(requiredLength) || requiredLength < 1 || requiredLength > 15)
+    )
+        throw new Error("BLHeli_32 音长档位必须为 1–15。");
     if (!Number.isFinite(melody.bpm) || melody.bpm <= 0 || !melody.notes?.length) {
         throw new Error("BLHeli_32 旋律需要有效 BPM 和至少一个事件。");
     }
     const saved = melody.blheli32;
-    if (saved?.bytes?.length === 48 && saved.fingerprint === fingerprint(melody)) {
+    if (
+        saved?.bytes?.length === 48 &&
+        saved.fingerprint === fingerprint(melody) &&
+        (requiredLength === undefined || saved.mode >>> 4 === requiredLength)
+    ) {
         const original = decodeBlheli32Melody(Uint8Array.from(saved.bytes), { mode: saved.mode });
         if (original && fingerprint(original) === fingerprint(melody)) {
             return result(Uint8Array.from(saved.bytes), saved.mode, [], original);
@@ -108,8 +117,24 @@ export function encodeBlheli32Melody(melody: Melody) {
         events.push({ midi, milliseconds: (note.duration * 60000) / melody.bpm });
         cursor = note.start + note.duration;
     }
+    if (events.filter((event) => event.midi !== null).length > 48)
+        throw new Error("BLHeli_32 每路最多 48 个音符事件；请截取片段或简化旋律。");
+    const lengths = (
+        requiredLength === undefined ? Array.from({ length: 15 }, (_, i) => i + 1) : [requiredLength]
+    ).filter((length) =>
+        events.every(
+            (event) =>
+                event.midi === null ||
+                TONE_DENOMINATORS.some(
+                    (denominator) =>
+                        Math.abs(durationMs(denominator, length) - event.milliseconds) <=
+                        Math.max(1, event.milliseconds * 0.05),
+                ),
+        ),
+    );
+    if (!lengths.length) throw new Error("BLHeli_32 无法表示当前音长组合；请调整 BPM 或音长，不一定是容量不足。");
     let best: { bytes: Uint8Array; mode: number; score: number; maxError: number } | null = null;
-    for (let length = 1; length <= 15; length++) {
+    for (const length of lengths) {
         const encoded: number[] = [];
         let score = 0;
         let maxError = 0;
@@ -157,10 +182,7 @@ export function encodeBlheli32Melody(melody: Melody) {
             best = { bytes, mode: length << 4, score, maxError };
         }
     }
-    if (!best)
-        throw new Error(
-            "BLHeli_32 只能保存 48 个离散时值事件；请减少音符/休止符，或调整 BPM、音长（可尝试 120 BPM）。",
-        );
+    if (!best) throw new Error("BLHeli_32 的音长和休止无法在 48 个事件内编码；请合并休止、截取片段或调整 BPM。");
     const warnings =
         best.maxError > 1
             ? [

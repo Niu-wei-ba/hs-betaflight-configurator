@@ -1,38 +1,65 @@
 <template>
     <BaseTab tab-name="esc_melody" extra-class="esc-melody-tab">
-        <div class="esc-melody-shell">
+        <div class="esc-melody-shell melody-selection-shell">
             <header class="esc-melody-header" :inert="modalOpen ? '' : undefined">
                 <div class="esc-melody-title-group">
-                    <div class="esc-melody-kicker">
-                        <UIcon name="i-lucide-music-2" class="esc-ui-icon" aria-hidden="true" /> ESC WORKBENCH
-                    </div>
+                    <UIcon name="i-lucide-music-2" class="esc-ui-icon title-music-icon" aria-hidden="true" />
                     <h1>电调音乐</h1>
-                    <p>编辑开机旋律，先在电脑试听，再按兼容性安全写入电调。</p>
+                    <span class="melody-supported-firmware" title="兼容性以具体型号、固件版本和扫描验证结果为准">
+                        Bluejay · AM32 · OX32 · BLHeli_32
+                    </span>
                 </div>
-                <ol class="esc-melody-workflow" aria-label="电调音乐操作步骤">
-                    <li
-                        class="esc-melody-workflow-step"
-                        :class="{ complete: editableEscs.length }"
-                        :aria-current="connected && !editableEscs.length ? 'step' : undefined"
+                <nav class="melody-mode-nav" aria-label="电调音乐视图">
+                    <button
+                        type="button"
+                        :aria-pressed="workspaceView === 'library'"
+                        @click="workspaceView = 'library'"
                     >
-                        <span class="esc-melody-workflow-index" aria-hidden="true">1</span><strong>扫描电调</strong>
-                    </li>
-                    <li
-                        class="esc-melody-workflow-step"
-                        :class="{ complete: validation.valid }"
-                        :aria-current="!connected ? 'step' : undefined"
+                        选曲
+                    </button>
+                    <button type="button" :aria-pressed="workspaceView === 'editor'" @click="workspaceView = 'editor'">
+                        编曲
+                    </button>
+                </nav>
+                <div class="melody-header-device">
+                    <span class="melody-connection-status">
+                        <UIcon
+                            :name="connected ? 'i-lucide-plug' : 'i-lucide-unplug'"
+                            class="esc-ui-icon"
+                            aria-hidden="true"
+                        />
+                        {{ headerConnectionLabel }}
+                    </span>
+                    <button
+                        type="button"
+                        class="primary-button melody-header-scan"
+                        aria-label="扫描电调"
+                        :disabled="!connected || scanning || locked || !!writeRecoveryTargets.length"
+                        @click="scanEscs"
                     >
-                        <span class="esc-melody-workflow-index" aria-hidden="true">2</span
-                        ><strong>选择 / 编辑音乐</strong>
-                    </li>
-                    <li
-                        class="esc-melody-workflow-step"
-                        :class="{ complete: writeResult?.ok }"
-                        :aria-current="editableEscs.length ? 'step' : undefined"
+                        <UIcon
+                            name="i-lucide-refresh-cw"
+                            class="fas fa-sync-alt esc-ui-icon"
+                            :class="{ spinning: scanning }"
+                            aria-hidden="true"
+                        />
+                        {{ scanning ? "扫描中" : "扫描电调" }}
+                    </button>
+                    <button
+                        type="button"
+                        class="text-button"
+                        :aria-expanded="deviceDetailsOpen"
+                        aria-controls="melody-device-details"
+                        @click="deviceDetailsOpen ? closeDeviceDetails() : openDeviceDetails()"
                     >
-                        <span class="esc-melody-workflow-index" aria-hidden="true">3</span><strong>安全写入</strong>
-                    </li>
-                </ol>
+                        设备详情
+                        <UIcon
+                            :name="deviceDetailsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-right'"
+                            class="esc-ui-icon"
+                            aria-hidden="true"
+                        />
+                    </button>
+                </div>
             </header>
 
             <div
@@ -54,104 +81,309 @@
                 </button>
             </div>
 
-            <section class="workbench-entry" :inert="modalOpen ? '' : undefined" aria-label="开始编曲">
-                <span>先选曲试听，再连接写入</span>
-                <button type="button" class="regular-button" @click="focusLibrary">选一首试听</button>
-                <button type="button" class="regular-button" @click="openCodeDialog">导入 RTTTL 代码</button>
-                <button type="button" class="regular-button" @click="newDraft">从空白开始</button>
-            </section>
-            <div v-if="editRecovery" class="edit-recovery-banner" :inert="modalOpen ? '' : undefined">
-                <span>已保留上次切换前的 {{ editRecovery.package.drafts.length }} 个声部，仅包含音乐编辑。</span
-                ><button type="button" class="regular-button" :disabled="locked" @click="restoreEditorRecovery">
-                    恢复上次编辑</button
-                ><button type="button" class="regular-button" :disabled="locked" @click="exportEditorRecovery">
-                    导出保留编排
-                </button>
-            </div>
-            <nav class="workbench-mobile-nav" aria-label="工作区视图" :inert="modalOpen ? '' : undefined">
-                <button
-                    v-for="view in [
-                        { id: 'editor', label: '编辑器' },
-                        { id: 'library', label: '曲库与草稿' },
-                        { id: 'targets', label: '设备与分配' },
-                    ]"
-                    :key="view.id"
-                    type="button"
-                    :aria-pressed="workspaceView === view.id"
-                    @click="workspaceView = view.id"
-                >
-                    {{ view.label }}
-                </button>
-            </nav>
-            <main :data-view="workspaceView" class="esc-melody-workspace" :inert="modalOpen ? '' : undefined">
-                <aside class="esc-melody-sidebar">
-                    <section class="esc-scan-panel" :class="{ connected, scanning }">
-                        <div class="esc-scan-panel-heading">
-                            <span>飞控与电调</span>
-                            <span class="esc-scan-status">{{ connected ? "已连接" : "离线" }}</span>
-                        </div>
-                        <div class="esc-scan-state">
-                            <span class="esc-scan-icon" :class="{ connected }" aria-hidden="true">
+            <section
+                v-show="deviceDetailsOpen"
+                id="melody-device-details"
+                class="melody-device-details"
+                aria-label="电调设备详情"
+                :inert="modalOpen ? '' : undefined"
+            >
+                <div class="melody-device-heading">
+                    <div class="device-title">
+                        <h2 tabindex="-1">设备详情</h2>
+                        <span class="device-readiness" :class="{ 'has-issues': hasDeviceIssues }">{{
+                            deviceReadiness
+                        }}</span>
+                    </div>
+                    <button type="button" class="text-button" @click="closeDeviceDetails">收起详情</button>
+                </div>
+                <div class="device-layout">
+                    <aside class="device-console" aria-label="设备概况与操作">
+                        <span class="device-section-label">连接设备</span>
+                        <div class="device-overview esc-scan-panel" :class="{ connected, scanning }">
+                            <div class="device-connection">
                                 <UIcon
                                     :name="connected ? 'i-lucide-plug' : 'i-lucide-unplug'"
-                                    class="fas esc-ui-icon"
-                                    :class="connected ? 'fa-plug' : 'fa-unlink'"
+                                    class="esc-ui-icon"
+                                    aria-hidden="true"
                                 />
-                            </span>
-                            <span class="esc-scan-copy">
-                                <strong>{{ connected ? "已连接飞控" : "离线编辑" }}</strong>
-                                <small>{{ connectionSummary }}</small>
-                            </span>
-                            <span v-if="connected && escs.length" class="esc-scan-count">
-                                {{ identifiedEscCount }} 路
-                            </span>
+                                <div>
+                                    <strong>{{
+                                        escModelSummary.length
+                                            ? escModelSummary.join("；")
+                                            : connected
+                                              ? "已连接飞控"
+                                              : "离线编辑"
+                                    }}</strong>
+                                    <small>{{ connectionSummary }}</small>
+                                </div>
+                            </div>
+                            <div class="device-actions">
+                                <button
+                                    v-if="selectedEsc"
+                                    type="button"
+                                    class="regular-button current-melody-item"
+                                    :class="{ active: currentMelodySourceActive }"
+                                    :disabled="!currentMelodySource"
+                                    @click="loadCurrentMelody"
+                                >
+                                    <UIcon name="i-lucide-history" class="esc-ui-icon" aria-hidden="true" />
+                                    当前音乐
+                                    <span v-if="!syncAll" class="current-source-badge"
+                                        >ESC {{ selectedEsc.channel + 1 }}</span
+                                    >
+                                    <small>{{ currentMelodySourceSummary }}</small>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="regular-button"
+                                    :disabled="!connected || !escs.length || locked"
+                                    @click="chooseRestoreFile"
+                                >
+                                    <UIcon name="i-lucide-rotate-ccw" class="esc-ui-icon" aria-hidden="true" /> 恢复
+                                    EEPROM
+                                </button>
+                            </div>
                         </div>
-                        <div v-if="escModelSummary.length" class="esc-scan-models">
-                            <span>当前型号</span>
-                            <strong>{{ escModelSummary.join("；") }}</strong>
-                        </div>
+                        <p class="device-operation-status" role="status">{{ operationReadiness }}</p>
+                        <details class="device-encoding-help">
+                            <summary>编码与固件支持</summary>
+                            <section class="target-panel">
+                                <div class="panel-heading">
+                                    <span>当前声部编码</span
+                                    ><span class="validation-badge" :class="{ valid: validation.valid }">{{
+                                        validation.valid ? "编码通过" : "编码需调整"
+                                    }}</span>
+                                </div>
+                                <div class="compat-summary">
+                                    <strong
+                                        >{{ validation.encodedLength }}<small>/{{ targetCapacity }} B</small></strong
+                                    ><span>{{
+                                        targetFirmware === "blheli32" ? "BLHeli_32 音符容量" : "RTTTL 编码容量"
+                                    }}</span>
+                                </div>
+                                <ul class="validation-list">
+                                    <li
+                                        v-for="warning in validation.warnings || []"
+                                        :key="warning"
+                                        class="validation-warning"
+                                    >
+                                        {{ warning }}
+                                    </li>
+                                    <li v-for="error in validation.errors" :key="error" class="validation-error">
+                                        <UIcon
+                                            name="i-lucide-circle-x"
+                                            class="fas fa-times-circle esc-ui-icon"
+                                            aria-hidden="true"
+                                        />{{ error }}
+                                    </li>
+                                    <li v-if="validation.valid" class="validation-ok">
+                                        <UIcon
+                                            name="i-lucide-circle-check"
+                                            class="fas fa-check-circle esc-ui-icon"
+                                            aria-hidden="true"
+                                        />音符数量、时长和目标容量均通过
+                                    </li>
+                                </ul>
+                                <details class="compatibility-help">
+                                    <summary>支持的固件与容量说明</summary>
+                                    <div class="matrix-row">
+                                        <span><i class="firmware-dot bluejay"></i>Bluejay</span
+                                        ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
+                                    </div>
+                                    <div class="matrix-row">
+                                        <span><i class="firmware-dot am32"></i>AM32</span
+                                        ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
+                                    </div>
+                                    <div class="matrix-row">
+                                        <span><i class="firmware-dot ox32"></i>OX32</span
+                                        ><span class="matrix-cap">读写 · 128 B · 配置页 CRC</span>
+                                    </div>
+                                    <div class="matrix-row">
+                                        <span><i class="firmware-dot blheli"></i>BLHeli_32</span
+                                        ><span class="matrix-cap">读写 · 48 B · FPV32 / AT32F421 / 32.10</span>
+                                    </div>
+                                </details>
+                            </section>
+                        </details>
+                    </aside>
+                    <div class="device-channel-area">
+                        <EscChannelPlan
+                            separate-capacity
+                            :rows="assignmentRows"
+                            :mode-label="arrangementLabel"
+                            :voice-count="presetTrackTabs.length"
+                            :warnings="assignmentWarnings"
+                            :editable="!locked && !writeRecoveryTargets.length"
+                            @assign="assignVoice"
+                        />
+                        <details class="device-technical-details" :open="hasDeviceIssues || undefined">
+                            <summary>
+                                通道诊断
+                                <small>{{ hasDeviceIssues ? "有通道需要处理" : "查看芯片、固件与读取信息" }}</small>
+                            </summary>
+                            <section class="esc-list-panel">
+                                <div class="panel-heading">
+                                    <span>通道信息</span
+                                    ><span class="panel-count">{{
+                                        escs.length ? `${escs.length} 路已检查` : "未扫描"
+                                    }}</span>
+                                </div>
+                                <div v-if="!escs.length" class="scan-empty">
+                                    <UIcon
+                                        name="i-lucide-plug"
+                                        class="fas fa-plug esc-ui-icon"
+                                        aria-hidden="true"
+                                    /><strong>尚未扫描</strong><small>连接飞控后扫描 4-way 电调</small>
+                                </div>
+                                <nav v-if="escs.length" class="device-diagnostic-tabs" aria-label="选择诊断通道">
+                                    <button
+                                        v-for="esc in escs"
+                                        :key="esc.id"
+                                        type="button"
+                                        :aria-pressed="inspectedDeviceId === esc.id"
+                                        :class="{ 'has-issues': esc.melodyReadError || !esc.canWrite }"
+                                        @click="deviceInspectionId = esc.id"
+                                    >
+                                        ESC {{ esc.channel + 1 }}
+                                    </button>
+                                </nav>
+                                <article
+                                    v-for="esc in escs"
+                                    :key="esc.id"
+                                    v-show="esc.id === inspectedDeviceId"
+                                    class="esc-record"
+                                    :class="[
+                                        `esc-status-${esc.status}`,
+                                        { 'esc-record-selected': !syncAll && selectedEscId === esc.id },
+                                    ]"
+                                >
+                                    <button
+                                        type="button"
+                                        class="esc-record-main esc-record-select"
+                                        title="在编曲中查看此通道"
+                                        :disabled="!isEscMelodyEditable(esc)"
+                                        @click="selectEscChannel(esc)"
+                                    >
+                                        <span class="esc-channel">{{ esc.channel + 1 }}</span>
+                                        <div>
+                                            <strong>{{ esc.model }}</strong
+                                            ><small
+                                                >{{ esc.firmwareLabel }} · {{ esc.version
+                                                }}<template v-if="esc.bootloader">
+                                                    · {{ esc.bootloader }} {{ esc.bootloaderVersion }}</template
+                                                ></small
+                                            >
+                                        </div>
+                                        <UIcon
+                                            :name="esc.canWrite ? 'i-lucide-circle-check' : 'i-lucide-lock-keyhole'"
+                                            class="esc-status-icon fas esc-ui-icon"
+                                            :class="esc.canWrite ? 'fa-check-circle' : 'fa-lock'"
+                                            :title="esc.reason || '可读写'"
+                                        />
+                                    </button>
+                                    <div class="esc-record-meta">
+                                        <span>{{ esc.layout }}</span
+                                        ><span
+                                            class="firmware-detection-mark"
+                                            :class="`read-${esc.confirmationStatus || 'pending'}`"
+                                            >{{ firmwareDetectionLabel(esc) }}</span
+                                        >
+                                        ><span class="melody-read-mark" :class="`read-${esc.melodyReadStatus}`">{{
+                                            melodyReadLabel(esc)
+                                        }}</span
+                                        ><span
+                                            v-if="syncAll && pendingWriteEscIds.has(esc.id)"
+                                            class="melody-write-mark"
+                                            >将写入</span
+                                        ><span v-else-if="esc.melodyDirty" class="melody-dirty-mark">已修改</span
+                                        ><span v-if="esc.backedUp" class="backup-mark"
+                                            ><UIcon
+                                                name="i-lucide-shield-check"
+                                                class="fas fa-shield-alt esc-ui-icon"
+                                                aria-hidden="true"
+                                            />
+                                            已备份</span
+                                        >
+                                    </div>
+                                    <button
+                                        v-if="
+                                            !syncAll &&
+                                            esc.canWrite &&
+                                            [readStatus.ERROR, readStatus.UNSUPPORTED].includes(esc.melodyReadStatus)
+                                        "
+                                        type="button"
+                                        class="regular-button compact-button replace-melody-button"
+                                        @click="replaceUnreadableEsc(esc)"
+                                    >
+                                        使用当前卷帘替换
+                                    </button>
+                                    <p
+                                        v-if="esc.confirmationReason"
+                                        class="esc-record-reason"
+                                        :class="{ 'diagnostic-ok': esc.canWrite }"
+                                    >
+                                        {{ esc.confirmationReason }}
+                                    </p>
+                                    <p
+                                        v-if="esc.reason && !esc.canWrite && esc.reason !== esc.confirmationReason"
+                                        class="esc-record-reason"
+                                    >
+                                        {{ esc.reason }}
+                                    </p>
+                                    <p v-if="esc.melodyReadError" class="esc-record-reason">
+                                        {{ esc.melodyReadError }}
+                                    </p>
+                                </article>
+                            </section>
+                        </details>
+                    </div>
+                </div>
+            </section>
+            <p v-if="automaticBl32.adapted" class="esc-melody-notice notice-info" role="status">
+                已自动适配 BL32：整体移调或调整速度，保留全部音符。试听、预览和写入使用完整适配版，原曲与草稿保留。
+            </p>
+            <p v-if="automaticBl32.errors.length" class="esc-melody-notice notice-error" role="status">
+                {{ automaticBl32.errors.join("；") }}
+            </p>
+            <main :data-view="workspaceView" class="esc-melody-workspace" :inert="modalOpen ? '' : undefined">
+                <aside v-show="workspaceView === 'library'" class="esc-melody-sidebar">
+                    <div class="selection-library-heading">
+                        <h2>
+                            旋律库 <small>{{ presets.length }} 首</small>
+                        </h2>
+                        <button type="button" class="text-button" @click="newDraft">新建旋律</button>
+                    </div>
+                    <nav class="selection-library-tabs" aria-label="旋律来源">
                         <button
                             type="button"
-                            class="regular-button esc-scan-action"
-                            aria-label="扫描电调"
-                            :disabled="!connected || scanning || locked || !!writeRecoveryTargets.length"
-                            @click="scanEscs"
+                            :aria-pressed="librarySection === 'all'"
+                            @click="
+                                librarySection = 'all';
+                                presetScope = 'all';
+                            "
                         >
-                            <UIcon
-                                name="i-lucide-refresh-cw"
-                                class="fas fa-sync-alt esc-ui-icon"
-                                :class="{ spinning: scanning }"
-                                aria-hidden="true"
-                            />
-                            {{ scanning ? "扫描中" : connected ? "扫描电调" : "连接后扫描" }}
+                            全部
                         </button>
-                    </section>
-
-                    <section class="melody-panel">
-                        <div class="panel-heading">
-                            <span>旋律库</span><span class="panel-count">{{ melodyLibraryCount }}</span>
-                        </div>
                         <button
-                            v-if="selectedEsc"
                             type="button"
-                            class="melody-list-item current-melody-item"
-                            :class="{ active: currentMelodySourceActive }"
-                            :disabled="!currentMelodySource"
-                            @click="loadCurrentMelody"
+                            :aria-pressed="librarySection === 'favorites'"
+                            @click="
+                                librarySection = 'favorites';
+                                presetScope = 'favorites';
+                            "
                         >
-                            <UIcon
-                                name="i-lucide-history"
-                                class="melody-list-icon fas fa-history esc-ui-icon"
-                                aria-hidden="true"
-                            />
-                            <span>
-                                <strong>当前音乐</strong>
-                                <small>{{ currentMelodySourceSummary }}</small>
-                            </span>
-                            <span v-if="!syncAll" class="current-source-badge">
-                                ESC {{ selectedEsc.channel + 1 }}
-                            </span>
+                            收藏
                         </button>
+                        <button
+                            type="button"
+                            :aria-pressed="librarySection === 'drafts'"
+                            @click="librarySection = 'drafts'"
+                        >
+                            草稿 <small>{{ drafts.length || "" }}</small>
+                        </button>
+                    </nav>
+                    <section v-show="librarySection !== 'drafts'" class="melody-panel selection-library-panel">
                         <label class="melody-library-search">
                             <UIcon name="i-lucide-search" class="fas fa-search esc-ui-icon" aria-hidden="true" />
                             <input
@@ -170,22 +402,68 @@
                                 ×
                             </button>
                         </label>
-                        <div class="library-filters">
-                            <label class="visually-hidden" for="melody-library-scope">曲库范围</label
-                            ><select id="melody-library-scope" v-model="presetScope">
-                                <option value="all">全部曲目</option>
-                                <option value="favorites">我的收藏</option>
-                                <option value="recent">最近使用</option>
-                            </select>
-                            <label class="visually-hidden" for="melody-library-voices">声部筛选</label
-                            ><select id="melody-library-voices" v-model="presetVoices">
-                                <option value="all">全部声部</option>
-                                <option value="solo">单声部</option>
-                                <option value="multi">多声部</option>
-                            </select>
+                        <details class="library-filter-disclosure">
+                            <summary>筛选</summary>
+                            <div class="library-filters">
+                                <label class="visually-hidden" for="melody-library-scope">曲库范围</label
+                                ><select id="melody-library-scope" v-model="presetScope">
+                                    <option value="all">全部曲目</option>
+                                    <option value="favorites">我的收藏</option>
+                                    <option value="recent">最近使用</option>
+                                </select>
+                                <label class="visually-hidden" for="melody-library-voices">声部筛选</label
+                                ><select id="melody-library-voices" v-model="presetVoices">
+                                    <option value="all">全部声部</option>
+                                    <option value="solo">单声部</option>
+                                    <option value="multi">多声部</option>
+                                </select>
+                            </div>
+                        </details>
+                        <div class="library-table-heading" aria-hidden="true">
+                            <span>名称</span><span>声部</span><span>时长</span>
                         </div>
                         <div class="melody-preset-list">
-                            <div v-for="preset in filteredPresets" :key="preset.id" class="library-preset-row">
+                            <div
+                                v-for="preset in filteredPresets"
+                                :key="preset.id"
+                                class="library-preset-row"
+                                :class="{
+                                    selected:
+                                        activeLibrarySource?.type === 'preset' && activeLibrarySource.id === preset.id,
+                                }"
+                            >
+                                <button
+                                    type="button"
+                                    class="library-audition"
+                                    :aria-label="`试听 ${preset.name}`"
+                                    :aria-pressed="auditionPresetId === preset.id && playing"
+                                    :disabled="locked"
+                                    @click="previewLibraryPreset(preset)"
+                                >
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        class="esc-ui-icon"
+                                        aria-hidden="true"
+                                        focusable="false"
+                                    >
+                                        <rect
+                                            v-if="auditionPresetId === preset.id && playing"
+                                            x="7"
+                                            y="7"
+                                            width="10"
+                                            height="10"
+                                            rx="2"
+                                        />
+                                        <path
+                                            v-else
+                                            d="M8 6.5c0-1.1 1.2-1.7 2.1-1.1l8.1 5.5a1.35 1.35 0 0 1 0 2.2l-8.1 5.5c-.9.6-2.1 0-2.1-1.1Z"
+                                        />
+                                    </svg>
+                                    <span class="visually-hidden">{{
+                                        auditionPresetId === preset.id && playing ? "停止" : "试听"
+                                    }}</span>
+                                </button>
                                 <button
                                     type="button"
                                     class="melody-list-item"
@@ -203,32 +481,32 @@
                                         ><small>{{ preset.description }}</small></span
                                     >
                                 </button>
+                                <details v-if="presetCompatibility[preset.id]" class="library-compatibility">
+                                    <summary>{{ presetCompatibility[preset.id].label }}</summary>
+                                    <p v-for="reason in presetCompatibility[preset.id].reasons" :key="reason">
+                                        {{ reason }}
+                                    </p>
+                                </details>
                                 <div class="library-row-actions">
                                     <button
                                         type="button"
-                                        class="text-button"
-                                        :aria-label="`试听 ${preset.name}`"
-                                        :disabled="locked"
-                                        @click="previewLibraryPreset(preset)"
-                                    >
-                                        {{ auditionPresetId === preset.id && playing ? "停止" : "试听" }}</button
-                                    ><button
-                                        type="button"
-                                        class="text-button"
+                                        class="text-button library-favorite"
                                         :aria-label="`收藏 ${preset.name}`"
                                         :aria-pressed="favoriteIds.includes(preset.id)"
                                         @click="toggleFavorite(preset.id)"
                                     >
-                                        {{ favoriteIds.includes(preset.id) ? "已收藏" : "收藏" }}
+                                        <UIcon name="i-lucide-star" class="esc-ui-icon" aria-hidden="true" />
                                     </button>
                                 </div>
+                                <span class="library-voice-count">{{ libraryTrackCount(preset) }} 声部</span>
+                                <span class="library-duration">{{ libraryDuration(preset) }}</span>
                             </div>
                             <p v-if="!filteredPresets.length" class="melody-library-empty">没有匹配的旋律</p>
                         </div>
                         <p class="melody-library-source">含 ESC Configurator 公开曲库，按声部保留原始编排。</p>
                     </section>
 
-                    <section class="melody-panel">
+                    <section v-show="librarySection === 'drafts'" class="melody-panel selection-drafts-panel">
                         <div class="panel-heading">
                             <span>我的草稿</span>
                             <span class="draft-panel-actions">
@@ -375,29 +653,138 @@
                             <span>{{ draftSaveStatus }}</span>
                         </div>
                     </section>
-                    <section class="target-panel melody-contribution-panel">
-                        <UIcon
-                            name="i-lucide-disc-3"
-                            class="melody-contribution-icon fas fa-compact-disc esc-ui-icon"
-                            aria-hidden="true"
-                        />
-                        <div class="melody-contribution-copy">
-                            <span class="melody-contribution-eyebrow">COMMUNITY LIBRARY</span>
-                            <strong>音乐投稿</strong>
-                            <small>分享你的电调开机旋律，优秀作品将收录到旋律库。</small>
-                        </div>
-                        <button
-                            type="button"
-                            class="regular-button melody-contribution-button"
-                            @click="openContributionDialog"
-                        >
-                            <UIcon name="i-lucide-message-circle" class="fab fa-qq esc-ui-icon" aria-hidden="true" />
-                            联系投稿
-                        </button>
-                    </section>
                 </aside>
 
-                <section class="esc-melody-editor">
+                <section
+                    v-show="workspaceView === 'library'"
+                    class="melody-selection-preview"
+                    aria-label="选中旋律预览"
+                >
+                    <div class="selection-preview-heading">
+                        <div>
+                            <h2>{{ presetSessionName || melody.name }}</h2>
+                            <p v-if="selectedLibraryDescription">{{ selectedLibraryDescription }}</p>
+                        </div>
+                        <button
+                            v-if="activeLibrarySource?.type === 'preset'"
+                            type="button"
+                            class="text-button library-favorite"
+                            :aria-pressed="favoriteIds.includes(activeLibrarySource.id)"
+                            aria-label="收藏当前旋律"
+                            @click="toggleFavorite(activeLibrarySource.id)"
+                        >
+                            <UIcon name="i-lucide-star" class="esc-ui-icon" aria-hidden="true" />
+                        </button>
+                    </div>
+                    <p class="selection-preview-meta">
+                        {{ previewVoiceCount }} 声部 · {{ validation.noteCount }} 音符 ·
+                        {{ formatDuration(validation.durationMs) }}
+                    </p>
+                    <div v-if="showPresetTrackTabs" class="selection-voice-tabs" role="group" aria-label="预览声部">
+                        <button
+                            v-for="track in presetTrackTabs"
+                            :key="track.id"
+                            type="button"
+                            :aria-pressed="activePresetTrackIndex === track.index"
+                            @click="selectPresetTrack(track.index)"
+                        >
+                            声部 {{ track.index + 1 }}
+                        </button>
+                    </div>
+                    <MelodyOverview
+                        :notes="effectiveMelody.notes"
+                        :bpm="effectiveMelody.bpm"
+                        :wait-ms="effectiveMelody.waitMs"
+                    />
+                    <div class="selection-preview-actions">
+                        <button
+                            type="button"
+                            class="regular-button"
+                            :disabled="locked || (!playing && !selectionPreviewPlayable)"
+                            @click="toggleSelectionPreview"
+                        >
+                            <UIcon
+                                :name="playing ? 'i-lucide-square' : 'i-lucide-play'"
+                                class="esc-ui-icon"
+                                aria-hidden="true"
+                            />{{ playing ? "停止试听" : showPresetTrackTabs ? "试听合奏" : "试听旋律" }}
+                        </button>
+                        <button type="button" class="text-button" @click="workspaceView = 'editor'">
+                            编辑旋律 <UIcon name="i-lucide-arrow-right" class="esc-ui-icon" aria-hidden="true" />
+                        </button>
+                    </div>
+                    <section class="selection-target-summary">
+                        <div class="panel-heading">
+                            <strong>{{ arrangementLabel }}</strong
+                            ><button type="button" class="text-button" @click="openDeviceDetails">
+                                {{ escs.length ? "通道分配" : connected ? "扫描电调" : "设备详情" }}
+                                <UIcon name="i-lucide-chevron-right" class="esc-ui-icon" aria-hidden="true" />
+                            </button>
+                        </div>
+                        <div v-if="assignmentRows.length" class="selection-channel-chips">
+                            <button
+                                v-for="row in assignmentRows"
+                                :key="row.id"
+                                type="button"
+                                :class="{ ready: row.editable && row.status !== '编码需调整' }"
+                                :title="`${row.firmware} · ${row.voiceLabel} · ${row.status}`"
+                                @click="openDeviceDetails"
+                            >
+                                <UIcon
+                                    :name="
+                                        row.editable && row.status !== '编码需调整'
+                                            ? 'i-lucide-circle-check'
+                                            : 'i-lucide-circle-alert'
+                                    "
+                                    class="esc-ui-icon"
+                                    aria-hidden="true"
+                                />ESC {{ row.channel + 1
+                                }}<small v-if="showPresetTrackTabs">· {{ row.voiceLabel }}</small>
+                            </button>
+                        </div>
+                        <p v-else class="selection-offline-help">
+                            {{
+                                connected
+                                    ? "扫描电调后检查兼容性并分配通道。"
+                                    : "可先离线选曲试听，连接飞控后扫描电调。"
+                            }}
+                        </p>
+                        <div class="selection-encoding" :class="{ valid: validation.valid }">
+                            <strong>{{ validation.valid ? "编码通过" : "编码需调整" }}</strong
+                            ><span>{{ validation.encodedLength }} / {{ targetCapacity }} B</span
+                            ><small v-if="!escs.length">离线预估</small>
+                        </div>
+                        <p v-for="error in validation.errors" :key="error" class="selection-encoding-error">
+                            {{ error }}
+                        </p>
+                        <p v-for="error in writeValidation.errors" :key="error" class="selection-encoding-error">
+                            {{ error }}
+                        </p>
+                        <p v-for="warning in assignmentWarnings" :key="warning" class="assignment-warning">
+                            {{ warning }}
+                        </p>
+                    </section>
+                    <button
+                        type="button"
+                        class="selection-contribution"
+                        aria-label="联系投稿"
+                        @click="openContributionDialog"
+                    >
+                        <span class="contribution-icon" aria-hidden="true">
+                            <UIcon name="i-lucide-music-2" class="esc-ui-icon" />
+                        </span>
+                        <span class="contribution-copy">
+                            <strong>分享你的旋律</strong>
+                            <small>让更多飞友听见你的开机音乐</small>
+                        </span>
+                        <span class="contribution-action">
+                            联系投稿
+                            <UIcon name="i-lucide-arrow-up-right" class="esc-ui-icon" aria-hidden="true" />
+                        </span>
+                    </button>
+                </section>
+
+                <section v-show="workspaceView === 'editor'" class="esc-melody-editor">
                     <div v-if="melodyConflict" class="melody-conflict-notice">
                         <UIcon name="i-lucide-shuffle" class="fas fa-random esc-ui-icon" aria-hidden="true" />
                         <span>检测到多路当前音乐不同，已保留为分路编辑。</span>
@@ -814,163 +1201,21 @@
                         </div>
                     </details>
                 </section>
-
-                <aside class="esc-melody-targets">
-                    <section class="target-panel device-readiness" aria-label="设备与操作状态">
-                        <div class="panel-heading">
-                            <strong>设备与操作</strong><span>{{ deviceReadiness }}</span>
-                        </div>
-                        <p role="status">{{ operationReadiness }}</p>
-                    </section>
-                    <EscChannelPlan
-                        :rows="assignmentRows"
-                        :mode-label="arrangementLabel"
-                        :voice-count="presetTrackTabs.length"
-                        :warnings="assignmentWarnings"
-                        :editable="!locked && !writeRecoveryTargets.length"
-                        @assign="assignVoice"
-                    />
-                    <section class="target-panel">
-                        <div class="panel-heading">
-                            <span>当前声部编码</span
-                            ><span class="validation-badge" :class="{ valid: validation.valid }">{{
-                                validation.valid ? "编码通过" : "编码需调整"
-                            }}</span>
-                        </div>
-                        <div class="compat-summary">
-                            <strong
-                                >{{ validation.encodedLength }}<small>/{{ targetCapacity }} B</small></strong
-                            ><span>{{ targetFirmware === "blheli32" ? "BLHeli_32 音符容量" : "RTTTL 编码容量" }}</span>
-                        </div>
-                        <ul class="validation-list">
-                            <li v-for="warning in validation.warnings || []" :key="warning" class="validation-warning">
-                                {{ warning }}
-                            </li>
-                            <li v-for="error in validation.errors" :key="error" class="validation-error">
-                                <UIcon
-                                    name="i-lucide-circle-x"
-                                    class="fas fa-times-circle esc-ui-icon"
-                                    aria-hidden="true"
-                                />{{ error }}
-                            </li>
-                            <li v-if="validation.valid" class="validation-ok">
-                                <UIcon
-                                    name="i-lucide-circle-check"
-                                    class="fas fa-check-circle esc-ui-icon"
-                                    aria-hidden="true"
-                                />音符数量、时长和目标容量均通过
-                            </li>
-                        </ul>
-                        <details class="compatibility-help">
-                            <summary>支持的固件与容量说明</summary>
-                            <div class="matrix-row">
-                                <span><i class="firmware-dot bluejay"></i>Bluejay</span
-                                ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
-                            </div>
-                            <div class="matrix-row">
-                                <span><i class="firmware-dot am32"></i>AM32</span
-                                ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
-                            </div>
-                            <div class="matrix-row">
-                                <span><i class="firmware-dot ox32"></i>OX32</span
-                                ><span class="matrix-cap">读写 · 128 B · 配置页 CRC</span>
-                            </div>
-                            <div class="matrix-row">
-                                <span><i class="firmware-dot blheli"></i>BLHeli_32</span
-                                ><span class="matrix-cap">读写 · 48 B · FPV32 / AT32F421 / 32.10</span>
-                            </div>
-                        </details>
-                    </section>
-
-                    <section class="target-panel esc-list-panel">
-                        <div class="panel-heading">
-                            <span>每路写入能力</span
-                            ><span class="panel-count">{{ escs.length ? `${escs.length} 路已检查` : "未扫描" }}</span>
-                        </div>
-                        <div v-if="!escs.length" class="scan-empty">
-                            <UIcon name="i-lucide-plug" class="fas fa-plug esc-ui-icon" aria-hidden="true" /><strong
-                                >尚未扫描</strong
-                            ><small>连接飞控后扫描 4-way 电调</small>
-                        </div>
-                        <article
-                            v-for="esc in escs"
-                            :key="esc.id"
-                            class="esc-record"
-                            :class="[
-                                `esc-status-${esc.status}`,
-                                { 'esc-record-selected': !syncAll && selectedEscId === esc.id },
-                            ]"
-                        >
-                            <button
-                                type="button"
-                                class="esc-record-main esc-record-select"
-                                :disabled="!isEscMelodyEditable(esc)"
-                                @click="selectEscChannel(esc)"
-                            >
-                                <span class="esc-channel">{{ esc.channel + 1 }}</span>
-                                <div>
-                                    <strong>{{ esc.model }}</strong
-                                    ><small
-                                        >{{ esc.firmwareLabel }} · {{ esc.version
-                                        }}<template v-if="esc.bootloader">
-                                            · {{ esc.bootloader }} {{ esc.bootloaderVersion }}</template
-                                        ></small
-                                    >
-                                </div>
-                                <UIcon
-                                    :name="esc.canWrite ? 'i-lucide-circle-check' : 'i-lucide-lock-keyhole'"
-                                    class="esc-status-icon fas esc-ui-icon"
-                                    :class="esc.canWrite ? 'fa-check-circle' : 'fa-lock'"
-                                    :title="esc.reason || '可读写'"
-                                />
-                            </button>
-                            <div class="esc-record-meta">
-                                <span>{{ esc.layout }}</span
-                                ><span
-                                    class="firmware-detection-mark"
-                                    :class="`read-${esc.confirmationStatus || 'pending'}`"
-                                    >{{ firmwareDetectionLabel(esc) }}</span
-                                >
-                                ><span class="melody-read-mark" :class="`read-${esc.melodyReadStatus}`">{{
-                                    melodyReadLabel(esc)
-                                }}</span
-                                ><span v-if="syncAll && pendingWriteEscIds.has(esc.id)" class="melody-write-mark"
-                                    >将写入</span
-                                ><span v-else-if="esc.melodyDirty" class="melody-dirty-mark">已修改</span
-                                ><span v-if="esc.backedUp" class="backup-mark"
-                                    ><UIcon
-                                        name="i-lucide-shield-check"
-                                        class="fas fa-shield-alt esc-ui-icon"
-                                        aria-hidden="true"
-                                    />
-                                    已备份</span
-                                >
-                            </div>
-                            <button
-                                v-if="
-                                    !syncAll &&
-                                    esc.canWrite &&
-                                    [readStatus.ERROR, readStatus.UNSUPPORTED].includes(esc.melodyReadStatus)
-                                "
-                                type="button"
-                                class="regular-button compact-button replace-melody-button"
-                                @click="replaceUnreadableEsc(esc)"
-                            >
-                                使用当前卷帘替换
-                            </button>
-                            <p v-if="esc.confirmationReason" class="esc-record-reason">{{ esc.confirmationReason }}</p>
-                            <p
-                                v-if="esc.reason && !esc.canWrite && esc.reason !== esc.confirmationReason"
-                                class="esc-record-reason"
-                            >
-                                {{ esc.reason }}
-                            </p>
-                            <p v-if="esc.melodyReadError" class="esc-record-reason">{{ esc.melodyReadError }}</p>
-                        </article>
-                    </section>
-                </aside>
             </main>
 
+            <details
+                v-if="editRecovery"
+                class="edit-recovery-banner compact-edit-recovery"
+                :inert="modalOpen ? '' : undefined"
+            >
+                <summary>已保留上次编辑 · {{ editRecovery.package.drafts.length }} 个声部</summary>
+                <button type="button" class="regular-button" :disabled="locked" @click="restoreEditorRecovery">
+                    恢复上次编辑
+                </button>
+                <button type="button" class="regular-button" :disabled="locked" @click="exportEditorRecovery">
+                    导出保留编排
+                </button>
+            </details>
             <footer class="esc-melody-actionbar" :inert="modalOpen ? '' : undefined">
                 <div class="actionbar-status">
                     <UIcon
@@ -1008,15 +1253,7 @@
                                 : "另存为草稿"
                         }}
                     </button>
-                    <button
-                        type="button"
-                        class="regular-button"
-                        :disabled="!connected || !escs.length || locked"
-                        @click="chooseRestoreFile"
-                    >
-                        <UIcon name="i-lucide-history" class="fas fa-history esc-ui-icon" aria-hidden="true" /> 恢复
-                        EEPROM
-                    </button>
+                    <button type="button" class="regular-button" @click="openCodeDialog">导入代码</button>
                     <button
                         v-if="writeRecoveryTargets.length"
                         type="button"
@@ -1233,7 +1470,7 @@
                         </button>
                     </div>
                     <EscChannelPlan
-                        :rows="writeResult?.ok ? completedWriteRows : assignmentRows"
+                        :rows="safetyChannelRows"
                         :mode-label="arrangementLabel"
                         :voice-count="presetTrackTabs.length"
                         :warnings="writeResult?.ok ? [] : assignmentWarnings"
@@ -1250,7 +1487,6 @@
                                 :disabled="writing || backingUp"
                             /><span>我已核对缺失或重复声部及未参与通道，本次按以上分配写入。</span></label
                         >
-                        <EscOperationProgress :rows="writeProgressRows" />
                         <label v-for="check in safetyCheckItems" :key="check.id" class="safety-check"
                             ><input
                                 v-model="safetyChecks[check.id]"
@@ -1874,6 +2110,7 @@
                             <img :src="qqQrUrl" alt="花生 FPV 官方 QQ 群二维码" />
                         </div>
                         <strong>花生 FPV 官方交流群</strong>
+                        <QqGroupNumber />
                         <span>扫码加入后，请联系群主投稿；可附上音乐名称、RTTTL 代码或草稿文件。</span>
                     </div>
                     <div class="safety-dialog-footer">
@@ -1892,8 +2129,12 @@
 <script>
 import { computed, defineComponent, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import BaseTab from "./BaseTab.vue";
+import QqGroupNumber from "../elements/QqGroupNumber.vue";
 import EscChannelPlan from "../esc-melody/EscChannelPlan.vue";
 import EscOperationProgress from "../esc-melody/EscOperationProgress.vue";
+import MelodyOverview from "../esc-melody/MelodyOverview.vue";
+import { autoAdaptBlheli32Tracks } from "../../js/esc_melody/blheli32_adapt";
+import { ESC_OPERATION_LABELS } from "../../js/esc_melody/operation_progress";
 import GUI from "../../js/gui.js";
 import {
     cloneMelody,
@@ -1959,7 +2200,7 @@ const PIANO_ROLL_ROW_HEIGHT = 16;
 
 export default defineComponent({
     name: "EscMelodyTab",
-    components: { BaseTab, EscChannelPlan, EscOperationProgress },
+    components: { BaseTab, QqGroupNumber, EscChannelPlan, EscOperationProgress, MelodyOverview },
     setup() {
         const model = inject("betaflightModel", null);
         const melody = ref(cloneMelody(PRESET_MELODIES[0]));
@@ -1980,7 +2221,10 @@ export default defineComponent({
         const editorTool = ref("select");
         const snapStep = ref(0.125);
         const autoFollow = ref(true);
-        const workspaceView = ref("editor");
+        const workspaceView = ref("library");
+        const librarySection = ref("all");
+        const deviceDetailsOpen = ref(false);
+        const deviceInspectionId = ref(null);
         const previewVolume = ref(70);
         const previewMuted = ref(false);
         const previewOutput = ref(null);
@@ -2005,6 +2249,16 @@ export default defineComponent({
             Boolean(model?.CONFIGURATOR?.connectionValid ?? globalThis.CONFIGURATOR?.connectionValid),
         );
         const identifiedEscCount = computed(() => getIdentifiedEscCount(escs.value));
+        const headerConnectionLabel = computed(() => {
+            if (!connected.value) return "离线编辑";
+            if (scanning.value) return "扫描中";
+            if (!escs.value.length) return "已连接 · 待扫描";
+            const families = [...new Set(displayedEscs.value.map((esc) => esc.firmwareLabel).filter(Boolean))];
+            return `${identifiedEscCount.value} 路 · ${families.join(" / ") || "待识别"}`;
+        });
+        watch(workspaceView, (view) => {
+            if (view === "editor") void nextTick(scrollMelodyIntoView);
+        });
         const connectionSummary = computed(() => {
             if (!connected.value) return "连接后可扫描电调能力";
             if (scanning.value) return "正在逐路识别电调";
@@ -2017,11 +2271,12 @@ export default defineComponent({
             if (writableFamilies.length && writableFamilies.every((family) => family === "bluejay")) return "bluejay";
             if (writableFamilies.length && writableFamilies.every((family) => family === "ox32")) return "ox32";
             if (writableFamilies.length && writableFamilies.every((family) => family === "blheli32")) return "blheli32";
+            if (!escs.value.length && melody.value.blheli32) return "blheli32";
             return "am32";
         });
         const targetCapacity = computed(() => (targetFirmware.value === "blheli32" ? 48 : 128));
         const validation = computed(() =>
-            validateMelody(melody.value, { firmware: targetFirmware.value, capacity: targetCapacity.value }),
+            validateMelody(effectiveMelody.value, { firmware: targetFirmware.value, capacity: targetCapacity.value }),
         );
         const selectedNote = computed(
             () => melody.value.notes.find((note) => note.id === selectedNoteId.value) || null,
@@ -2072,6 +2327,57 @@ export default defineComponent({
             );
         });
         const editableEscs = computed(() => displayedEscs.value.filter(isEscMelodyEditable));
+        const automaticSourceTracks = computed(() => {
+            if (presetTrackSession.value)
+                return presetTrackSession.value.tracks.map((track, index) =>
+                    index === activePresetTrackIndex.value ? melody.value : track.melody,
+                );
+            if (!syncAll.value && editableEscs.value.length > 1)
+                return [...editableEscs.value]
+                    .sort((a, b) => a.channel - b.channel)
+                    .map((esc) => (esc.id === selectedEscId.value ? melody.value : esc.editorMelody));
+            return [melody.value];
+        });
+        function outputVoiceIndex(esc) {
+            if (presetTrackSession.value) return voiceIndexForEsc(esc);
+            if (syncAll.value || editableEscs.value.length <= 1) return 0;
+            return [...editableEscs.value]
+                .sort((a, b) => a.channel - b.channel)
+                .findIndex((item) => item.id === esc.id);
+        }
+        const automaticBl32 = computed(() => {
+            if (!presetTrackSession.value && !syncAll.value && editableEscs.value.length > 1) {
+                const channels = [...editableEscs.value].sort((a, b) => a.channel - b.channel);
+                const results = automaticSourceTracks.value.map((track, index) =>
+                    autoAdaptBlheli32Tracks([track], channels[index].firmwareFamily === "blheli32" ? [0] : []),
+                );
+                return {
+                    tracks: results.flatMap((result) => result.tracks),
+                    adapted: results.some((result) => result.adapted),
+                    errors: results.flatMap((result) => result.errors),
+                };
+            }
+            return autoAdaptBlheli32Tracks(automaticSourceTracks.value, [
+                ...new Set(
+                    writableEscs.value
+                        .filter((esc) => esc.firmwareFamily === "blheli32")
+                        .map(outputVoiceIndex)
+                        .filter((index) => index !== null && index >= 0),
+                ),
+            ]);
+        });
+        const outputTracks = computed(() => automaticBl32.value.tracks);
+        const effectiveMelody = computed(() => {
+            const index = presetTrackSession.value
+                ? activePresetTrackIndex.value
+                : selectedEsc.value
+                    ? outputVoiceIndex(selectedEsc.value)
+                    : 0;
+            return outputTracks.value[index] || melody.value;
+        });
+        function outputMelodyForEsc(esc) {
+            return outputTracks.value[outputVoiceIndex(esc)] || esc.editorMelody;
+        }
         const showPresetTrackTabs = computed(() => (presetTrackSession.value?.tracks.length || 0) > 1);
         const presetTrackTabs = computed(
             () =>
@@ -2111,7 +2417,13 @@ export default defineComponent({
             }
             return "已保存在此浏览器";
         });
-        const dirtyEscs = computed(() => writableEscs.value.filter((esc) => esc.melodyDirty && esc.editorMelody));
+        const dirtyEscs = computed(() =>
+            writableEscs.value.filter(
+                (esc) =>
+                    esc.editorMelody &&
+                    (esc.melodyReplacementReady || !melodiesEqual(outputMelodyForEsc(esc), esc.originalMelody)),
+            ),
+        );
         const pendingWriteEscs = computed(() =>
             syncAll.value ? writableEscs.value.filter((esc) => esc.editorMelody) : dirtyEscs.value,
         );
@@ -2142,7 +2454,7 @@ export default defineComponent({
             const errors = [];
             const warnings = [];
             for (const esc of pendingWriteEscs.value) {
-                const result = validateMelody(esc.editorMelody, {
+                const result = validateMelody(outputMelodyForEsc(esc), {
                     firmware: esc.firmwareFamily,
                     capacity: esc.capacity || 128,
                 });
@@ -2202,6 +2514,75 @@ export default defineComponent({
         const auditionPresetId = ref(null);
         const editRecovery = ref(loadEditRecovery());
         const offlineSelection = ref(false);
+        const presetCompatibility = computed(() => {
+            if (!connected.value || scanning.value || !escs.value.length) return {};
+            return Object.fromEntries(
+                presets.map((preset) => {
+                    const tracks = preset.trackMelodies?.length ? preset.trackMelodies : [preset];
+                    // Match loadPreset's shared melody and cyclic multi-voice assignment.
+                    const targets = [...(tracks.length > 1 ? editableEscs.value : writableEscs.value)]
+                        .sort((left, right) => left.channel - right.channel)
+                        .map((esc, index) => ({ esc, trackIndex: index % tracks.length }))
+                        .filter(({ esc }) => esc.canWrite);
+                    if (!targets.length)
+                        return [
+                            preset.id,
+                            {
+                                label: "暂不可写",
+                                reasons: ["当前没有可载入并写入此曲目的电调，请查看各路识别与读取结果。"],
+                            },
+                        ];
+                    const automatic = autoAdaptBlheli32Tracks(tracks, [
+                        ...new Set(
+                            targets
+                                .filter(({ esc }) => esc.firmwareFamily === "blheli32")
+                                .map(({ trackIndex }) => trackIndex),
+                        ),
+                    ]);
+                    const failures = new Map();
+                    const results = new Map();
+                    let failedCount = 0;
+                    targets.forEach(({ esc, trackIndex }) => {
+                        const key = `${trackIndex}:${esc.firmwareFamily}:${esc.capacity || 128}`;
+                        if (!results.has(key))
+                            results.set(
+                                key,
+                                validateMelody(automatic.tracks[trackIndex], {
+                                    firmware: esc.firmwareFamily,
+                                    capacity: esc.capacity || 128,
+                                }),
+                            );
+                        const result = results.get(key);
+                        if (result.valid) return;
+                        failedCount++;
+                        const failure = failures.get(key) || {
+                            channels: [],
+                            label: `${esc.firmwareLabel || esc.firmwareFamily}${tracks.length > 1 ? ` · 声部 ${trackIndex + 1}` : ""}`,
+                            errors: result.errors,
+                        };
+                        failure.channels.push(esc.channel + 1);
+                        failures.set(key, failure);
+                    });
+                    return [
+                        preset.id,
+                        failedCount
+                            ? {
+                                label: failedCount === targets.length ? "不适用" : "部分通道不适用",
+                                reasons: [...failures.values()].map(
+                                    (failure) =>
+                                        `ESC ${failure.channels.join("、")} · ${failure.label}：${failure.errors.join("；")}`,
+                                ),
+                            }
+                            : automatic.adapted
+                                ? {
+                                    label: "自动适配 BL32",
+                                    reasons: ["选择或试听时自动使用完整适配版；原曲保留，不裁剪或删减音符。"],
+                                }
+                                : null,
+                    ];
+                }),
+            );
+        });
         const filteredPresets = computed(() => {
             const query = presetQuery.value.trim().toLocaleLowerCase();
             const voiceCount = (preset) => preset.trackMelodies?.length || 1;
@@ -2230,16 +2611,44 @@ export default defineComponent({
                 : [...favoriteIds.value, id];
             persistLibrary();
         }
+        const selectedLibraryDescription = computed(() =>
+            activeLibrarySource.value?.type === "preset"
+                ? presets.find((preset) => preset.id === activeLibrarySource.value.id)?.description || ""
+                : "",
+        );
+        const previewVoiceCount = computed(() => Math.max(1, presetTrackTabs.value.length));
+        /** Returns the source voices without counting assigned ESC copies as extra voices. */
+        function libraryTrackCount(preset) {
+            return preset.trackMelodies?.length || 1;
+        }
+        function libraryDuration(preset) {
+            const tracks = preset.trackMelodies?.length ? preset.trackMelodies : [preset];
+            return formatDuration(Math.max(...tracks.map((track) => melodyDurationMs(track))));
+        }
+        function openDeviceDetails() {
+            deviceDetailsOpen.value = true;
+            void nextTick(() => {
+                const heading = document.querySelector("#melody-device-details h2");
+                heading?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+                heading?.focus({ preventScroll: true });
+            });
+        }
+        function closeDeviceDetails() {
+            deviceDetailsOpen.value = false;
+            void nextTick(() => document.querySelector('[aria-controls="melody-device-details"]')?.focus());
+        }
         function focusLibrary() {
             workspaceView.value = "library";
             void nextTick(() => document.querySelector('[aria-label="搜索旋律库"]')?.focus());
         }
         async function previewLibraryPreset(preset) {
+            if (locked.value) return;
             if (auditionPresetId.value === preset.id && playing.value) {
                 stopPreview();
                 return;
             }
-            const tracks = preset.trackMelodies?.length ? preset.trackMelodies : [preset];
+            if (!loadPreset(preset)) return;
+            const tracks = outputTracks.value;
             const started = await startAudioPreview(
                 tracks.map((melody, index) => ({ melody, id: `library-${index}` })),
                 { mode: "library" },
@@ -2398,6 +2807,23 @@ export default defineComponent({
             }
             return writableEscs.value.length ? `${writableEscs.value.length} 路已验证` : "不支持写入";
         });
+        const hasDeviceIssues = computed(() =>
+            displayedEscs.value.some(
+                (esc) =>
+                    esc.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED ||
+                    Boolean(esc.melodyReadError) ||
+                    Boolean(esc.reason && !esc.canWrite),
+            ),
+        );
+        const inspectedDeviceId = computed(() => {
+            if (escs.value.some((esc) => esc.id === deviceInspectionId.value)) return deviceInspectionId.value;
+            return (
+                escs.value.find((esc) => esc.melodyReadError || !esc.canWrite)?.id ||
+                selectedEsc.value?.id ||
+                escs.value[0]?.id ||
+                null
+            );
+        });
         const operationReadiness = computed(() => {
             if (writeRecoveryTargets.value.length) return "需要恢复受影响通道";
             if (writing.value) return "串行操作中，请保持连接与供电";
@@ -2420,7 +2846,7 @@ export default defineComponent({
                     const editable = esc.canWrite && isEscMelodyEditable(esc);
                     const voiceIndex = editable ? voiceIndexForEsc(esc) : null;
                     const result = editable
-                        ? validateMelody(esc.editorMelody, {
+                        ? validateMelody(outputMelodyForEsc(esc), {
                             firmware: esc.firmwareFamily,
                             capacity: esc.capacity || 128,
                         })
@@ -2454,6 +2880,23 @@ export default defineComponent({
             return assignmentRows.value
                 .filter((row) => completedIds.has(row.id))
                 .map((row) => ({ ...row, status: "已完成" }));
+        });
+        const safetyChannelRows = computed(() => {
+            const progressByChannel = new Map(writeProgressRows.value.map((row) => [row.channel, row]));
+            const rows = writeResult.value?.ok ? completedWriteRows.value : assignmentRows.value;
+            return rows.map((row) => {
+                const progress = progressByChannel.get(row.channel);
+                return progress
+                    ? {
+                        ...row,
+                        state: progress.state,
+                        status: writeResult.value?.ok
+                            ? row.status
+                            : ESC_OPERATION_LABELS[progress.state] || row.status,
+                        error: progress.error,
+                    }
+                    : row;
+            });
         });
         const assignmentWarnings = computed(() => {
             const warnings = [];
@@ -2514,9 +2957,13 @@ export default defineComponent({
         );
         const modalOpen = computed(() => Boolean(modalKey.value));
         let modalReturnFocus = null;
+        let modalReturnView = null;
         watch(modalKey, async (key, previous) => {
             if (key) {
-                if (!previous) modalReturnFocus = document.activeElement;
+                if (!previous) {
+                    modalReturnFocus = document.activeElement;
+                    modalReturnView = workspaceView.value;
+                }
                 await nextTick();
                 document
                     .querySelector(
@@ -2525,8 +2972,11 @@ export default defineComponent({
                     ?.focus();
             } else {
                 await nextTick();
-                modalReturnFocus?.focus?.();
+                if (modalReturnView !== workspaceView.value)
+                    document.querySelector('.melody-mode-nav [aria-pressed="true"]')?.focus();
+                else modalReturnFocus?.focus?.();
                 modalReturnFocus = null;
+                modalReturnView = null;
             }
         });
         function handleDialogKeydown(event) {
@@ -2677,14 +3127,23 @@ export default defineComponent({
         const allMelodyPreviewEntries = computed(() => {
             if (showPresetTrackTabs.value) {
                 return presetTrackSession.value.tracks
-                    .filter((track) => track.melody.notes.some((note) => !note.rest && note.midi !== null))
-                    .map((track) => ({ melody: track.melody, id: track.id }));
+                    .map((track, index) => ({ melody: outputTracks.value[index], id: track.id }))
+                    .filter((entry) => entry.melody.notes.some((note) => !note.rest && note.midi !== null));
             }
             return editableEscs.value
                 .filter((esc) => esc.editorMelody?.notes.some((note) => !note.rest && note.midi !== null))
-                .map((esc) => ({ melody: esc.editorMelody, id: esc.id, firmware: esc.firmwareFamily }));
+                .map((esc) => ({ melody: outputMelodyForEsc(esc), id: esc.id, firmware: esc.firmwareFamily }));
         });
         const canPlayAllMelodies = computed(() => allMelodyPreviewEntries.value.length > 1);
+        const selectionPreviewPlayable = computed(() =>
+            showPresetTrackTabs.value ? allMelodyPreviewEntries.value.length > 0 : currentMelodyPlayable.value,
+        );
+        function toggleSelectionPreview() {
+            if (playing.value) stopPreview();
+            else if (showPresetTrackTabs.value)
+                void startAudioPreview(allMelodyPreviewEntries.value, { highlight: true, mode: "all" });
+            else playMelody();
+        }
 
         const safetyCheckItems = [
             { id: "unlocked", title: "飞控已锁定（未解锁）", description: "确认当前不会发送解锁命令。" },
@@ -2804,8 +3263,10 @@ export default defineComponent({
                 esc.editorMelody = cloneMelody(track.melody);
                 esc.editorHistory = cloneMelodyHistory(track.history);
                 esc.editorFuture = cloneMelodyHistory(track.future);
-                esc.editorSource = { type: "preset", id: session.presetId };
-                esc.editorDraftId = null;
+                esc.editorSource = track.draftId
+                    ? { type: "draft", id: track.draftId }
+                    : { type: "preset", id: session.presetId };
+                esc.editorDraftId = track.draftId || null;
                 esc.melodyDirty =
                     Boolean(esc.melodyReplacementReady) || !melodiesEqual(esc.editorMelody, esc.originalMelody);
             }
@@ -2853,8 +3314,14 @@ export default defineComponent({
             editorBaseline.value = cloneMelody(melody.value);
             history.value = cloneMelodyHistory(track.history);
             future.value = cloneMelodyHistory(track.future);
-            setActiveLibrarySource({ type: "preset", id: session.presetId });
-            currentDraftId.value = null;
+            setActiveLibrarySource(
+                track.draftId ? { type: "draft", id: track.draftId } : { type: "preset", id: session.presetId },
+            );
+            currentDraftId.value = track.draftId || null;
+            if (track.draftId)
+                lastDraftSavedAt.value = new Date(
+                    drafts.value.find((draft) => draft.id === track.draftId)?.updatedAt || Date.now(),
+                );
             selectedNoteId.value = melody.value.notes[0]?.id || null;
             loadingEditor = false;
             void nextTick(scrollMelodyIntoView);
@@ -2863,7 +3330,7 @@ export default defineComponent({
 
         function selectPresetTrack(index) {
             if (index === activePresetTrackIndex.value) return;
-            flushCurrentDraft();
+            if (!flushCurrentDraft()) return;
             syncActivePresetTrackState();
             loadPresetTrack(index);
         }
@@ -3101,12 +3568,11 @@ export default defineComponent({
             editorBaseline.value = cloneMelody(melody.value);
         }
 
-        function loadPreset(preset) {
-            if (!stashEditorBeforeSwitch()) return;
+        function loadPreset(preset, { preserveEdits = true, draftIds = [] } = {}) {
+            if (preserveEdits && !stashEditorBeforeSwitch()) return false;
             recentIds.value = [preset.id, ...recentIds.value.filter((id) => id !== preset.id)].slice(0, 12);
             persistLibrary();
             offlineSelection.value = !editableEscs.value.length;
-            workspaceView.value = "editor";
             currentDraftId.value = null;
             const source = { type: "preset", id: preset.id };
             const tracks = preset.trackMelodies?.length ? preset.trackMelodies : [preset];
@@ -3122,6 +3588,7 @@ export default defineComponent({
                         const trackMelody = cloneMelody(track);
                         return {
                             id: `${preset.id}-track-${index + 1}`,
+                            draftId: draftIds[index] || null,
                             originalMelody: cloneMelody(trackMelody),
                             melody: trackMelody,
                             history: [],
@@ -3140,7 +3607,7 @@ export default defineComponent({
                         : `已加载“${preset.name}”的 ${tracks.length} 个声部，可通过顶部标签逐路查看。`,
                     "info",
                 );
-                return;
+                return true;
             }
 
             clearPresetTrackSession();
@@ -3175,12 +3642,12 @@ export default defineComponent({
                     "info",
                 );
             }
+            return true;
         }
 
-        function loadDraft(draft) {
+        function loadDraft(draft, { preserveEdits = true } = {}) {
             if (currentDraftId.value === draft.id && !draftDirty.value) return;
-            if (!stashEditorBeforeSwitch()) return;
-            workspaceView.value = "editor";
+            if (preserveEdits && !stashEditorBeforeSwitch()) return;
             offlineSelection.value = !editableEscs.value.length;
             clearPresetTrackSession();
             currentDraftId.value = draft.id;
@@ -3296,6 +3763,7 @@ export default defineComponent({
                 currentDraftId.value = draft.id;
                 setActiveLibrarySource({ type: "draft", id: draft.id });
                 if (draftNameMode.value === "create") {
+                    workspaceView.value = "editor";
                     history.value = [];
                     future.value = [];
                 }
@@ -3705,6 +4173,7 @@ export default defineComponent({
 
         function createCodeSession(melodyValue, historyValue, futureValue, sourceValue, draftId) {
             return {
+                baselineCode: melodyToRtttl(melodyValue),
                 baselineMelody: cloneMelody(melodyValue),
                 baselineHistory: cloneMelodyHistory(historyValue),
                 baselineFuture: cloneMelodyHistory(futureValue),
@@ -3839,6 +4308,7 @@ export default defineComponent({
             const imported = codePreview.value.melody;
             const session = singleCodeSession;
             if (!imported || !session) return false;
+            if (rtttlCode.value === session.baselineCode) return true;
             if (codeMelodiesEqual(imported, session.baselineMelody)) return true;
 
             history.value = [...cloneMelodyHistory(session.baselineHistory), cloneMelody(session.baselineMelody)];
@@ -3855,6 +4325,7 @@ export default defineComponent({
                 const track = presetTrackSession.value?.tracks[item.entry.trackIndex];
                 const session = item.entry.session;
                 if (!track || !session || !item.preview.melody) return false;
+                if (item.entry.code === session.baselineCode) continue;
                 if (codeMelodiesEqual(item.preview.melody, session.baselineMelody)) continue;
 
                 track.history = [...cloneMelodyHistory(session.baselineHistory), cloneMelody(session.baselineMelody)];
@@ -3875,6 +4346,7 @@ export default defineComponent({
                 const esc = item.esc;
                 const session = item.entry.session;
                 if (!esc || !session || !item.preview.melody) return false;
+                if (item.entry.code === session.baselineCode) continue;
                 if (codeMelodiesEqual(item.preview.melody, session.baselineMelody)) continue;
 
                 esc.editorHistory = [
@@ -3945,7 +4417,7 @@ export default defineComponent({
                 stopPreview();
                 return;
             }
-            startAudioPreview([{ melody: melody.value, id: null }], { highlight: true, mode: "single" });
+            startAudioPreview([{ melody: effectiveMelody.value, id: null }], { highlight: true, mode: "single" });
         }
 
         function playAllMelodies() {
@@ -4489,7 +4961,15 @@ export default defineComponent({
             writeProgressRows.value = targets.map((esc) => ({ channel: esc.channel, state: "pending" }));
             try {
                 acquireSerialLock();
-                writeResult.value = await controller.value.writeMelody(targets, (esc) => esc.editorMelody);
+                const output = new Map(targets.map((esc) => [esc.id, cloneMelody(outputMelodyForEsc(esc))]));
+                const writtenVoices = presetTrackSession.value
+                    ? {
+                        session: presetTrackSession.value,
+                        tracks: outputTracks.value.map(cloneMelody),
+                        byEsc: new Map(targets.map((esc) => [esc.id, voiceIndexForEsc(esc)])),
+                    }
+                    : null;
+                writeResult.value = await controller.value.writeMelody(targets, (esc) => output.get(esc.id));
                 for (const row of writeProgressRows.value) {
                     if (writeResult.value.written.some((esc) => esc.channel === row.channel)) row.state = "written";
                     else if (writeResult.value.failed?.channel === row.channel) {
@@ -4499,9 +4979,12 @@ export default defineComponent({
                 }
                 if (writeResult.value.ok) {
                     for (const esc of writeResult.value.written) {
-                        if (esc.firmwareFamily === "blheli32" && esc.currentMelody) {
-                            esc.editorMelody = cloneMelody(esc.currentMelody);
-                        } else esc.currentMelody = cloneMelody(esc.editorMelody);
+                        if (esc.firmwareFamily !== "blheli32" || !esc.currentMelody)
+                            esc.currentMelody = cloneMelody(output.get(esc.id));
+                        if (writtenVoices && esc.firmwareFamily === "blheli32") {
+                            writtenVoices.tracks[writtenVoices.byEsc.get(esc.id)] = cloneMelody(esc.currentMelody);
+                        }
+                        esc.editorMelody = cloneMelody(esc.currentMelody);
                         esc.originalMelody = cloneMelody(esc.editorMelody);
                         esc.editorSource = { type: "current" };
                         esc.editorDraftId = null;
@@ -4509,10 +4992,29 @@ export default defineComponent({
                         esc.melodyDirty = false;
                         esc.melodyReadStatus = ESC_MELODY_READ_STATUS.LOADED;
                     }
+                    if (writtenVoices && presetTrackSession.value === writtenVoices.session) {
+                        writtenVoices.session.tracks.forEach((track, index) => {
+                            track.melody = cloneMelody(writtenVoices.tracks[index]);
+                            track.originalMelody = cloneMelody(track.melody);
+                            track.history = [];
+                            track.future = [];
+                            track.draftId = null;
+                        });
+                        loadingEditor = true;
+                        try {
+                            melody.value = cloneMelody(activePresetTrack().melody);
+                            editorBaseline.value = cloneMelody(melody.value);
+                            history.value = [];
+                            future.value = [];
+                        } finally {
+                            loadingEditor = false;
+                        }
+                        syncPresetTracksToEscs();
+                    }
                     if (writeResult.value.written.some((esc) => esc.id === selectedEscId.value)) {
                         currentDraftId.value = null;
                         setActiveLibrarySource({ type: "current" });
-                        if (selectedEsc.value?.firmwareFamily === "blheli32") {
+                        if (!writtenVoices && selectedEsc.value?.firmwareFamily === "blheli32") {
                             loadingEditor = true;
                             melody.value = cloneMelody(selectedEsc.value.editorMelody);
                             editorBaseline.value = cloneMelody(melody.value);
@@ -4574,7 +5076,13 @@ export default defineComponent({
         }
 
         function handleBeforeUnload(event) {
-            if (!stashEditorBeforeSwitch()) {
+            const unsafeToLeave =
+                writing.value ||
+                restoring.value ||
+                writeRecoveryTargets.value.length > 0 ||
+                (restoreResult.value?.ok === false && restoreRollbackCount.value > 0) ||
+                escs.value.some((esc) => esc.writeTouched || esc.restoreTouched);
+            if (unsafeToLeave || !stashEditorBeforeSwitch()) {
                 event.preventDefault();
                 event.returnValue = "";
             }
@@ -4597,6 +5105,9 @@ export default defineComponent({
         });
 
         return {
+            automaticBl32,
+            effectiveMelody,
+            stopPreview,
             melody,
             targetCapacity,
             drafts,
@@ -4619,6 +5130,7 @@ export default defineComponent({
             presets,
             presetQuery,
             filteredPresets,
+            presetCompatibility,
             keys,
             rtttlBpmMin,
             rtttlBpmMax,
@@ -4724,6 +5236,19 @@ export default defineComponent({
             modalOpen,
             codeDiscardConfirm,
             workspaceView,
+            librarySection,
+            deviceDetailsOpen,
+            deviceInspectionId,
+            inspectedDeviceId,
+            openDeviceDetails,
+            closeDeviceDetails,
+            headerConnectionLabel,
+            selectionPreviewPlayable,
+            toggleSelectionPreview,
+            selectedLibraryDescription,
+            previewVoiceCount,
+            libraryTrackCount,
+            libraryDuration,
             zoomPixels,
             editorTool,
             snapStep,
@@ -4745,10 +5270,12 @@ export default defineComponent({
             arrangementLabel,
             assignmentRows,
             completedWriteRows,
+            safetyChannelRows,
             assignmentWarnings,
             assignmentAccepted,
             assignVoice,
             deviceReadiness,
+            hasDeviceIssues,
             operationReadiness,
             writeProgressRows,
             closeSafety,

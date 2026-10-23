@@ -33,7 +33,6 @@ class GuiControl {
             "flight_plan",
             "autotune",
             "blackbox_viewer",
-            "esc_melody",
         ];
 
         this.defaultAllowedTabs = [

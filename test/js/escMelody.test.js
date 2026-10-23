@@ -25,6 +25,7 @@ import {
 import { EscFourWayController, patchSettingsImage } from "../../src/js/esc_melody/esc_four_way_controller.js";
 import {
     createMelodyDraft,
+    createUniqueMelodyDraftName,
     createMelodyDraftPackage,
     deleteMelodyDraft,
     duplicateMelodyDraft,
@@ -1474,7 +1475,7 @@ describe("ESC 4-way controller integration", () => {
         expect(recoveredSession.stops).toEqual([{ exit: true }]);
     });
 
-    it("rebuilds passthrough again when an OX32 write channel keeps rejecting init-flash", async () => {
+    it("rebuilds passthrough again when an AM32 write channel keeps rejecting init-flash", async () => {
         const esc = createBackedUpEsc(0);
         const memory = new Map();
         const rejectedSession = () =>
@@ -1689,7 +1690,7 @@ describe("ESC 4-way controller integration", () => {
     it("restores and verifies the separate OX32 configuration checksum", async () => {
         const layout = getOx32Layout("3.00");
         const desiredSettings = new Uint8Array(layout.settingsLength).fill(0x32);
-        const desiredChecksum = new Uint8Array([0x11, 0x22, 0x33, 0x44]);
+        const desiredChecksum = createOx32ChecksumTrailer(desiredSettings);
         const esc = createBackedUpEsc(0, {
             firmwareFamily: ESC_FIRMWARE.OX32,
             firmwareLabel: "OX32",
@@ -1710,7 +1711,7 @@ describe("ESC 4-way controller integration", () => {
         });
         const backup = createEscBackupPackage([esc]);
         esc.originalEeprom = new Uint8Array(layout.settingsLength).fill(0x77);
-        esc.originalSettingsChecksum = new Uint8Array([9, 9, 9, 9]);
+        esc.originalSettingsChecksum = createOx32ChecksumTrailer(esc.originalEeprom);
         const memory = new Map();
         const session = createSession((command, params, address) => {
             if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([0x06, 0x35, 0x02, 4]);
@@ -2207,5 +2208,134 @@ describe("Bluejay and AM32 compatibility regressions", () => {
         });
         expect(writeResult.ok).toBe(true);
         expect(writeResult.written).toHaveLength(4);
+    });
+});
+
+describe("ESC review safety regressions", () => {
+    it("rejects an invalid AM32 backup payload before any flash mutation", async () => {
+        const esc = createBackedUpEsc(0);
+        const saved = createEscBackupPackage([esc]);
+        saved.escs[0].eeprom.data = "00".repeat(esc.settingsLength);
+        const backup = parseEscBackupFile(JSON.stringify(saved));
+        const session = createSession((command, params) => {
+            if (command === FOUR_WAY_COMMANDS.deviceInitFlash) return response([6, 31, 2, 4]);
+            if (command === FOUR_WAY_COMMANDS.deviceRead) return response(esc.originalEeprom.slice(0, params[0]));
+            throw new Error("No erase or write is allowed");
+        });
+        const controller = createController([session]);
+        const result = await controller.restoreBackup([{ esc, backupEntry: backup.escs[0] }]);
+        expect(result.ok).toBe(false);
+        expect(result.rollback).toEqual([]);
+        expect(result.error.message).toContain("配置头无效");
+        expect(session.calls.some(({ command }) => [0x38, 0x39, 0x3b].includes(command))).toBe(false);
+    });
+
+    it.each(["version", "length"])("rejects an internally inconsistent AM32 backup %s", async (field) => {
+        const esc = createBackedUpEsc(0);
+        const controller = createController([]);
+        const image = esc.originalEeprom.slice();
+        if (field === "version") image[4] = 98;
+        else image[1] = 3;
+        await expect(controller.assertRestorePayload(esc, image, null)).rejects.toThrow("不匹配");
+    });
+
+    it("validates Bluejay identity tags inside a backup against the current channel", async () => {
+        const image = new Uint8Array(255);
+        image.set([0, 21, 206]);
+        image.set(fixedAscii("B_X_30", 16), 0x40);
+        image.set(fixedAscii("EFM8BB51", 16), 0x50);
+        image.set(fixedAscii("Bluejay TEST", 16), 0x60);
+        const esc = createBackedUpEsc(0, {
+            firmwareFamily: "bluejay",
+            version: "0.21",
+            settingsLength: 255,
+            settingsOffset: 0x3000,
+        });
+        const session = createSession((command) => {
+            if (command === FOUR_WAY_COMMANDS.deviceRead) return response(image.slice(0x40, 0x60));
+            throw new Error("No mutation is allowed");
+        });
+        const controller = createController([]);
+        controller.session = session;
+        await expect(controller.assertRestorePayload(esc, image, null)).resolves.toBeUndefined();
+        const badTarget = image.slice();
+        badTarget[0x40] ^= 1;
+        await expect(controller.assertRestorePayload(esc, badTarget, null)).rejects.toThrow("标识");
+        const badName = image.slice();
+        badName.set(fixedAscii("BLHeli_S", 16), 0x60);
+        await expect(controller.assertRestorePayload(esc, badName, null)).rejects.toThrow("Bluejay");
+    });
+
+    it("rejects an OX32 payload whose saved checksum belongs to different settings", async () => {
+        const image = new Uint8Array(204).fill(0x32);
+        const esc = { firmwareFamily: "ox32", settingsLength: 204 };
+        const controller = createController([]);
+        await expect(
+            controller.assertRestorePayload(esc, image, createOx32ChecksumTrailer(image)),
+        ).resolves.toBeUndefined();
+        const changed = image.slice();
+        changed[70] ^= 1;
+        await expect(controller.assertRestorePayload(esc, changed, createOx32ChecksumTrailer(image))).rejects.toThrow(
+            "CRC",
+        );
+    });
+
+    it("exits passthrough when its initial Alive response is lost", async () => {
+        const session = createSession(() => {
+            throw new Error("4-way command 0x30 timed out");
+        });
+        const controller = new EscFourWayController({
+            msp: {
+                send_message(_code, _payload, _sent, callback) {
+                    callback();
+                    return true;
+                },
+            },
+            serialAdapter: { send() {} },
+            sessionFactory: () => session,
+            probeAlive: true,
+            delay: () => Promise.resolve(),
+            passthroughExitDelay: 0,
+        });
+        await expect(controller.scan()).rejects.toThrow("timed out");
+        expect(controller.inPassthrough).toBe(false);
+        expect(controller.session).toBeNull();
+        expect(session.stops).toEqual([{ exit: true }]);
+    });
+
+    it("clears partial initialization even when the session factory throws", async () => {
+        const controller = new EscFourWayController({
+            msp: {
+                send_message(_code, _payload, _sent, callback) {
+                    callback();
+                    return true;
+                },
+            },
+            serialAdapter: { send() {} },
+            sessionFactory: () => {
+                throw new Error("factory failed");
+            },
+            passthroughExitDelay: 0,
+        });
+        await expect(controller.enter()).rejects.toThrow("factory failed");
+        expect(controller.inPassthrough).toBe(false);
+        expect(controller.session).toBeNull();
+    });
+
+    it("numbers full-length duplicate names without losing their suffix or colliding again", () => {
+        const name = "A".repeat(32);
+        const drafts = [
+            { id: "one", name },
+            { id: "two", name: `${"A".repeat(28)} (2)` },
+        ];
+        const candidate = createUniqueMelodyDraftName(drafts, name);
+        expect(candidate).toBe(`${"A".repeat(28)} (3)`);
+        expect(candidate.length).toBe(32);
+        const storage = createMemoryStorage();
+        const original = saveMelodyDraft({ name, melody: PRESET_MELODIES[0] }, storage);
+        const duplicate = duplicateMelodyDraft(original, storage);
+        expect(duplicate.name).toBe(`${"A".repeat(28)} (2)`);
+        const imported = importMelodyDraftPackage(createMelodyDraftPackage([original]), storage);
+        expect(imported[0].name).toBe(`${"A".repeat(28)} (3)`);
     });
 });

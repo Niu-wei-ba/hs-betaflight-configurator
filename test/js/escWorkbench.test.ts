@@ -13,9 +13,10 @@ import GUI from "../../src/js/gui.js";
 
 describe("ESC workbench browser state", () => {
     beforeEach(() => localStorage.clear());
-    it("makes offline editing reachable without granting hardware access", () => {
-        expect(sidebarItems.find((item) => item.key === "esc_melody").mode).toBe("shared");
-        expect(GUI.defaultAllowedTabsWhenDisconnected).toContain("esc_melody");
+    it("exposes ESC music only after connecting a flight controller", () => {
+        expect(sidebarItems.find((item) => item.key === "esc_melody").mode).toBe("connected");
+        expect(GUI.defaultAllowedTabsWhenDisconnected).not.toContain("esc_melody");
+        expect(GUI.defaultAllowedTabs).toContain("esc_melody");
     });
     it("ignores corrupt preferences and filters stale IDs and duplicates", () => {
         localStorage.setItem(LIBRARY_STATE_KEY, "{");

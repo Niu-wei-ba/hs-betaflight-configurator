@@ -1,4 +1,4 @@
-import { createApp, nextTick } from "vue";
+import { createApp, nextTick, reactive } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEscBackupPackage } from "../../src/js/esc_melody/backups.js";
 
@@ -77,15 +77,415 @@ describe("EscMelodyTab", () => {
         vi.restoreAllMocks();
     });
 
-    async function mountTab() {
+    async function mountTab(model) {
         const { default: EscMelodyTab } = await import("../../src/components/tabs/EscMelodyTab.vue");
         const container = document.createElement("div");
         document.body.appendChild(container);
         const app = createApp(EscMelodyTab);
+        if (model) app.provide("betaflightModel", model);
         const vm = app.mount(container);
         await nextTick();
         return { app, container, vm };
     }
+
+    it("automatically uses a complete BL32 arrangement for preview and writing without changing the preset or creating drafts", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60, 60, 60, 60]).map((esc) => ({
+                ...esc,
+                firmwareFamily: "blheli32",
+                firmwareLabel: "BLHeli_32",
+                capacity: 48,
+            })),
+        );
+        const { app, vm, container } = await mountTab();
+        try {
+            await vm.scanEscs();
+            const preset = vm.presets.find((item) => item.name === "AC/DC - Back in Black");
+            const original = JSON.stringify(preset);
+            vm.loadPreset(preset);
+            await nextTick();
+            expect(container.querySelector('[aria-label="生成 BL32 适配版"]')).toBeNull();
+            expect(vm.automaticBl32.adapted).toBe(true);
+            expect(vm.automaticBl32.result.cropped).toBe(false);
+            expect(vm.automaticBl32.result.sourceNoteCount).toBe(vm.automaticBl32.result.keptNoteCount);
+            expect(vm.automaticBl32.tracks).toHaveLength(4);
+            expect(vm.automaticBl32.tracks.every((track) => track.blheli32?.bytes.length === 48)).toBe(true);
+            expect(vm.validation.valid).toBe(true);
+            expect(vm.writeValidation.valid).toBe(true);
+            expect(container.querySelector(".melody-selection-preview").textContent).toContain("编码通过");
+            expect(container.textContent).toContain("已自动适配 BL32");
+            expect(vm.melody).toEqual(expect.objectContaining({ bpm: preset.trackMelodies[0].bpm }));
+            expect(vm.drafts).toHaveLength(0);
+            expect(JSON.stringify(preset)).toBe(original);
+            const expected = structuredClone(JSON.parse(JSON.stringify(vm.automaticBl32.tracks)));
+            writeMelody.mockImplementation(async (targets, provider) => {
+                targets.forEach((esc, index) => {
+                    expect(provider(esc)).toEqual(expected[index]);
+                    esc.currentMelody = provider(esc);
+                });
+                return { ok: true, written: targets };
+            });
+            vm.openSafety();
+            await nextTick();
+            for (const input of container.querySelectorAll(".safety-check input:not([disabled])")) input.click();
+            vm.assignmentAccepted = true;
+            await nextTick();
+            await vm.performWrite();
+            expect(writeMelody).toHaveBeenCalledOnce();
+            expect(JSON.stringify(preset)).toBe(original);
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("never crops an unadaptable BL32 melody and blocks writing while preserving all notes", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60]).map((esc) => ({
+                ...esc,
+                firmwareFamily: "blheli32",
+                firmwareLabel: "BLHeli_32",
+                capacity: 48,
+            })),
+        );
+        const { app, vm, container } = await mountTab();
+        try {
+            await vm.scanEscs();
+            const original = {
+                id: "long-adaptation",
+                name: "Long adaptation",
+                bpm: 120,
+                waitMs: 0,
+                notes: Array.from({ length: 60 }, (_, i) => ({ midi: 60, start: i * 0.5, duration: 0.5 })),
+            };
+            const before = JSON.stringify(original);
+            vm.loadPreset(original);
+            await nextTick();
+            expect(vm.automaticBl32.adapted).toBe(false);
+            expect(vm.automaticBl32.errors.join("")).toContain("无法完整适配");
+            expect(vm.melody.notes).toHaveLength(60);
+            expect(vm.effectiveMelody.notes).toHaveLength(60);
+            expect(vm.writeValidation.valid).toBe(false);
+            expect(findButton(container, "安全写入").disabled).toBe(true);
+            await vm.performWrite();
+            expect(writeMelody).not.toHaveBeenCalled();
+            expect(vm.drafts).toHaveLength(0);
+            expect(JSON.stringify(original)).toBe(before);
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("reevaluates automatic BL32 adaptation after edits without overwriting or filling local drafts", async () => {
+        const { saveMelodyDraft } = await import("../../src/js/esc_melody/drafts.js");
+        const source = { ...createCurrentMelody(0, 59), name: "Source draft" };
+        const draft = saveMelodyDraft({ name: source.name, melody: source });
+        const before = localStorage.getItem("betaflight.esc-melody.drafts.v1");
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60]).map((esc) => ({
+                ...esc,
+                firmwareFamily: "blheli32",
+                firmwareLabel: "BLHeli_32",
+                capacity: 48,
+            })),
+        );
+        const { app, vm } = await mountTab();
+        try {
+            await vm.scanEscs();
+            vm.loadDraft(draft);
+            await nextTick();
+            expect(vm.automaticBl32.adapted).toBe(true);
+            expect(vm.effectiveMelody.notes.find((note) => !note.rest).midi).toBe(71);
+            expect(vm.melody.notes[0].midi).toBe(59);
+            expect(localStorage.getItem("betaflight.esc-melody.drafts.v1")).toBe(before);
+            vm.melody.notes = Array.from({ length: 49 }, (_, i) => ({
+                id: `edit-${i}`,
+                midi: 59,
+                start: i,
+                duration: 1,
+            }));
+            await nextTick();
+            expect(vm.automaticBl32.adapted).toBe(false);
+            expect(vm.writeValidation.valid).toBe(false);
+            expect(vm.drafts).toHaveLength(1);
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("auditions the automatic BL32 output shown by the overview and restores the original after changing firmware", async () => {
+        const frequencies = [];
+        globalThis.AudioContext = class {
+            currentTime = 0;
+            destination = {};
+            createGain() {
+                return {
+                    gain: { value: 1, setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+                    connect: vi.fn(),
+                    disconnect: vi.fn(),
+                };
+            }
+            createOscillator() {
+                const oscillator = { frequency: { value: 0 }, connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
+                frequencies.push(oscillator.frequency);
+                return oscillator;
+            }
+        };
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60]).map((esc) => ({
+                ...esc,
+                firmwareFamily: "blheli32",
+                firmwareLabel: "BLHeli_32",
+                capacity: 48,
+            })),
+        );
+        const { app, vm, container } = await mountTab();
+        try {
+            await vm.scanEscs();
+            vm.loadPreset({ ...createCurrentMelody(0, 59), id: "auto-low", name: "Auto low" });
+            await nextTick();
+            expect(container.querySelector(".overview-note").title).toContain("B4");
+            findButton(container, "试听旋律").click();
+            await vi.waitFor(() => expect(vm.playing).toBe(true));
+            expect(frequencies[0].value).toBeCloseTo(440 * 2 ** ((71 - 69) / 12), 5);
+            expect(vm.melody.notes[0].midi).toBe(59);
+            vm.stopPreview();
+            vm.escs[0].firmwareFamily = "bluejay";
+            vm.escs[0].capacity = 128;
+            await nextTick();
+            expect(vm.automaticBl32.adapted).toBe(false);
+            expect(container.querySelector(".overview-note").title).toContain("B3");
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("adapts independent channels separately without transforming untouched channels", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60, 60]).map((esc) => ({
+                ...esc,
+                firmwareFamily: "blheli32",
+                firmwareLabel: "BLHeli_32",
+                capacity: 48,
+            })),
+        );
+        const { app, vm } = await mountTab();
+        try {
+            await vm.scanEscs();
+            vm.syncAll = false;
+            vm.melody.notes[0].midi = 59;
+            await nextTick();
+            expect(vm.automaticBl32.adapted).toBe(true);
+            expect(vm.automaticBl32.tracks[0].notes[0].midi).toBe(71);
+            expect(vm.automaticBl32.tracks[1].notes[0].midi).toBe(60);
+            expect(vm.escs[1].editorMelody.notes[0].midi).toBe(60);
+            expect(vm.pendingWriteEscs.map((esc) => esc.channel)).toEqual([0]);
+            expect(vm.writeValidation.valid).toBe(true);
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("keeps device details compact while exposing technical data and automatically revealing channel errors", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(createWritableEscs([60, 60, 60, 60]));
+        const { app, vm, container } = await mountTab();
+        try {
+            await vm.scanEscs();
+            const panel = container.querySelector(".melody-device-details");
+            const technical = panel.querySelector(".device-technical-details");
+            expect(panel.querySelector(".device-overview").textContent).toContain("4 路电调已识别");
+            expect(panel.querySelector(".device-readiness").textContent).toContain("4 路已验证");
+            expect(panel.querySelectorAll(".device-channel-area > .channel-plan tbody tr")).toHaveLength(4);
+            expect(technical.open).toBe(false);
+            technical.querySelector(":scope > summary").click();
+            expect(technical.open).toBe(true);
+            expect(technical.querySelectorAll(".esc-record")).toHaveLength(4);
+            expect(
+                [...technical.querySelectorAll(".esc-record")].filter((record) => record.style.display !== "none"),
+            ).toHaveLength(1);
+            const source = JSON.stringify(vm.melody);
+            technical.querySelectorAll(".device-diagnostic-tabs button")[3].click();
+            await nextTick();
+            expect(technical.querySelectorAll(".esc-record")[3].style.display).not.toBe("none");
+            expect(JSON.stringify(vm.melody)).toBe(source);
+            expect(panel.querySelectorAll(".device-channel-area th")).toHaveLength(8);
+
+            technical.querySelector(":scope > summary").click();
+            expect(technical.open).toBe(false);
+            vm.escs[2].melodyReadError = "通道读取失败，请重试";
+            await nextTick();
+            expect(technical.open).toBe(true);
+            expect(technical.textContent).toContain("通道读取失败，请重试");
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("starts with the library and keeps selection, preview, and editor on the same melody", async () => {
+        const { app, vm, container } = await mountTab();
+        try {
+            expect(container.querySelector(".esc-melody-editor").style.display).toBe("none");
+            expect(container.querySelector(".melody-selection-preview").style.display).not.toBe("none");
+            const row = [...container.querySelectorAll(".library-preset-row")].find((item) =>
+                item.querySelector("strong").textContent.includes("Bluejay Default"),
+            );
+            row.querySelector(".melody-list-item").click();
+            await nextTick();
+            expect(container.querySelector(".selection-preview-heading h2").textContent).toBe("Bluejay Default");
+            expect(container.querySelector(".esc-melody-editor").style.display).toBe("none");
+            expect(row.classList.contains("selected")).toBe(true);
+            expect(container.querySelectorAll(".overview-note")).toHaveLength(
+                vm.melody.notes.filter((note) => !note.rest).length,
+            );
+            container.querySelectorAll(".melody-mode-nav button")[1].click();
+            await nextTick();
+            expect(container.querySelector(".esc-melody-sidebar").style.display).toBe("none");
+            expect(container.querySelector(".esc-melody-editor").style.display).not.toBe("none");
+            findEditorButton(container, "音符").click();
+            await nextTick();
+            const edited = JSON.stringify(vm.melody);
+            container.querySelectorAll(".melody-mode-nav button")[0].click();
+            await nextTick();
+            expect(JSON.stringify(vm.melody)).toBe(edited);
+            expect(container.querySelectorAll(".overview-note")).toHaveLength(
+                vm.melody.notes.filter((note) => !note.rest).length,
+            );
+            expect(scanEscs).not.toHaveBeenCalled();
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("filters favorites and exposes saved drafts through the library tabs", async () => {
+        const { app, vm, container } = await mountTab();
+        try {
+            container.querySelector('[aria-label="收藏 Bluejay Default"]').click();
+            container.querySelectorAll(".selection-library-tabs button")[1].click();
+            await nextTick();
+            expect(container.querySelectorAll(".library-preset-row")).toHaveLength(1);
+            expect(container.querySelector(".library-preset-row").textContent).toContain("Bluejay Default");
+            findButton(container, "新建旋律").click();
+            await nextTick();
+            const input = container.querySelector("#esc-melody-draft-name");
+            input.value = "Selection draft";
+            input.dispatchEvent(new Event("input"));
+            await nextTick();
+            findButton(container, "创建").click();
+            await nextTick();
+            expect(container.querySelector(".esc-melody-editor").style.display).not.toBe("none");
+            expect(container.querySelector(".selection-preview-heading h2").textContent).toBe("Selection draft");
+            container.querySelectorAll(".melody-mode-nav button")[0].click();
+            container.querySelectorAll(".selection-library-tabs button")[2].click();
+            await nextTick();
+            expect(container.querySelector(".selection-library-panel").style.display).toBe("none");
+            expect(container.querySelector(".selection-drafts-panel").style.display).not.toBe("none");
+            expect(container.querySelector(".draft-list-row").textContent).toContain("Selection draft");
+            container.querySelector(".draft-list-row .melody-list-item").click();
+            await nextTick();
+            expect(vm.workspaceView).toBe("library");
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("opens device details without starting a scan and restores focus after closing", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(createWritableEscs([60, 60]));
+        const { app, container } = await mountTab();
+        try {
+            const details = container.querySelector(".melody-device-details");
+            const toggle = container.querySelector('[aria-controls="melody-device-details"]');
+            toggle.click();
+            await nextTick();
+            expect(details.style.display).not.toBe("none");
+            expect(document.activeElement).toBe(details.querySelector("h2"));
+            expect(scanEscs).not.toHaveBeenCalled();
+            const scanButton = container.querySelector('.esc-melody-header [aria-label="扫描电调"]');
+            expect(container.querySelectorAll('[aria-label="扫描电调"]')).toHaveLength(1);
+            findButton(details, "收起详情").click();
+            await nextTick();
+            scanButton.click();
+            await vi.waitFor(() =>
+                expect(container.querySelectorAll(".selection-channel-chips button")).toHaveLength(2),
+            );
+            expect(container.querySelector(".melody-connection-status").textContent).toContain("AM32");
+            expect(container.querySelectorAll(".selection-channel-chips .ready")).toHaveLength(2);
+            expect(details.style.display).toBe("none");
+            expect(document.activeElement).toBe(toggle);
+            container.querySelector(".selection-channel-chips button").click();
+            await nextTick();
+            expect(details.style.display).not.toBe("none");
+            expect(scanEscs).toHaveBeenCalledOnce();
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("selects the auditioned song in the piano overview and stops it from the right preview", async () => {
+        const stop = vi.fn();
+        globalThis.AudioContext = class {
+            currentTime = 0;
+            destination = {};
+            createGain() {
+                return {
+                    gain: { value: 1, setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+                    connect: vi.fn(),
+                    disconnect: vi.fn(),
+                };
+            }
+            createOscillator() {
+                return { frequency: { value: 0 }, connect: vi.fn(), start: vi.fn(), stop };
+            }
+        };
+        const { app, vm, container } = await mountTab();
+        try {
+            container.querySelector('[aria-label="试听 Bluejay Default"]').click();
+            await vi.waitFor(() => expect(vm.playing).toBe(true));
+            await nextTick();
+            const previewButton = container.querySelector(".selection-preview-actions .regular-button");
+            expect(previewButton.textContent).toContain("停止试听");
+            previewButton.click();
+            await nextTick();
+            expect(vm.playing).toBe(false);
+            expect(stop).toHaveBeenCalled();
+            expect(container.querySelector(".selection-preview-heading h2").textContent).toBe("Bluejay Default");
+            const selectedRow = container.querySelector(".library-preset-row.selected");
+            expect(selectedRow.textContent).toContain("Bluejay Default");
+            expect(container.querySelectorAll(".overview-note")).toHaveLength(
+                vm.melody.notes.filter((note) => !note.rest).length,
+            );
+            const monoNotes = [...container.querySelectorAll(".overview-note")].map((note) => note.style.cssText);
+            container.querySelector('[aria-label="试听 Abba - Chiquitita"]').click();
+            await vi.waitFor(() => expect(vm.playing).toBe(true));
+            await nextTick();
+            expect(container.querySelector(".selection-preview-heading h2").textContent).toBe("Abba - Chiquitita");
+            expect(container.querySelectorAll(".selection-voice-tabs button")).toHaveLength(4);
+            expect([...container.querySelectorAll(".overview-note")].map((note) => note.style.cssText)).not.toEqual(
+                monoNotes,
+            );
+            expect(container.querySelectorAll(".overview-note")).toHaveLength(
+                vm.melody.notes.filter((note) => !note.rest).length,
+            );
+            container.querySelector('[aria-label="试听 Abba - Chiquitita"]').click();
+            await nextTick();
+            expect(vm.playing).toBe(false);
+            expect(container.querySelector(".selection-preview-heading h2").textContent).toBe("Abba - Chiquitita");
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
 
     it("shows native BLHeli32 capacity, keeps B7 intact, and blocks an oversized melody", async () => {
         globalThis.CONFIGURATOR.connectionValid = true;
@@ -110,7 +510,12 @@ describe("EscMelodyTab", () => {
             expect(vm.melody.notes[0].midi).toBe(107);
             expect(container.querySelector(".compat-summary").textContent).toContain("/48 B");
             expect(container.querySelector(".piano-roll").getAttribute("style")).toContain("--note-rows: 57");
-            vm.melody.notes = Array.from({ length: 49 }, (_, i) => ({ id: `too-many-${i}`, midi: 60, start: i, duration: 1 }));
+            vm.melody.notes = Array.from({ length: 49 }, (_, i) => ({
+                id: `too-many-${i}`,
+                midi: 60,
+                start: i,
+                duration: 1,
+            }));
             await nextTick();
             expect(container.querySelector(".validation-badge").textContent).toContain("编码需调整");
             expect(vm.writeValidation.valid).toBe(false);
@@ -148,6 +553,136 @@ describe("EscMelodyTab", () => {
             expect(vm.locked).toBe(false);
             expect(container.querySelector(".firmware-confirm-dialog")).toBeNull();
             expect(scanEscs).toHaveBeenCalledOnce();
+            expect(writeMelody).not.toHaveBeenCalled();
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("marks incompatible library songs after scanning while keeping loading and audition available", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60]).map((esc) => ({
+                ...esc,
+                firmwareFamily: "blheli32",
+                firmwareLabel: "BLHeli_32",
+                capacity: 48,
+            })),
+        );
+        const { app, vm, container } = await mountTab();
+        try {
+            const good = { ...createCurrentMelody(0, 60), id: "test-good", name: "LibraryCheck Good" };
+            const tooLong = {
+                ...good,
+                id: "test-long",
+                name: "LibraryCheck Long",
+                notes: Array.from({ length: 49 }, (_, i) => ({ midi: 60, start: i, duration: 1 })),
+            };
+            const low = {
+                ...good,
+                id: "test-low",
+                name: "LibraryCheck Low",
+                notes: [{ midi: 59, start: 0, duration: 1 }],
+            };
+            vm.presets.push(good, tooLong, low);
+            vm.presetQuery = "LibraryCheck";
+            await nextTick();
+            expect(container.querySelectorAll(".library-compatibility")).toHaveLength(0);
+            await vm.scanEscs();
+            const rows = [...container.querySelectorAll(".library-preset-row")];
+            expect(rows).toHaveLength(3);
+            expect(rows[0].querySelector(".library-compatibility")).toBeNull();
+            expect(rows[1].querySelector(".library-compatibility").textContent).toContain("不适用");
+            expect(rows[1].querySelector(".library-compatibility").textContent).toContain("48");
+            expect(rows[2].querySelector(".library-compatibility").textContent).toContain("自动适配 BL32");
+            expect(rows[2].querySelector(".library-compatibility").textContent).toContain("完整适配版");
+            expect(rows[2].querySelector(".melody-list-item").disabled).toBe(false);
+            expect(rows[2].querySelector('[aria-label="试听 LibraryCheck Low"]').disabled).toBe(false);
+            rows[2].querySelector(".melody-list-item").click();
+            await nextTick();
+            expect(vm.melody.notes[0].midi).toBe(59);
+            expect(writeMelody).not.toHaveBeenCalled();
+            vm.presetScope = "recent";
+            await nextTick();
+            expect(container.querySelectorAll(".library-preset-row")).toHaveLength(1);
+            expect(container.querySelector(".library-compatibility").textContent).toContain("自动适配 BL32");
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("checks each library voice against its default channel and updates hints after rescanning", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        const targets = createWritableEscs([60, 60, 60, 60]);
+        targets[1] = { ...targets[1], firmwareFamily: "blheli32", firmwareLabel: "BLHeli_32", capacity: 48 };
+        scanEscs.mockResolvedValue(targets);
+        const { app, vm, container } = await mountTab();
+        try {
+            const good = createCurrentMelody(0, 60);
+            const low = createCurrentMelody(0, 59);
+            vm.presets.push(
+                { ...good, id: "voice-check-good", name: "VoiceCheck Good", trackMelodies: [low, good] },
+                { ...good, id: "voice-check-bad", name: "VoiceCheck Bad", trackMelodies: [good, low] },
+            );
+            vm.presetQuery = "VoiceCheck";
+            await vm.scanEscs();
+            const rows = [...container.querySelectorAll(".library-preset-row")];
+            expect(rows[0].querySelector(".library-compatibility")).toBeNull();
+            expect(rows[1].querySelector(".library-compatibility").textContent).toContain("自动适配 BL32");
+            expect(rows[1].querySelector(".library-compatibility").textContent).toContain("原曲保留");
+            rows[1].querySelector(".melody-list-item").click();
+            await nextTick();
+            expect(vm.escs[1].editorMelody.notes[0].midi).toBe(59);
+            expect(vm.writeValidation.valid).toBe(true);
+            expect(vm.automaticBl32.tracks[0].notes[0].midi).toBe(72);
+            expect(vm.automaticBl32.tracks[1].notes[0].midi).toBe(71);
+            // A different connected firmware must not inherit the previous BLHeli_32 warning.
+            scanEscs.mockResolvedValue(createWritableEscs([60, 60]));
+            await vm.scanEscs();
+            expect(container.querySelectorAll(".library-compatibility")).toHaveLength(0);
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("does not claim library compatibility when scanned channels cannot write", async () => {
+        globalThis.CONFIGURATOR.connectionValid = true;
+        scanEscs.mockResolvedValue(
+            createWritableEscs([60]).map((esc) => ({
+                ...esc,
+                canWrite: false,
+                melodyReadStatus: "unsupported",
+                currentMelody: null,
+            })),
+        );
+        const { app, vm, container } = await mountTab();
+        try {
+            await vm.scanEscs();
+            expect(container.querySelectorAll(".library-compatibility").length).toBe(vm.filteredPresets.length);
+            expect(container.querySelector(".library-compatibility").textContent).toContain("暂不可写");
+            vm.presetQuery = "Bad Apple";
+            await nextTick();
+            expect(container.querySelector(".library-compatibility").textContent).toContain("暂不可写");
+        } finally {
+            app.unmount();
+        }
+    });
+
+    it("clears device-specific library hints on disconnect and respects each channel's capacity", async () => {
+        const model = reactive({ CONFIGURATOR: { connectionValid: true } });
+        const targets = createWritableEscs([60, 60]);
+        targets[1].capacity = 1;
+        scanEscs.mockResolvedValue(targets);
+        const { app, vm, container } = await mountTab(model);
+        try {
+            vm.presetQuery = "Two-Tigers";
+            await vm.scanEscs();
+            expect(container.querySelector(".library-compatibility").textContent).toContain("部分通道不适用");
+            expect(container.querySelector(".library-compatibility").textContent).toContain("ESC 2");
+            expect(container.querySelector(".library-compatibility").textContent).not.toContain("ESC 1");
+            model.CONFIGURATOR.connectionValid = false;
+            await nextTick();
+            expect(container.querySelector(".library-compatibility")).toBeNull();
             expect(writeMelody).not.toHaveBeenCalled();
         } finally {
             app.unmount();
@@ -233,15 +768,10 @@ describe("EscMelodyTab", () => {
         expect(container.textContent).toContain("离线编辑");
         expect(container.textContent).toContain("OX32");
         expect(container.textContent).toContain("配置页 CRC");
-        expect(container.querySelector(".esc-melody-sidebar > .esc-scan-panel")).not.toBeNull();
-        expect(container.querySelector(".esc-melody-header .esc-melody-connection")).toBeNull();
-        const workflowSteps = container.querySelectorAll(".esc-melody-workflow-step");
-        expect(workflowSteps).toHaveLength(3);
-        expect([...workflowSteps].map((step) => step.textContent.trim())).toEqual([
-            "1扫描电调",
-            "2选择 / 编辑音乐",
-            "3安全写入",
-        ]);
+        expect(container.querySelector(".melody-device-details .esc-scan-panel")).not.toBeNull();
+        expect(container.querySelector(".melody-device-details").style.display).toBe("none");
+        expect(container.querySelector('.melody-mode-nav [aria-pressed="true"]').textContent.trim()).toBe("选曲");
+        expect(container.querySelector(".esc-melody-workflow")).toBeNull();
         expect(container.querySelector('[aria-label="扫描电调"]').disabled).toBe(true);
         expect(safetyButton.disabled).toBe(true);
         expect(container.querySelector(".safety-write-blocker").textContent).toContain("请先连接飞控");
@@ -488,7 +1018,7 @@ describe("EscMelodyTab", () => {
         app.unmount();
     });
 
-    it("keeps the edited roll unchanged during independent library audition", async () => {
+    it("preserves an edited roll for recovery when library audition switches the selected melody", async () => {
         const outputs = [];
         globalThis.AudioContext = class {
             currentTime = 0;
@@ -512,14 +1042,24 @@ describe("EscMelodyTab", () => {
         const notes = [...container.querySelectorAll(".esc-melody-note")].map((note) =>
             note.getAttribute("aria-label"),
         );
+        const failedStorage = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+            throw new Error("storage full");
+        });
+        container.querySelector('[aria-label="试听 Bluejay Default"]').click();
+        await nextTick();
+        expect(
+            [...container.querySelectorAll(".esc-melody-note")].map((note) => note.getAttribute("aria-label")),
+        ).toEqual(notes);
+        expect(outputs).toHaveLength(0);
+        expect(container.querySelector(".esc-melody-notice").textContent).toContain("storage full");
+        failedStorage.mockRestore();
         container.querySelector('[aria-label="试听 Bluejay Default"]').click();
         await Promise.resolve();
         await Promise.resolve();
         await nextTick();
         expect(container.querySelector('[aria-label="试听 Bluejay Default"]').textContent).toContain("停止");
-        expect(
-            [...container.querySelectorAll(".esc-melody-note")].map((note) => note.getAttribute("aria-label")),
-        ).toEqual(notes);
+        expect(container.querySelector(".selection-preview-heading h2").textContent).toBe("Bluejay Default");
+        expect(container.querySelector(".edit-recovery-banner")).not.toBeNull();
         const volume = container.querySelector('[aria-label="试听音量"]');
         volume.value = "25";
         volume.dispatchEvent(new Event("input"));
@@ -528,6 +1068,11 @@ describe("EscMelodyTab", () => {
         findButton(container, "静音").click();
         await nextTick();
         expect(outputs[0].gain.value).toBe(0);
+        findButton(container, "恢复上次编辑").click();
+        await nextTick();
+        expect(
+            [...container.querySelectorAll(".esc-melody-note")].map((note) => note.getAttribute("aria-label")),
+        ).toEqual(notes);
         expect(scanEscs).not.toHaveBeenCalled();
         expect(writeMelody).not.toHaveBeenCalled();
         app.unmount();
@@ -574,25 +1119,43 @@ describe("EscMelodyTab", () => {
         await nextTick();
         findButton(container, "开始写入").click();
         await nextTick();
-        expect(container.querySelector('.operation-progress [data-state="write"]')).not.toBeNull();
+        const dialog = container.querySelector('[aria-labelledby="safety-title"]');
+        expect(dialog.querySelectorAll("table")).toHaveLength(1);
+        expect(dialog.querySelector(".operation-progress")).toBeNull();
+        expect(dialog.querySelectorAll(".channel-plan tbody tr")).toHaveLength(3);
+        expect(dialog.querySelector('.channel-plan [data-state="write"] .channel-status').textContent).toContain(
+            "写入中",
+        );
+        expect(dialog.querySelector('.channel-plan [data-state="pending"] .channel-status').textContent).toContain(
+            "待处理",
+        );
+        const firstRow = dialog.querySelector(".channel-plan tbody tr");
+        expect(firstRow.textContent).toContain("ESC 1");
+        expect(firstRow.textContent).toContain("AM32");
+        expect(firstRow.querySelector("td").textContent).toContain("/128 B");
         const close = container.querySelector('[aria-labelledby="safety-title"] [aria-label="关闭"]');
         expect(close.disabled).toBe(true);
         close.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
         expect(container.querySelector('[aria-labelledby="safety-title"]')).not.toBeNull();
         continueWrite();
         await vi.waitFor(() => expect(container.querySelector(".write-failure")).not.toBeNull());
-        expect([...container.querySelectorAll(".operation-progress li")].map((row) => row.dataset.state)).toEqual([
+        expect([...dialog.querySelectorAll(".channel-plan tbody tr")].map((row) => row.dataset.state)).toEqual([
             "written",
             "failed",
             "skipped",
         ]);
+        expect(dialog.querySelector('[data-state="failed"] .channel-status-error').textContent).toBe("verify failed");
+        expect(dialog.querySelector('[data-state="skipped"] .channel-status').textContent).toContain("未执行");
         findButton(container, "恢复受影响通道").click();
         await vi.waitFor(() => expect(container.querySelector('[data-state="recoverFailed"]')).not.toBeNull());
-        expect([...container.querySelectorAll(".operation-progress li")].map((row) => row.dataset.state)).toEqual([
+        expect([...dialog.querySelectorAll(".channel-plan tbody tr")].map((row) => row.dataset.state)).toEqual([
             "recovered",
             "recoverFailed",
             "skipped",
         ]);
+        expect(dialog.querySelector('[data-state="recoverFailed"] .channel-status-error').textContent).toBe(
+            "link lost",
+        );
         expect(findButton(container, "备份到本机").disabled).toBe(true);
         expect(findButton(container, "开始写入").disabled).toBe(true);
         app.unmount();
@@ -631,6 +1194,8 @@ describe("EscMelodyTab", () => {
         expect(dialog).toBeTruthy();
         expect(dialog.textContent).toContain("音乐投稿");
         expect(qrCode.getAttribute("src")).toContain("hs-qq-qr");
+        expect(dialog.textContent).toContain("942085532");
+        expect(dialog.querySelector('[aria-label="复制 QQ 群号 942085532"]')).not.toBeNull();
 
         dialog.querySelector('[aria-label="关闭音乐投稿"]').click();
         await nextTick();
@@ -1078,10 +1643,10 @@ describe("EscMelodyTab", () => {
         scanButton.click();
 
         await vi.waitFor(() => {
-            expect(container.querySelector(".esc-scan-copy small").textContent).toBe("0 路电调已识别");
+            expect(container.querySelector(".device-connection small").textContent).toBe("0 路电调已识别");
             expect(container.querySelector(".esc-melody-notice").textContent).toContain("未识别到电调");
         });
-        expect(container.querySelector(".esc-scan-count").textContent).toContain("0 路");
+        expect(container.querySelector(".melody-connection-status").textContent).toContain("0 路");
         expect(container.querySelector(".esc-melody-notice").textContent).toContain("已检查 4 路通道");
         expect(container.querySelector(".esc-list-panel .panel-count").textContent).toBe("4 路已检查");
 
@@ -1328,8 +1893,7 @@ describe("EscMelodyTab", () => {
         await vi.waitFor(() => {
             expect(container.querySelectorAll(".melody-read-mark.read-loaded")).toHaveLength(2);
         });
-        expect(container.querySelector(".esc-scan-models").textContent).toContain("当前型号");
-        expect(container.querySelector(".esc-scan-models").textContent).toContain("STM32F051 · AM32 × 2");
+        expect(container.querySelector(".device-connection strong").textContent).toContain("STM32F051 · AM32 × 2");
         expect(container.querySelector('[aria-label="编排方式"]').value).toBe("sync");
         expect(container.querySelectorAll(".editor-channel-tab")).toHaveLength(0);
         expect(container.querySelector(".current-source-badge")).toBeNull();
@@ -1666,7 +2230,9 @@ describe("EscMelodyTab", () => {
         const completed = container.querySelector('.safety-overlay[aria-labelledby="safety-title"]');
         expect(completed.textContent).toContain("已完成 2 路电调写入");
         expect(
-            [...completed.querySelectorAll(".channel-plan tbody tr td:last-child")].map((cell) => cell.textContent),
+            [...completed.querySelectorAll(".channel-plan tbody tr td:last-child")].map((cell) =>
+                cell.textContent.trim(),
+            ),
         ).toEqual(["已完成", "已完成"]);
         expect(completed.textContent).not.toContain("开始写入");
         expect(completed.textContent).not.toContain("取消");
@@ -2090,6 +2656,9 @@ describe("EscMelodyTab", () => {
             return targets.map((esc) => esc.originalEeprom);
         });
         restoreBackup.mockImplementation(async (targets) => {
+            const leaving = new Event("beforeunload", { cancelable: true });
+            window.dispatchEvent(leaving);
+            expect(leaving.defaultPrevented).toBe(true);
             for (const { esc } of targets) {
                 esc.currentMelody = createCurrentMelody(esc.channel, 72 + esc.channel);
                 esc.melodyReadStatus = "loaded";

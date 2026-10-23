@@ -14,11 +14,12 @@
                     <tr>
                         <th>通道 / 固件</th>
                         <th>旋律 / 声部</th>
+                        <th v-if="separateCapacity">容量</th>
                         <th>状态</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in rows" :key="row.id">
+                    <tr v-for="row in rows" :key="row.id" :data-state="row.state" :data-status="row.status">
                         <th scope="row">
                             ESC {{ row.channel + 1 }}<small>{{ row.firmware }}</small>
                         </th>
@@ -33,9 +34,13 @@
                                     声部 {{ voice }}
                                 </option></select
                             ><span v-else>{{ row.voiceLabel }}</span
-                            ><small v-if="row.capacity">{{ row.capacity }}</small>
+                            ><small v-if="row.capacity && !separateCapacity">{{ row.capacity }}</small>
                         </td>
-                        <td>{{ row.status }}</td>
+                        <td v-if="separateCapacity" class="channel-capacity">{{ row.capacity || "—" }}</td>
+                        <td class="channel-status" aria-live="polite" aria-atomic="true">
+                            <span class="channel-status-label">{{ row.status }}</span>
+                            <small v-if="row.error" class="channel-status-error">{{ row.error }}</small>
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -50,6 +55,7 @@ defineProps({
     voiceCount: Number,
     warnings: Array,
     editable: Boolean,
+    separateCapacity: Boolean,
 });
 const emit = defineEmits(["assign"]);
 </script>
