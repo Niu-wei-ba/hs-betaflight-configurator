@@ -687,6 +687,9 @@
     "tabMotorTesting": {
         "message": "电机"
     },
+    "tabEscMelody": {
+        "message": "电调音乐"
+    },
     "tabLedStrip": {
         "message": "LED 灯带"
     },

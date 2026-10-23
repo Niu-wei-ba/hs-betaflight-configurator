@@ -10,7 +10,7 @@ export default [
         ignores: ["src/blackbox-viewer/**", "src/js/webworkers/**", "src/js/three.min.js", "src/dist/**"],
     },
     {
-        files: ["**/*.js", "**/*.vue"],
+        files: ["**/*.js", "**/*.vue", "src/js/esc_melody/library_state.ts", "test/js/escWorkbench.test.ts"],
         languageOptions: {
             ecmaVersion: "latest",
             sourceType: "module",
