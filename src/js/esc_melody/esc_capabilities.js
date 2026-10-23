@@ -15,6 +15,14 @@ export const ESC_MELODY_READ_STATUS = Object.freeze({
     REPLACEMENT: "replacement",
 });
 
+export const ESC_FIRMWARE_CONFIRMATION_STATUS = Object.freeze({
+    PENDING: "pending",
+    VERIFYING: "verifying",
+    VERIFIED: "verified",
+    UNSUPPORTED: "unsupported",
+    FAILED: "failed",
+});
+
 const CAPABILITY_MATRIX = {
     [ESC_FIRMWARE.BLUEJAY]: {
         label: "Bluejay",
@@ -51,11 +59,11 @@ const CAPABILITY_MATRIX = {
         canRead: true,
         canBackup: true,
         canWrite: false,
-        capacity: 128,
-        supportsWait: false,
-        layout: "ARM flash · read only",
+        capacity: 48,
+        supportsWait: true,
+        layout: "BLHeli_32 · 48 B notes · encrypted configuration",
         storageCommand: "flash",
-        reason: "BLHeli_32 cannot be written through this tool. Migrate to AM32 with ST-Link or the ESC bootloader.",
+        reason: "BLHeli_32 尚未验证配置；当前支持 FPV32 / AT32F421 / 32.10，其他布局保持锁定。",
     },
     [ESC_FIRMWARE.UNKNOWN]: {
         label: "Unknown",
@@ -84,6 +92,8 @@ export function createEscRecord(channel, info = {}) {
         firmwareFamily,
         firmwareLabel: capability.label,
         version: info.version || "--",
+        layoutRevision: info.layoutRevision,
+        firmwareName: info.firmwareName,
         layout: info.layout || capability.layout,
         canRead: info.canRead ?? capability.canRead,
         canBackup: info.canBackup ?? capability.canBackup,
@@ -116,10 +126,19 @@ export function createEscRecord(channel, info = {}) {
         currentSettingsChecksum: info.currentSettingsChecksum || null,
         currentMelody: info.currentMelody || null,
         currentMelodyBytes: info.currentMelodyBytes || null,
+        currentMelodyMode: info.currentMelodyMode,
         currentWaitBytes: info.currentWaitBytes || null,
         melodyReadStatus: info.melodyReadStatus || ESC_MELODY_READ_STATUS.IDLE,
         melodyReadError: info.melodyReadError || "",
         melodyDirty: Boolean(info.melodyDirty),
+        writeTouched: Boolean(info.writeTouched),
+        // Scan records expose EEPROM access only after identity and layout probes succeed.
+        detectedFirmwareFamily: info.detectedFirmwareFamily || firmwareFamily,
+        detectedFirmwareLabel: info.detectedFirmwareLabel || capability.label,
+        confirmedFirmwareFamily: info.confirmedFirmwareFamily || null,
+        confirmationStatus: info.confirmationStatus || ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING,
+        confirmationReason: info.confirmationReason || "",
+        layoutVerified: Boolean(info.layoutVerified),
     };
 }
 
@@ -186,11 +205,26 @@ const SILABS_MCUS = Object.freeze({
 });
 
 const AM32_MCUS = Object.freeze({
-    0x1f06: { name: "STM32F051", settingsOffset: 0x7c00 },
-    0x3506: { name: "ARM64K / GD32", settingsOffset: 0xf800 },
+    0x1f06: { name: "STM32F051", settingsOffset: 0x7c00, pageSize: 1024 },
+    0x3506: { name: "ARM64K / GD32", settingsOffset: 0xf800, pageSize: 1024 },
+    // AM32's official NXP MCXA153 target uses a 64 KiB flash image with an
+    // 8 KiB configuration sector starting at 0xE000. Its official Bootloader
+    // identifies that target with flash-size code 0x15, which Betaflight's
+    // 4-way interface exposes as ARM signature 0x1506.
+    0x1506: { name: "NXP MCXA153", settingsOffset: 0xe000, pageSize: 8192 },
 });
 
-const AM32_BOOTLOADER_PINS = new Set([0x02, 0x14]);
+const AM32_BOOTLOADER_PINS = new Set([0x02, 0x06, 0x14]);
+
+export function getAm32LayoutForEsc(esc) {
+    if (!esc || esc.interfaceMode !== 4 || !AM32_BOOTLOADER_PINS.has(esc.inputPin)) return null;
+    const knownMcu = AM32_MCUS[esc.signature];
+    if (!knownMcu) return null;
+    return {
+        ...knownMcu,
+        name: knownMcu.name,
+    };
+}
 
 function decodeFourWayDeviceInfo(bytes, channel) {
     const signature = bytes[0] | (bytes[1] << 8);
@@ -227,6 +261,7 @@ function decodeFourWayDeviceInfo(bytes, channel) {
             inputPin,
             interfaceMode,
             settingsOffset: arm.settingsOffset,
+            settingsPageSize: arm.pageSize,
             settingsLength: 0xb0,
             melodyRelativeOffset: 0x30,
         });

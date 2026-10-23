@@ -1,26 +1,65 @@
 <template>
     <BaseTab tab-name="esc_melody" extra-class="esc-melody-tab">
-        <div class="esc-melody-shell">
-            <header class="esc-melody-header" :inert="draftModalOpen ? '' : undefined">
+        <div class="esc-melody-shell melody-selection-shell">
+            <header class="esc-melody-header" :inert="modalOpen ? '' : undefined">
                 <div class="esc-melody-title-group">
-                    <div class="esc-melody-kicker">
-                        <span class="esc-melody-emoji" aria-hidden="true">🎵</span> ESC WORKBENCH
-                    </div>
+                    <UIcon name="i-lucide-music-2" class="esc-ui-icon title-music-icon" aria-hidden="true" />
                     <h1>电调音乐</h1>
-                    <p>编辑开机旋律，先在电脑试听，再按兼容性安全写入电调。</p>
+                    <span class="melody-supported-firmware" title="兼容性以具体型号、固件版本和扫描验证结果为准">
+                        Bluejay · AM32 · OX32 · BLHeli_32
+                    </span>
                 </div>
-                <ol class="esc-melody-workflow" aria-label="电调音乐操作步骤">
-                    <li class="esc-melody-workflow-step">
-                        <span class="esc-melody-workflow-index" aria-hidden="true">1</span><strong>扫描电调</strong>
-                    </li>
-                    <li class="esc-melody-workflow-step">
-                        <span class="esc-melody-workflow-index" aria-hidden="true">2</span
-                        ><strong>选择 / 编辑音乐</strong>
-                    </li>
-                    <li class="esc-melody-workflow-step">
-                        <span class="esc-melody-workflow-index" aria-hidden="true">3</span><strong>安全写入</strong>
-                    </li>
-                </ol>
+                <nav class="melody-mode-nav" aria-label="电调音乐视图">
+                    <button
+                        type="button"
+                        :aria-pressed="workspaceView === 'library'"
+                        @click="workspaceView = 'library'"
+                    >
+                        选曲
+                    </button>
+                    <button type="button" :aria-pressed="workspaceView === 'editor'" @click="workspaceView = 'editor'">
+                        编曲
+                    </button>
+                </nav>
+                <div class="melody-header-device">
+                    <span class="melody-connection-status">
+                        <UIcon
+                            :name="connected ? 'i-lucide-plug' : 'i-lucide-unplug'"
+                            class="esc-ui-icon"
+                            aria-hidden="true"
+                        />
+                        {{ headerConnectionLabel }}
+                    </span>
+                    <button
+                        type="button"
+                        class="primary-button melody-header-scan"
+                        aria-label="扫描电调"
+                        :disabled="!connected || scanning || locked || !!writeRecoveryTargets.length"
+                        @click="scanEscs"
+                    >
+                        <UIcon
+                            name="i-lucide-refresh-cw"
+                            class="fas fa-sync-alt esc-ui-icon"
+                            :class="{ spinning: scanning }"
+                            aria-hidden="true"
+                        />
+                        {{ scanning ? "扫描中" : "扫描电调" }}
+                    </button>
+                    <button
+                        type="button"
+                        class="text-button"
+                        :aria-expanded="deviceDetailsOpen"
+                        aria-controls="melody-device-details"
+                        @click="deviceDetailsOpen ? closeDeviceDetails() : openDeviceDetails()"
+                    >
+                        设备详情
+                        <UIcon
+                            :name="deviceDetailsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-right'"
+                            class="esc-ui-icon"
+                            aria-hidden="true"
+                        />
+                    </button>
+                </div>
             </header>
 
             <div
@@ -28,77 +67,325 @@
                 class="esc-melody-notice"
                 :class="`notice-${operationType}`"
                 role="status"
-                :inert="draftModalOpen ? '' : undefined"
+                :inert="modalOpen ? '' : undefined"
             >
-                <span
-                    class="fas"
+                <UIcon
+                    :name="operationType === 'error' ? 'i-lucide-triangle-alert' : 'i-lucide-info'"
+                    class="fas esc-ui-icon"
                     :class="operationType === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle'"
                     aria-hidden="true"
-                ></span>
+                />
                 {{ operationMessage }}
                 <button type="button" class="notice-close" aria-label="关闭提示" @click="operationMessage = ''">
                     ×
                 </button>
             </div>
 
-            <main class="esc-melody-workspace" :inert="draftModalOpen ? '' : undefined">
-                <aside class="esc-melody-sidebar">
-                    <section class="esc-scan-panel" :class="{ connected, scanning }">
-                        <div class="esc-scan-panel-heading">
-                            <span>飞控与电调</span>
-                            <span class="esc-scan-status">{{ connected ? "已连接" : "离线" }}</span>
+            <section
+                v-show="deviceDetailsOpen"
+                id="melody-device-details"
+                class="melody-device-details"
+                aria-label="电调设备详情"
+                :inert="modalOpen ? '' : undefined"
+            >
+                <div class="melody-device-heading">
+                    <div class="device-title">
+                        <h2 tabindex="-1">设备详情</h2>
+                        <span class="device-readiness" :class="{ 'has-issues': hasDeviceIssues }">{{
+                            deviceReadiness
+                        }}</span>
+                    </div>
+                    <button type="button" class="text-button" @click="closeDeviceDetails">收起详情</button>
+                </div>
+                <div class="device-layout">
+                    <aside class="device-console" aria-label="设备概况与操作">
+                        <span class="device-section-label">连接设备</span>
+                        <div class="device-overview esc-scan-panel" :class="{ connected, scanning }">
+                            <div class="device-connection">
+                                <UIcon
+                                    :name="connected ? 'i-lucide-plug' : 'i-lucide-unplug'"
+                                    class="esc-ui-icon"
+                                    aria-hidden="true"
+                                />
+                                <div>
+                                    <strong>{{
+                                        escModelSummary.length
+                                            ? escModelSummary.join("；")
+                                            : connected
+                                              ? "已连接飞控"
+                                              : "离线编辑"
+                                    }}</strong>
+                                    <small>{{ connectionSummary }}</small>
+                                </div>
+                            </div>
+                            <div class="device-actions">
+                                <button
+                                    v-if="selectedEsc"
+                                    type="button"
+                                    class="regular-button current-melody-item"
+                                    :class="{ active: currentMelodySourceActive }"
+                                    :disabled="!currentMelodySource"
+                                    @click="loadCurrentMelody"
+                                >
+                                    <UIcon name="i-lucide-history" class="esc-ui-icon" aria-hidden="true" />
+                                    当前音乐
+                                    <span v-if="!syncAll" class="current-source-badge"
+                                        >ESC {{ selectedEsc.channel + 1 }}</span
+                                    >
+                                    <small>{{ currentMelodySourceSummary }}</small>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="regular-button"
+                                    :disabled="!connected || !escs.length || locked"
+                                    @click="chooseRestoreFile"
+                                >
+                                    <UIcon name="i-lucide-rotate-ccw" class="esc-ui-icon" aria-hidden="true" /> 恢复
+                                    EEPROM
+                                </button>
+                            </div>
                         </div>
-                        <div class="esc-scan-state">
-                            <span class="esc-scan-icon" :class="{ connected }" aria-hidden="true">
-                                <span class="fas" :class="connected ? 'fa-plug' : 'fa-unlink'"></span>
-                            </span>
-                            <span class="esc-scan-copy">
-                                <strong>{{ connected ? "已连接飞控" : "离线编辑" }}</strong>
-                                <small>{{ connectionSummary }}</small>
-                            </span>
-                            <span v-if="connected && escs.length" class="esc-scan-count">
-                                {{ identifiedEscCount }} 路
-                            </span>
-                        </div>
-                        <div v-if="escModelSummary.length" class="esc-scan-models">
-                            <span>当前型号</span>
-                            <strong>{{ escModelSummary.join("；") }}</strong>
-                        </div>
+                        <p class="device-operation-status" role="status">{{ operationReadiness }}</p>
+                        <details class="device-encoding-help">
+                            <summary>编码与固件支持</summary>
+                            <section class="target-panel">
+                                <div class="panel-heading">
+                                    <span>当前声部编码</span
+                                    ><span class="validation-badge" :class="{ valid: validation.valid }">{{
+                                        validation.valid ? "编码通过" : "编码需调整"
+                                    }}</span>
+                                </div>
+                                <div class="compat-summary">
+                                    <strong
+                                        >{{ validation.encodedLength }}<small>/{{ targetCapacity }} B</small></strong
+                                    ><span>{{
+                                        targetFirmware === "blheli32" ? "BLHeli_32 音符容量" : "RTTTL 编码容量"
+                                    }}</span>
+                                </div>
+                                <ul class="validation-list">
+                                    <li
+                                        v-for="warning in validation.warnings || []"
+                                        :key="warning"
+                                        class="validation-warning"
+                                    >
+                                        {{ warning }}
+                                    </li>
+                                    <li v-for="error in validation.errors" :key="error" class="validation-error">
+                                        <UIcon
+                                            name="i-lucide-circle-x"
+                                            class="fas fa-times-circle esc-ui-icon"
+                                            aria-hidden="true"
+                                        />{{ error }}
+                                    </li>
+                                    <li v-if="validation.valid" class="validation-ok">
+                                        <UIcon
+                                            name="i-lucide-circle-check"
+                                            class="fas fa-check-circle esc-ui-icon"
+                                            aria-hidden="true"
+                                        />音符数量、时长和目标容量均通过
+                                    </li>
+                                </ul>
+                                <details class="compatibility-help">
+                                    <summary>支持的固件与容量说明</summary>
+                                    <div class="matrix-row">
+                                        <span><i class="firmware-dot bluejay"></i>Bluejay</span
+                                        ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
+                                    </div>
+                                    <div class="matrix-row">
+                                        <span><i class="firmware-dot am32"></i>AM32</span
+                                        ><span class="matrix-cap">读写 · 等待计入旋律容量</span>
+                                    </div>
+                                    <div class="matrix-row">
+                                        <span><i class="firmware-dot ox32"></i>OX32</span
+                                        ><span class="matrix-cap">读写 · 128 B · 配置页 CRC</span>
+                                    </div>
+                                    <div class="matrix-row">
+                                        <span><i class="firmware-dot blheli"></i>BLHeli_32</span
+                                        ><span class="matrix-cap">读写 · 48 B · FPV32 / AT32F421 / 32.10</span>
+                                    </div>
+                                </details>
+                            </section>
+                        </details>
+                    </aside>
+                    <div class="device-channel-area">
+                        <EscChannelPlan
+                            separate-capacity
+                            :rows="assignmentRows"
+                            :mode-label="arrangementLabel"
+                            :voice-count="presetTrackTabs.length"
+                            :warnings="assignmentWarnings"
+                            :editable="!locked && !writeRecoveryTargets.length"
+                            @assign="assignVoice"
+                        />
+                        <details class="device-technical-details" :open="hasDeviceIssues || undefined">
+                            <summary>
+                                通道诊断
+                                <small>{{ hasDeviceIssues ? "有通道需要处理" : "查看芯片、固件与读取信息" }}</small>
+                            </summary>
+                            <section class="esc-list-panel">
+                                <div class="panel-heading">
+                                    <span>通道信息</span
+                                    ><span class="panel-count">{{
+                                        escs.length ? `${escs.length} 路已检查` : "未扫描"
+                                    }}</span>
+                                </div>
+                                <div v-if="!escs.length" class="scan-empty">
+                                    <UIcon
+                                        name="i-lucide-plug"
+                                        class="fas fa-plug esc-ui-icon"
+                                        aria-hidden="true"
+                                    /><strong>尚未扫描</strong><small>连接飞控后扫描 4-way 电调</small>
+                                </div>
+                                <nav v-if="escs.length" class="device-diagnostic-tabs" aria-label="选择诊断通道">
+                                    <button
+                                        v-for="esc in escs"
+                                        :key="esc.id"
+                                        type="button"
+                                        :aria-pressed="inspectedDeviceId === esc.id"
+                                        :class="{ 'has-issues': esc.melodyReadError || !esc.canWrite }"
+                                        @click="deviceInspectionId = esc.id"
+                                    >
+                                        ESC {{ esc.channel + 1 }}
+                                    </button>
+                                </nav>
+                                <article
+                                    v-for="esc in escs"
+                                    :key="esc.id"
+                                    v-show="esc.id === inspectedDeviceId"
+                                    class="esc-record"
+                                    :class="[
+                                        `esc-status-${esc.status}`,
+                                        { 'esc-record-selected': !syncAll && selectedEscId === esc.id },
+                                    ]"
+                                >
+                                    <button
+                                        type="button"
+                                        class="esc-record-main esc-record-select"
+                                        title="在编曲中查看此通道"
+                                        :disabled="!isEscMelodyEditable(esc)"
+                                        @click="selectEscChannel(esc)"
+                                    >
+                                        <span class="esc-channel">{{ esc.channel + 1 }}</span>
+                                        <div>
+                                            <strong>{{ esc.model }}</strong
+                                            ><small
+                                                >{{ esc.firmwareLabel }} · {{ esc.version
+                                                }}<template v-if="esc.bootloader">
+                                                    · {{ esc.bootloader }} {{ esc.bootloaderVersion }}</template
+                                                ></small
+                                            >
+                                        </div>
+                                        <UIcon
+                                            :name="esc.canWrite ? 'i-lucide-circle-check' : 'i-lucide-lock-keyhole'"
+                                            class="esc-status-icon fas esc-ui-icon"
+                                            :class="esc.canWrite ? 'fa-check-circle' : 'fa-lock'"
+                                            :title="esc.reason || '可读写'"
+                                        />
+                                    </button>
+                                    <div class="esc-record-meta">
+                                        <span>{{ esc.layout }}</span
+                                        ><span
+                                            class="firmware-detection-mark"
+                                            :class="`read-${esc.confirmationStatus || 'pending'}`"
+                                            >{{ firmwareDetectionLabel(esc) }}</span
+                                        >
+                                        ><span class="melody-read-mark" :class="`read-${esc.melodyReadStatus}`">{{
+                                            melodyReadLabel(esc)
+                                        }}</span
+                                        ><span
+                                            v-if="syncAll && pendingWriteEscIds.has(esc.id)"
+                                            class="melody-write-mark"
+                                            >将写入</span
+                                        ><span v-else-if="esc.melodyDirty" class="melody-dirty-mark">已修改</span
+                                        ><span v-if="esc.backedUp" class="backup-mark"
+                                            ><UIcon
+                                                name="i-lucide-shield-check"
+                                                class="fas fa-shield-alt esc-ui-icon"
+                                                aria-hidden="true"
+                                            />
+                                            已备份</span
+                                        >
+                                    </div>
+                                    <button
+                                        v-if="
+                                            !syncAll &&
+                                            esc.canWrite &&
+                                            [readStatus.ERROR, readStatus.UNSUPPORTED].includes(esc.melodyReadStatus)
+                                        "
+                                        type="button"
+                                        class="regular-button compact-button replace-melody-button"
+                                        @click="replaceUnreadableEsc(esc)"
+                                    >
+                                        使用当前卷帘替换
+                                    </button>
+                                    <p
+                                        v-if="esc.confirmationReason"
+                                        class="esc-record-reason"
+                                        :class="{ 'diagnostic-ok': esc.canWrite }"
+                                    >
+                                        {{ esc.confirmationReason }}
+                                    </p>
+                                    <p
+                                        v-if="esc.reason && !esc.canWrite && esc.reason !== esc.confirmationReason"
+                                        class="esc-record-reason"
+                                    >
+                                        {{ esc.reason }}
+                                    </p>
+                                    <p v-if="esc.melodyReadError" class="esc-record-reason">
+                                        {{ esc.melodyReadError }}
+                                    </p>
+                                </article>
+                            </section>
+                        </details>
+                    </div>
+                </div>
+            </section>
+            <p v-if="automaticBl32.adapted" class="esc-melody-notice notice-info" role="status">
+                已自动适配 BL32：整体移调或调整速度，保留全部音符。试听、预览和写入使用完整适配版，原曲与草稿保留。
+            </p>
+            <p v-if="automaticBl32.errors.length" class="esc-melody-notice notice-error" role="status">
+                {{ automaticBl32.errors.join("；") }}
+            </p>
+            <main :data-view="workspaceView" class="esc-melody-workspace" :inert="modalOpen ? '' : undefined">
+                <aside v-show="workspaceView === 'library'" class="esc-melody-sidebar">
+                    <div class="selection-library-heading">
+                        <h2>
+                            旋律库 <small>{{ presets.length }} 首</small>
+                        </h2>
+                        <button type="button" class="text-button" @click="newDraft">新建旋律</button>
+                    </div>
+                    <nav class="selection-library-tabs" aria-label="旋律来源">
                         <button
                             type="button"
-                            class="regular-button esc-scan-action"
-                            aria-label="扫描电调"
-                            :disabled="!connected || scanning || locked"
-                            @click="scanEscs"
+                            :aria-pressed="librarySection === 'all'"
+                            @click="
+                                librarySection = 'all';
+                                presetScope = 'all';
+                            "
                         >
-                            <span class="fas fa-sync-alt" :class="{ spinning: scanning }" aria-hidden="true"></span>
-                            {{ scanning ? "扫描中" : connected ? "扫描电调" : "连接后扫描" }}
+                            全部
                         </button>
-                    </section>
-
-                    <section class="melody-panel">
-                        <div class="panel-heading">
-                            <span>旋律库</span><span class="panel-count">{{ melodyLibraryCount }}</span>
-                        </div>
                         <button
-                            v-if="selectedEsc"
                             type="button"
-                            class="melody-list-item current-melody-item"
-                            :class="{ active: currentMelodySourceActive }"
-                            :disabled="!currentMelodySource"
-                            @click="loadCurrentMelody"
+                            :aria-pressed="librarySection === 'favorites'"
+                            @click="
+                                librarySection = 'favorites';
+                                presetScope = 'favorites';
+                            "
                         >
-                            <span class="melody-list-icon fas fa-history" aria-hidden="true"></span>
-                            <span>
-                                <strong>当前音乐</strong>
-                                <small>{{ currentMelodySourceSummary }}</small>
-                            </span>
-                            <span v-if="!syncAll" class="current-source-badge">
-                                ESC {{ selectedEsc.channel + 1 }}
-                            </span>
+                            收藏
                         </button>
+                        <button
+                            type="button"
+                            :aria-pressed="librarySection === 'drafts'"
+                            @click="librarySection = 'drafts'"
+                        >
+                            草稿 <small>{{ drafts.length || "" }}</small>
+                        </button>
+                    </nav>
+                    <section v-show="librarySection !== 'drafts'" class="melody-panel selection-library-panel">
                         <label class="melody-library-search">
-                            <span class="fas fa-search" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-search" class="fas fa-search esc-ui-icon" aria-hidden="true" />
                             <input
                                 v-model.trim="presetQuery"
                                 type="search"
@@ -115,30 +402,111 @@
                                 ×
                             </button>
                         </label>
+                        <details class="library-filter-disclosure">
+                            <summary>筛选</summary>
+                            <div class="library-filters">
+                                <label class="visually-hidden" for="melody-library-scope">曲库范围</label
+                                ><select id="melody-library-scope" v-model="presetScope">
+                                    <option value="all">全部曲目</option>
+                                    <option value="favorites">我的收藏</option>
+                                    <option value="recent">最近使用</option>
+                                </select>
+                                <label class="visually-hidden" for="melody-library-voices">声部筛选</label
+                                ><select id="melody-library-voices" v-model="presetVoices">
+                                    <option value="all">全部声部</option>
+                                    <option value="solo">单声部</option>
+                                    <option value="multi">多声部</option>
+                                </select>
+                            </div>
+                        </details>
+                        <div class="library-table-heading" aria-hidden="true">
+                            <span>名称</span><span>声部</span><span>时长</span>
+                        </div>
                         <div class="melody-preset-list">
-                            <button
+                            <div
                                 v-for="preset in filteredPresets"
                                 :key="preset.id"
-                                type="button"
-                                class="melody-list-item"
+                                class="library-preset-row"
                                 :class="{
-                                    active:
+                                    selected:
                                         activeLibrarySource?.type === 'preset' && activeLibrarySource.id === preset.id,
                                 }"
-                                @click="loadPreset(preset)"
                             >
-                                <span class="melody-list-icon fas fa-music" aria-hidden="true"></span>
-                                <span
-                                    ><strong>{{ preset.name }}</strong
-                                    ><small>{{ preset.description }}</small></span
+                                <button
+                                    type="button"
+                                    class="library-audition"
+                                    :aria-label="`试听 ${preset.name}`"
+                                    :aria-pressed="auditionPresetId === preset.id && playing"
+                                    :disabled="locked"
+                                    @click="previewLibraryPreset(preset)"
                                 >
-                            </button>
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        class="esc-ui-icon"
+                                        aria-hidden="true"
+                                        focusable="false"
+                                    >
+                                        <rect
+                                            v-if="auditionPresetId === preset.id && playing"
+                                            x="7"
+                                            y="7"
+                                            width="10"
+                                            height="10"
+                                            rx="2"
+                                        />
+                                        <path
+                                            v-else
+                                            d="M8 6.5c0-1.1 1.2-1.7 2.1-1.1l8.1 5.5a1.35 1.35 0 0 1 0 2.2l-8.1 5.5c-.9.6-2.1 0-2.1-1.1Z"
+                                        />
+                                    </svg>
+                                    <span class="visually-hidden">{{
+                                        auditionPresetId === preset.id && playing ? "停止" : "试听"
+                                    }}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="melody-list-item"
+                                    :class="{
+                                        active:
+                                            activeLibrarySource?.type === 'preset' &&
+                                            activeLibrarySource.id === preset.id,
+                                    }"
+                                    :disabled="locked"
+                                    :title="`载入 ${preset.name}`"
+                                    @click="loadPreset(preset)"
+                                >
+                                    <span
+                                        ><strong>{{ preset.name }}</strong
+                                        ><small>{{ preset.description }}</small></span
+                                    >
+                                </button>
+                                <details v-if="presetCompatibility[preset.id]" class="library-compatibility">
+                                    <summary>{{ presetCompatibility[preset.id].label }}</summary>
+                                    <p v-for="reason in presetCompatibility[preset.id].reasons" :key="reason">
+                                        {{ reason }}
+                                    </p>
+                                </details>
+                                <div class="library-row-actions">
+                                    <button
+                                        type="button"
+                                        class="text-button library-favorite"
+                                        :aria-label="`收藏 ${preset.name}`"
+                                        :aria-pressed="favoriteIds.includes(preset.id)"
+                                        @click="toggleFavorite(preset.id)"
+                                    >
+                                        <UIcon name="i-lucide-star" class="esc-ui-icon" aria-hidden="true" />
+                                    </button>
+                                </div>
+                                <span class="library-voice-count">{{ libraryTrackCount(preset) }} 声部</span>
+                                <span class="library-duration">{{ libraryDuration(preset) }}</span>
+                            </div>
                             <p v-if="!filteredPresets.length" class="melody-library-empty">没有匹配的旋律</p>
                         </div>
                         <p class="melody-library-source">含 ESC Configurator 公开曲库，按声部保留原始编排。</p>
                     </section>
 
-                    <section class="melody-panel">
+                    <section v-show="librarySection === 'drafts'" class="melody-panel selection-drafts-panel">
                         <div class="panel-heading">
                             <span>我的草稿</span>
                             <span class="draft-panel-actions">
@@ -158,7 +526,11 @@
                                     :disabled="locked || drafts.length >= draftLimit"
                                     @click="chooseDraftImport"
                                 >
-                                    <span class="fas fa-file-import" aria-hidden="true"></span>
+                                    <UIcon
+                                        name="i-lucide-file-input"
+                                        class="fas fa-file-import esc-ui-icon"
+                                        aria-hidden="true"
+                                    />
                                 </button>
                                 <button
                                     type="button"
@@ -168,7 +540,11 @@
                                     :disabled="locked || !drafts.length"
                                     @click="exportAllDrafts"
                                 >
-                                    <span class="fas fa-file-export" aria-hidden="true"></span>
+                                    <UIcon
+                                        name="i-lucide-file-output"
+                                        class="fas fa-file-export esc-ui-icon"
+                                        aria-hidden="true"
+                                    />
                                 </button>
                                 <button
                                     type="button"
@@ -178,7 +554,7 @@
                                     :disabled="locked || drafts.length >= draftLimit"
                                     @click="newDraft"
                                 >
-                                    <span class="fas fa-plus" aria-hidden="true"></span>
+                                    <UIcon name="i-lucide-plus" class="fas fa-plus esc-ui-icon" aria-hidden="true" />
                                 </button>
                             </span>
                         </div>
@@ -198,7 +574,11 @@
                                 }"
                                 @click="loadDraft(draft)"
                             >
-                                <span class="melody-list-icon fas fa-file-audio" aria-hidden="true"></span>
+                                <UIcon
+                                    name="i-lucide-file-audio"
+                                    class="melody-list-icon fas fa-file-audio esc-ui-icon"
+                                    aria-hidden="true"
+                                />
                                 <span>
                                     <strong>{{ draft.name }}</strong>
                                     <small>
@@ -220,17 +600,33 @@
                                 :disabled="locked"
                                 @click.stop="toggleDraftMenu(draft.id)"
                             >
-                                <span class="fas fa-ellipsis-v" aria-hidden="true"></span>
+                                <UIcon
+                                    name="i-lucide-ellipsis-vertical"
+                                    class="fas fa-ellipsis-v esc-ui-icon"
+                                    aria-hidden="true"
+                                />
                             </button>
                             <div v-if="draftMenuId === draft.id" class="draft-item-menu" role="menu">
                                 <button type="button" role="menuitem" @click="renameDraft(draft)">
-                                    <span class="fas fa-pen" aria-hidden="true"></span>重命名
+                                    <UIcon
+                                        name="i-lucide-pencil"
+                                        class="fas fa-pen esc-ui-icon"
+                                        aria-hidden="true"
+                                    />重命名
                                 </button>
                                 <button type="button" role="menuitem" @click="duplicateDraft(draft)">
-                                    <span class="fas fa-copy" aria-hidden="true"></span>复制
+                                    <UIcon
+                                        name="i-lucide-copy"
+                                        class="fas fa-copy esc-ui-icon"
+                                        aria-hidden="true"
+                                    />复制
                                 </button>
                                 <button type="button" role="menuitem" @click="exportDraftRtttl(draft)">
-                                    <span class="fas fa-file-code" aria-hidden="true"></span>导出 RTTTL
+                                    <UIcon
+                                        name="i-lucide-file-code"
+                                        class="fas fa-file-code esc-ui-icon"
+                                        aria-hidden="true"
+                                    />导出 RTTTL
                                 </button>
                                 <button
                                     type="button"
@@ -238,7 +634,11 @@
                                     class="danger"
                                     @click="confirmDeleteDraft(draft, $event)"
                                 >
-                                    <span class="fas fa-trash-alt" aria-hidden="true"></span>删除
+                                    <UIcon
+                                        name="i-lucide-trash-2"
+                                        class="fas fa-trash-alt esc-ui-icon"
+                                        aria-hidden="true"
+                                    />删除
                                 </button>
                             </div>
                         </div>
@@ -249,15 +649,144 @@
                             </button>
                         </div>
                         <div class="draft-storage-note">
-                            <span class="fas fa-desktop" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-monitor" class="fas fa-desktop esc-ui-icon" aria-hidden="true" />
                             <span>{{ draftSaveStatus }}</span>
                         </div>
                     </section>
                 </aside>
 
-                <section class="esc-melody-editor">
+                <section
+                    v-show="workspaceView === 'library'"
+                    class="melody-selection-preview"
+                    aria-label="选中旋律预览"
+                >
+                    <div class="selection-preview-heading">
+                        <div>
+                            <h2>{{ presetSessionName || melody.name }}</h2>
+                            <p v-if="selectedLibraryDescription">{{ selectedLibraryDescription }}</p>
+                        </div>
+                        <button
+                            v-if="activeLibrarySource?.type === 'preset'"
+                            type="button"
+                            class="text-button library-favorite"
+                            :aria-pressed="favoriteIds.includes(activeLibrarySource.id)"
+                            aria-label="收藏当前旋律"
+                            @click="toggleFavorite(activeLibrarySource.id)"
+                        >
+                            <UIcon name="i-lucide-star" class="esc-ui-icon" aria-hidden="true" />
+                        </button>
+                    </div>
+                    <p class="selection-preview-meta">
+                        {{ previewVoiceCount }} 声部 · {{ validation.noteCount }} 音符 ·
+                        {{ formatDuration(validation.durationMs) }}
+                    </p>
+                    <div v-if="showPresetTrackTabs" class="selection-voice-tabs" role="group" aria-label="预览声部">
+                        <button
+                            v-for="track in presetTrackTabs"
+                            :key="track.id"
+                            type="button"
+                            :aria-pressed="activePresetTrackIndex === track.index"
+                            @click="selectPresetTrack(track.index)"
+                        >
+                            声部 {{ track.index + 1 }}
+                        </button>
+                    </div>
+                    <MelodyOverview
+                        :notes="effectiveMelody.notes"
+                        :bpm="effectiveMelody.bpm"
+                        :wait-ms="effectiveMelody.waitMs"
+                    />
+                    <div class="selection-preview-actions">
+                        <button
+                            type="button"
+                            class="regular-button"
+                            :disabled="locked || (!playing && !selectionPreviewPlayable)"
+                            @click="toggleSelectionPreview"
+                        >
+                            <UIcon
+                                :name="playing ? 'i-lucide-square' : 'i-lucide-play'"
+                                class="esc-ui-icon"
+                                aria-hidden="true"
+                            />{{ playing ? "停止试听" : showPresetTrackTabs ? "试听合奏" : "试听旋律" }}
+                        </button>
+                        <button type="button" class="text-button" @click="workspaceView = 'editor'">
+                            编辑旋律 <UIcon name="i-lucide-arrow-right" class="esc-ui-icon" aria-hidden="true" />
+                        </button>
+                    </div>
+                    <section class="selection-target-summary">
+                        <div class="panel-heading">
+                            <strong>{{ arrangementLabel }}</strong
+                            ><button type="button" class="text-button" @click="openDeviceDetails">
+                                {{ escs.length ? "通道分配" : connected ? "扫描电调" : "设备详情" }}
+                                <UIcon name="i-lucide-chevron-right" class="esc-ui-icon" aria-hidden="true" />
+                            </button>
+                        </div>
+                        <div v-if="assignmentRows.length" class="selection-channel-chips">
+                            <button
+                                v-for="row in assignmentRows"
+                                :key="row.id"
+                                type="button"
+                                :class="{ ready: row.editable && row.status !== '编码需调整' }"
+                                :title="`${row.firmware} · ${row.voiceLabel} · ${row.status}`"
+                                @click="openDeviceDetails"
+                            >
+                                <UIcon
+                                    :name="
+                                        row.editable && row.status !== '编码需调整'
+                                            ? 'i-lucide-circle-check'
+                                            : 'i-lucide-circle-alert'
+                                    "
+                                    class="esc-ui-icon"
+                                    aria-hidden="true"
+                                />ESC {{ row.channel + 1
+                                }}<small v-if="showPresetTrackTabs">· {{ row.voiceLabel }}</small>
+                            </button>
+                        </div>
+                        <p v-else class="selection-offline-help">
+                            {{
+                                connected
+                                    ? "扫描电调后检查兼容性并分配通道。"
+                                    : "可先离线选曲试听，连接飞控后扫描电调。"
+                            }}
+                        </p>
+                        <div class="selection-encoding" :class="{ valid: validation.valid }">
+                            <strong>{{ validation.valid ? "编码通过" : "编码需调整" }}</strong
+                            ><span>{{ validation.encodedLength }} / {{ targetCapacity }} B</span
+                            ><small v-if="!escs.length">离线预估</small>
+                        </div>
+                        <p v-for="error in validation.errors" :key="error" class="selection-encoding-error">
+                            {{ error }}
+                        </p>
+                        <p v-for="error in writeValidation.errors" :key="error" class="selection-encoding-error">
+                            {{ error }}
+                        </p>
+                        <p v-for="warning in assignmentWarnings" :key="warning" class="assignment-warning">
+                            {{ warning }}
+                        </p>
+                    </section>
+                    <button
+                        type="button"
+                        class="selection-contribution"
+                        aria-label="联系投稿"
+                        @click="openContributionDialog"
+                    >
+                        <span class="contribution-icon" aria-hidden="true">
+                            <UIcon name="i-lucide-music-2" class="esc-ui-icon" />
+                        </span>
+                        <span class="contribution-copy">
+                            <strong>分享你的旋律</strong>
+                            <small>让更多飞友听见你的开机音乐</small>
+                        </span>
+                        <span class="contribution-action">
+                            联系投稿
+                            <UIcon name="i-lucide-arrow-up-right" class="esc-ui-icon" aria-hidden="true" />
+                        </span>
+                    </button>
+                </section>
+
+                <section v-show="workspaceView === 'editor'" class="esc-melody-editor">
                     <div v-if="melodyConflict" class="melody-conflict-notice">
-                        <span class="fas fa-random" aria-hidden="true"></span>
+                        <UIcon name="i-lucide-shuffle" class="fas fa-random esc-ui-icon" aria-hidden="true" />
                         <span>检测到多路当前音乐不同，已保留为分路编辑。</span>
                         <button type="button" class="regular-button compact-button" @click="syncConfirmOpen = true">
                             应用当前旋律到全部
@@ -276,7 +805,11 @@
                                     :aria-selected="activePresetTrackIndex === track.index"
                                     @click="selectPresetTrack(track.index)"
                                 >
-                                    <span class="fas fa-music" aria-hidden="true"></span>
+                                    <UIcon
+                                        name="i-lucide-music-2"
+                                        class="fas fa-music esc-ui-icon"
+                                        aria-hidden="true"
+                                    />
                                     <strong>声部 {{ track.index + 1 }}</strong>
                                     <span v-if="track.dirty" class="channel-tab-dirty" aria-label="已修改"></span>
                                 </button>
@@ -317,7 +850,11 @@
                             </span>
                         </div>
                         <div v-else class="editor-title">
-                            <span class="fas fa-sliders-h" aria-hidden="true"></span>
+                            <UIcon
+                                name="i-lucide-sliders-horizontal"
+                                class="fas fa-sliders-h esc-ui-icon"
+                                aria-hidden="true"
+                            />
                             <strong>{{ melody.name }}</strong>
                             <span v-if="!syncAll && selectedEsc" class="editor-channel">
                                 第 {{ selectedEsc.channel + 1 }} 路
@@ -334,7 +871,7 @@
                                 :disabled="!history.length"
                                 @click="undo"
                             >
-                                <span class="fas fa-undo" aria-hidden="true"></span>
+                                <UIcon name="i-lucide-undo-2" class="fas fa-undo esc-ui-icon" aria-hidden="true" />
                             </button>
                             <button
                                 type="button"
@@ -343,7 +880,7 @@
                                 :disabled="!future.length"
                                 @click="redo"
                             >
-                                <span class="fas fa-redo" aria-hidden="true"></span>
+                                <UIcon name="i-lucide-redo-2" class="fas fa-redo esc-ui-icon" aria-hidden="true" />
                             </button>
                             <button
                                 type="button"
@@ -351,59 +888,160 @@
                                 title="RTTTL 代码"
                                 @click="openCodeDialog"
                             >
-                                <span class="fas fa-code" aria-hidden="true"></span> 代码
+                                <UIcon name="i-lucide-code" class="fas fa-code esc-ui-icon" aria-hidden="true" /> 代码
                             </button>
                             <button type="button" class="regular-button compact-button" @click="addNote(false)">
-                                <span class="fas fa-plus" aria-hidden="true"></span> 音符
+                                <UIcon name="i-lucide-plus" class="fas fa-plus esc-ui-icon" aria-hidden="true" /> 音符
                             </button>
                             <button type="button" class="regular-button compact-button" @click="addNote(true)">
-                                <span class="fas fa-pause" aria-hidden="true"></span> 休止
+                                <UIcon name="i-lucide-pause" class="fas fa-pause esc-ui-icon" aria-hidden="true" /> 休止
                             </button>
                         </div>
                     </div>
 
-                    <div ref="pianoRollWrap" class="piano-roll-wrap">
-                        <div class="piano-roll-labels" :style="pianoRollStyle" aria-hidden="true">
-                            <span v-for="row in noteRows" :key="row">{{ row % 12 === 0 ? noteName(row) : "" }}</span>
+                    <div class="transport-strip" aria-label="试听与编辑工具">
+                        <div class="transport-title">
+                            <strong>{{ presetSessionName || melody.name }}</strong
+                            ><small>电脑试听与实际电机音色可能不同</small>
                         </div>
-                        <div
-                            class="piano-roll"
-                            :style="[timelineStyle, pianoRollStyle]"
-                            @pointerdown="addNoteAtPointer"
-                        >
-                            <div class="roll-grid" aria-hidden="true">
-                                <i v-for="beat in timelineBeats" :key="beat"></i>
-                            </div>
-                            <div
-                                v-for="note in melody.notes"
-                                :key="note.id"
-                                class="esc-melody-note"
-                                :class="{
-                                    selected: selectedNoteId === note.id,
-                                    rest: note.rest,
-                                    'preview-active': activePreviewNoteIds.includes(note.id),
-                                }"
-                                :style="noteStyle(note)"
-                                @pointerdown.stop="startNoteDrag($event, note)"
+                        <div class="inspector-preview-actions">
+                            <button
+                                type="button"
+                                class="regular-button"
+                                :disabled="locked || !currentMelodyPlayable"
+                                :title="selectedEsc ? `试听 ESC ${selectedEsc.channel + 1} 当前卷帘` : '试听当前卷帘'"
+                                @click="playMelody"
                             >
-                                <span>{{ note.rest ? "休止" : noteName(note.midi) }}</span
-                                ><b>{{ formatBeat(note.duration) }}</b>
-                                <button
-                                    type="button"
-                                    class="note-delete"
-                                    aria-label="删除音符"
-                                    @pointerdown.stop
-                                    @click.stop="removeNote(note.id)"
+                                <UIcon
+                                    :name="previewMode === 'single' ? 'i-lucide-square' : 'i-lucide-volume-2'"
+                                    class="fas esc-ui-icon"
+                                    :class="previewMode === 'single' ? 'fa-stop' : 'fa-volume-up'"
+                                    aria-hidden="true"
+                                />
+                                {{ previewMode === "single" ? "停止当前声部" : "试听当前声部" }}
+                            </button>
+                            <button
+                                type="button"
+                                class="regular-button"
+                                :disabled="locked || !canPlayAllMelodies"
+                                title="同时试听所有可编辑电调的旋律"
+                                @click="playAllMelodies"
+                            >
+                                <UIcon
+                                    :name="previewMode === 'all' ? 'i-lucide-square' : 'i-lucide-play'"
+                                    class="fas esc-ui-icon"
+                                    :class="previewMode === 'all' ? 'fa-stop' : 'fa-play'"
+                                    aria-hidden="true"
+                                />
+                                {{ previewMode === "all" ? "停止合奏" : "试听合奏" }}
+                            </button>
+                        </div>
+                        <label
+                            >音量
+                            <input v-model.number="previewVolume" aria-label="试听音量" type="range" min="0" max="100"
+                        /></label>
+                        <button
+                            type="button"
+                            class="regular-button"
+                            :aria-pressed="previewMuted"
+                            @click="previewMuted = !previewMuted"
+                        >
+                            {{ previewMuted ? "取消静音" : "静音" }}
+                        </button>
+                    </div>
+                    <div class="timeline-tools">
+                        <label
+                            >工具
+                            <select v-model="editorTool" aria-label="卷帘工具">
+                                <option value="select">选择 / 移动</option>
+                                <option value="note">添加音符</option>
+                                <option value="rest">添加休止</option>
+                            </select></label
+                        >
+                        <label
+                            >吸附
+                            <select v-model.number="snapStep" aria-label="吸附间隔">
+                                <option :value="0.0625">1/16 拍</option>
+                                <option :value="0.125">1/8 拍</option>
+                                <option :value="0.25">1/4 拍</option>
+                                <option :value="0.5">1/2 拍</option>
+                            </select></label
+                        >
+                        <label
+                            >缩放
+                            <input v-model.number="zoomPixels" type="range" min="8" max="160" aria-label="卷帘缩放"
+                        /></label>
+                        <button type="button" class="regular-button" @click="fitTimeline">适应整曲</button>
+                        <button type="button" class="regular-button" @click="locateSelectedNote">定位音符</button>
+                        <label><input v-model="autoFollow" type="checkbox" />跟随播放</label>
+                    </div>
+                    <div ref="pianoRollWrap" class="piano-roll-wrap">
+                        <div class="piano-roll-content" :style="{ width: `${timelineWidth + 32}px` }">
+                            <div class="roll-time-ruler" :style="timelineStyle" aria-hidden="true">
+                                <span
+                                    v-for="tick in timelineTicks"
+                                    :key="tick.beat"
+                                    :style="{ left: `${tick.beat * zoomPixels}px` }"
+                                    >{{ tick.beat + 1 }} 拍<small>{{ tick.seconds }}s</small></span
                                 >
-                                    ×
-                                </button>
+                            </div>
+                            <div class="roll-pitch-grid">
+                                <div class="piano-roll-labels" :style="pianoRollStyle" aria-hidden="true">
+                                    <span v-for="row in noteRows" :key="row">{{
+                                        row % 12 === 0 ? noteName(row) : ""
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="piano-roll"
+                                    :style="[timelineStyle, pianoRollStyle]"
+                                    @pointerdown="addNoteAtPointer"
+                                >
+                                    <div
+                                        v-if="previewShowsTimeline && playing"
+                                        class="timeline-playhead"
+                                        :style="{ left: `${Math.max(0, previewBeat) * zoomPixels}px` }"
+                                        aria-hidden="true"
+                                    ></div>
+                                    <div class="roll-grid" aria-hidden="true">
+                                        <i v-for="beat in timelineBeats" :key="beat"></i>
+                                    </div>
+                                    <div
+                                        v-for="note in melody.notes"
+                                        :key="note.id"
+                                        class="esc-melody-note"
+                                        role="button"
+                                        :tabindex="selectedNoteId === note.id ? 0 : -1"
+                                        :aria-label="`${note.rest ? '休止' : noteName(note.midi)}，起点 ${note.start} 拍，时长 ${note.duration} 拍`"
+                                        :title="`${noteName(note.midi)} · ${note.start} 拍 · ${note.duration} 拍`"
+                                        @focus="selectedNoteId = note.id"
+                                        @keydown="onNoteKeydown($event, note)"
+                                        :class="{
+                                            selected: selectedNoteId === note.id,
+                                            rest: note.rest,
+                                            'preview-active': activePreviewNoteIds.includes(note.id),
+                                        }"
+                                        :style="noteStyle(note)"
+                                        @pointerdown.stop="startNoteDrag($event, note)"
+                                    >
+                                        <span>{{ note.rest ? "休止" : noteName(note.midi) }}</span
+                                        ><b>{{ formatBeat(note.duration) }}</b>
+                                        <button
+                                            type="button"
+                                            class="note-delete"
+                                            aria-label="删除音符"
+                                            @pointerdown.stop
+                                            @click.stop="removeNote(note.id)"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-
                     <div class="editor-legend">
                         <span><i class="legend-note"></i> 音符</span><span><i class="legend-rest"></i> 休止</span
-                        ><span>点击空白处添加，拖动调整音高和起点</span>
+                        ><span>选择工具后点击空白处添加；方向键移动，Alt + 左右键选择音符，Delete 删除</span>
                     </div>
 
                     <div class="note-inspector">
@@ -443,41 +1081,14 @@
                                             @change="updateSelected({ start: Number($event.target.value) })"
                                     /></label>
                                     <button type="button" class="danger-button" @click="removeNote(selectedNote.id)">
-                                        <span class="fas fa-trash" aria-hidden="true"></span> 删除
+                                        <UIcon
+                                            name="i-lucide-trash-2"
+                                            class="fas fa-trash esc-ui-icon"
+                                            aria-hidden="true"
+                                        />
+                                        删除
                                     </button>
                                 </div>
-                            </div>
-                            <div class="inspector-preview-actions">
-                                <button
-                                    type="button"
-                                    class="regular-button"
-                                    :disabled="locked || !currentMelodyPlayable"
-                                    :title="
-                                        selectedEsc ? `试听 ESC ${selectedEsc.channel + 1} 当前卷帘` : '试听当前卷帘'
-                                    "
-                                    @click="playMelody"
-                                >
-                                    <span
-                                        class="fas"
-                                        :class="previewMode === 'single' ? 'fa-stop' : 'fa-volume-up'"
-                                        aria-hidden="true"
-                                    ></span>
-                                    {{ previewMode === "single" ? "停止单路" : "单路播放" }}
-                                </button>
-                                <button
-                                    type="button"
-                                    class="regular-button"
-                                    :disabled="locked || !canPlayAllMelodies"
-                                    title="同时试听所有可编辑电调的旋律"
-                                    @click="playAllMelodies"
-                                >
-                                    <span
-                                        class="fas"
-                                        :class="previewMode === 'all' ? 'fa-stop' : 'fa-play'"
-                                        aria-hidden="true"
-                                    ></span>
-                                    {{ previewMode === "all" ? "停止全部" : "全部播放" }}
-                                </button>
                             </div>
                         </div>
 
@@ -515,161 +1126,103 @@
                                         <small>ms</small>
                                     </span>
                                 </label>
-                                <label class="sync-toggle-control sync-toggle-settings inline-sync-toggle">
-                                    <span class="sync-toggle-copy">
-                                        <strong>同步旋律</strong>
-                                        <small>{{
-                                            showPresetTrackTabs
-                                                ? "多声部预置按声部独立编辑"
-                                                : syncAll
-                                                  ? "单一旋律同步到全部"
-                                                  : "每路独立编辑"
-                                        }}</small>
-                                    </span>
-                                    <input
-                                        type="checkbox"
-                                        aria-label="页面同步旋律"
-                                        :checked="syncAll"
-                                        :disabled="showPresetTrackTabs"
-                                        @change="handleSyncModeChange"
-                                    />
-                                    <span class="sync-toggle-track" aria-hidden="true"><i></i></span>
-                                </label>
+                                <label class="inline-setting-field"
+                                    ><span>编排方式</span
+                                    ><select
+                                        :value="arrangementMode"
+                                        aria-label="编排方式"
+                                        :disabled="locked"
+                                        @change="changeArrangement"
+                                    >
+                                        <option value="sync">同曲同步</option>
+                                        <option value="poly" :disabled="!showPresetTrackTabs">
+                                            多声部合奏（载入多声部预设）
+                                        </option>
+                                        <option value="independent" :disabled="!editableEscs.length">各路独立</option>
+                                    </select></label
+                                >
                             </div>
                         </section>
                     </div>
+                    <details class="note-event-list">
+                        <summary>音符列表 · 精确编辑（{{ melody.notes.length }}）</summary>
+                        <div class="note-event-scroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>音符</th>
+                                        <th>起点 / 拍</th>
+                                        <th>时长 / 拍</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(note, index) in melody.notes" :key="note.id">
+                                        <td>
+                                            <button type="button" class="text-button" @click="selectNoteFromList(note)">
+                                                {{ index + 1 }} · {{ noteName(note.midi) }}
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                :step="snapStep"
+                                                :value="note.start"
+                                                :aria-label="`音符 ${index + 1} 起点`"
+                                                @change="editNoteFromList(note, { start: Number($event.target.value) })"
+                                            />
+                                        </td>
+                                        <td>
+                                            <input
+                                                type="number"
+                                                min="0.0625"
+                                                step="0.0625"
+                                                :value="note.duration"
+                                                :aria-label="`音符 ${index + 1} 时长`"
+                                                @change="
+                                                    editNoteFromList(note, { duration: Number($event.target.value) })
+                                                "
+                                            />
+                                        </td>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                class="text-button"
+                                                :aria-label="`删除音符 ${index + 1}`"
+                                                @click="removeNote(note.id)"
+                                            >
+                                                删除
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
                 </section>
-
-                <aside class="esc-melody-targets">
-                    <section class="target-panel">
-                        <div class="panel-heading">
-                            <span>目标兼容性</span
-                            ><span class="validation-badge" :class="{ valid: validation.valid }">{{
-                                validation.valid ? "可写入" : "需调整"
-                            }}</span>
-                        </div>
-                        <div class="compat-summary">
-                            <strong>{{ validation.encodedLength }}<small>/128 B</small></strong
-                            ><span>RTTTL 编码容量</span>
-                        </div>
-                        <ul class="validation-list">
-                            <li v-for="error in validation.errors" :key="error" class="validation-error">
-                                <span class="fas fa-times-circle" aria-hidden="true"></span>{{ error }}
-                            </li>
-                            <li v-if="validation.valid" class="validation-ok">
-                                <span class="fas fa-check-circle" aria-hidden="true"></span
-                                >音符数量、时长和目标容量均通过
-                            </li>
-                        </ul>
-                        <div class="matrix-row">
-                            <span><i class="firmware-dot bluejay"></i>Bluejay</span
-                            ><span class="matrix-cap">读写 · 128 B · 原生等待</span>
-                        </div>
-                        <div class="matrix-row">
-                            <span><i class="firmware-dot am32"></i>AM32</span
-                            ><span class="matrix-cap">读写 · 128 B · 休止等待</span>
-                        </div>
-                        <div class="matrix-row">
-                            <span><i class="firmware-dot ox32"></i>OX32</span
-                            ><span class="matrix-cap">读写 · 128 B · 配置页 CRC</span>
-                        </div>
-                        <div class="matrix-row matrix-row-disabled">
-                            <span><i class="firmware-dot blheli"></i>BLHeli_32</span
-                            ><span class="matrix-cap">仅识别 / 试听</span>
-                        </div>
-                    </section>
-
-                    <section class="target-panel esc-list-panel">
-                        <div class="panel-heading">
-                            <span>每路写入能力</span
-                            ><span class="panel-count">{{ escs.length ? `${escs.length} 路已检查` : "未扫描" }}</span>
-                        </div>
-                        <div v-if="!escs.length" class="scan-empty">
-                            <span class="fas fa-plug" aria-hidden="true"></span><strong>尚未扫描</strong
-                            ><small>连接飞控后扫描 4-way 电调</small>
-                        </div>
-                        <article
-                            v-for="esc in escs"
-                            :key="esc.id"
-                            class="esc-record"
-                            :class="[
-                                `esc-status-${esc.status}`,
-                                { 'esc-record-selected': !syncAll && selectedEscId === esc.id },
-                            ]"
-                        >
-                            <button
-                                type="button"
-                                class="esc-record-main esc-record-select"
-                                :disabled="!isEscMelodyEditable(esc)"
-                                @click="selectEscChannel(esc)"
-                            >
-                                <span class="esc-channel">{{ esc.channel + 1 }}</span>
-                                <div>
-                                    <strong>{{ esc.model }}</strong
-                                    ><small
-                                        >{{ esc.firmwareLabel }} · {{ esc.version
-                                        }}<template v-if="esc.bootloader">
-                                            · {{ esc.bootloader }} {{ esc.bootloaderVersion }}</template
-                                        ></small
-                                    >
-                                </div>
-                                <span
-                                    class="esc-status-icon fas"
-                                    :class="esc.canWrite ? 'fa-check-circle' : 'fa-lock'"
-                                    :title="esc.reason || '可读写'"
-                                ></span>
-                            </button>
-                            <div class="esc-record-meta">
-                                <span>{{ esc.layout }}</span
-                                ><span class="melody-read-mark" :class="`read-${esc.melodyReadStatus}`">{{
-                                    melodyReadLabel(esc)
-                                }}</span
-                                ><span v-if="syncAll && pendingWriteEscIds.has(esc.id)" class="melody-write-mark"
-                                    >将写入</span
-                                ><span v-else-if="esc.melodyDirty" class="melody-dirty-mark">已修改</span
-                                ><span v-if="esc.backedUp" class="backup-mark"
-                                    ><span class="fas fa-shield-alt" aria-hidden="true"></span> 已备份</span
-                                >
-                            </div>
-                            <button
-                                v-if="
-                                    !syncAll &&
-                                    esc.canWrite &&
-                                    [readStatus.ERROR, readStatus.UNSUPPORTED].includes(esc.melodyReadStatus)
-                                "
-                                type="button"
-                                class="regular-button compact-button replace-melody-button"
-                                @click="replaceUnreadableEsc(esc)"
-                            >
-                                使用当前卷帘替换
-                            </button>
-                            <p v-if="esc.reason && !esc.canWrite" class="esc-record-reason">{{ esc.reason }}</p>
-                            <p v-if="esc.melodyReadError" class="esc-record-reason">{{ esc.melodyReadError }}</p>
-                        </article>
-                    </section>
-
-                    <section class="target-panel melody-contribution-panel">
-                        <span class="melody-contribution-icon fas fa-compact-disc" aria-hidden="true"></span>
-                        <div class="melody-contribution-copy">
-                            <span class="melody-contribution-eyebrow">COMMUNITY LIBRARY</span>
-                            <strong>音乐投稿</strong>
-                            <small>分享你的电调开机旋律，优秀作品将收录到旋律库。</small>
-                        </div>
-                        <button
-                            type="button"
-                            class="regular-button melody-contribution-button"
-                            @click="openContributionDialog"
-                        >
-                            <span class="fab fa-qq" aria-hidden="true"></span>
-                            联系投稿
-                        </button>
-                    </section>
-                </aside>
             </main>
 
-            <footer class="esc-melody-actionbar" :inert="draftModalOpen ? '' : undefined">
+            <details
+                v-if="editRecovery"
+                class="edit-recovery-banner compact-edit-recovery"
+                :inert="modalOpen ? '' : undefined"
+            >
+                <summary>已保留上次编辑 · {{ editRecovery.package.drafts.length }} 个声部</summary>
+                <button type="button" class="regular-button" :disabled="locked" @click="restoreEditorRecovery">
+                    恢复上次编辑
+                </button>
+                <button type="button" class="regular-button" :disabled="locked" @click="exportEditorRecovery">
+                    导出保留编排
+                </button>
+            </details>
+            <footer class="esc-melody-actionbar" :inert="modalOpen ? '' : undefined">
                 <div class="actionbar-status">
-                    <span class="fas fa-shield-alt" aria-hidden="true"></span><span>{{ actionbarStatusText }}</span>
+                    <UIcon
+                        name="i-lucide-shield-check"
+                        class="fas fa-shield-alt esc-ui-icon"
+                        aria-hidden="true"
+                    /><span>{{ actionbarStatusText }}</span>
                 </div>
                 <div class="actionbar-actions">
                     <input
@@ -679,13 +1232,17 @@
                         accept="application/json,.json"
                         @change="handleRestoreFile"
                     />
+                    <p v-if="safetyWriteDisabledReason" class="safety-write-blocker" role="status">
+                        <UIcon name="i-lucide-info" class="fas fa-info-circle esc-ui-icon" aria-hidden="true" />
+                        <span>安全写入不可用：{{ safetyWriteDisabledReason }}</span>
+                    </p>
                     <button
                         type="button"
                         class="regular-button"
                         :disabled="draftSaving || (currentDraftId && !draftDirty)"
                         @click="saveDraft"
                     >
-                        <span class="fas fa-save" aria-hidden="true"></span>
+                        <UIcon name="i-lucide-save" class="fas fa-save esc-ui-icon" aria-hidden="true" />
                         {{
                             currentDraftId
                                 ? draftSaving
@@ -694,21 +1251,27 @@
                                       ? "立即保存"
                                       : "已自动保存"
                                 : "另存为草稿"
-                        }}</button
-                    ><button
+                        }}
+                    </button>
+                    <button type="button" class="regular-button" @click="openCodeDialog">导入代码</button>
+                    <button
+                        v-if="writeRecoveryTargets.length"
                         type="button"
-                        class="regular-button"
-                        :disabled="!connected || !escs.length || locked"
-                        @click="chooseRestoreFile"
+                        class="primary-button"
+                        :disabled="locked"
+                        @click="openSafety"
                     >
-                        <span class="fas fa-history" aria-hidden="true"></span> 恢复 EEPROM</button
-                    ><button
+                        安全写入 · 待恢复
+                    </button>
+                    <button
+                        v-else
                         type="button"
                         class="primary-button"
                         :disabled="!connected || locked || !pendingWriteEscs.length || !writeValidation.valid"
                         @click="openSafety"
                     >
-                        <span class="fas fa-lock" aria-hidden="true"></span> 安全写入
+                        <UIcon name="i-lucide-lock-keyhole" class="fas fa-lock esc-ui-icon" aria-hidden="true" />
+                        安全写入
                     </button>
                 </div>
             </footer>
@@ -728,7 +1291,11 @@
                 >
                     <div class="safety-dialog-header">
                         <div>
-                            <span class="fas fa-file-audio" aria-hidden="true"></span>
+                            <UIcon
+                                name="i-lucide-file-audio"
+                                class="fas fa-file-audio esc-ui-icon"
+                                aria-hidden="true"
+                            />
                             <div>
                                 <h2 id="draft-name-title">
                                     {{
@@ -778,11 +1345,12 @@
                     <div class="safety-dialog-footer">
                         <button type="button" class="regular-button" @click="closeDraftNameDialog">取消</button>
                         <button type="submit" class="primary-button" :disabled="!draftName.trim()">
-                            <span
-                                class="fas"
+                            <UIcon
+                                :name="draftNameMode === 'create' ? 'i-lucide-plus' : 'i-lucide-check'"
+                                class="fas esc-ui-icon"
                                 :class="draftNameMode === 'create' ? 'fa-plus' : 'fa-check'"
                                 aria-hidden="true"
-                            ></span>
+                            />
                             {{
                                 draftNameMode === "create"
                                     ? "创建"
@@ -807,7 +1375,7 @@
                 <section class="safety-dialog draft-delete-dialog" @keydown.tab="trapDialogFocus">
                     <div class="safety-dialog-header">
                         <div>
-                            <span class="fas fa-trash-alt" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-trash-2" class="fas fa-trash-alt esc-ui-icon" aria-hidden="true" />
                             <div>
                                 <h2 id="draft-delete-title">删除草稿</h2>
                                 <p id="draft-delete-description">
@@ -822,7 +1390,8 @@
                     <div class="safety-dialog-footer">
                         <button type="button" class="regular-button" @click="closeDeleteDraftDialog">取消</button>
                         <button type="button" class="danger-button" @click="deleteDraft">
-                            <span class="fas fa-trash-alt" aria-hidden="true"></span> 删除
+                            <UIcon name="i-lucide-trash-2" class="fas fa-trash-alt esc-ui-icon" aria-hidden="true" />
+                            删除
                         </button>
                     </div>
                 </section>
@@ -838,7 +1407,7 @@
                 <section class="safety-dialog sync-confirm-dialog">
                     <div class="safety-dialog-header">
                         <div>
-                            <span class="fas fa-clone" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-copy" class="fas fa-clone esc-ui-icon" aria-hidden="true" />
                             <div>
                                 <h2 id="sync-confirm-title">开启同步旋律</h2>
                                 <p>
@@ -855,7 +1424,7 @@
                     <div class="safety-dialog-footer">
                         <button type="button" class="regular-button" @click="cancelSyncAll">取消</button>
                         <button type="button" class="primary-button" @click="confirmSyncAll">
-                            <span class="fas fa-check" aria-hidden="true"></span> 确认应用
+                            <UIcon name="i-lucide-check" class="fas fa-check esc-ui-icon" aria-hidden="true" /> 确认应用
                         </button>
                     </div>
                 </section>
@@ -871,66 +1440,139 @@
                 <section class="safety-dialog">
                     <div class="safety-dialog-header">
                         <div>
-                            <span class="fas fa-user-shield" aria-hidden="true"></span>
+                            <UIcon
+                                :name="writeResult?.ok ? 'i-lucide-circle-check' : 'i-lucide-shield-user'"
+                                class="fas esc-ui-icon"
+                                :class="writeResult?.ok ? 'fa-check-circle' : 'fa-user-shield'"
+                                aria-hidden="true"
+                            />
                             <div>
-                                <h2 id="safety-title">写入前安全检查</h2>
+                                <h2 id="safety-title">{{ writeResult?.ok ? "写入完成" : "写入前安全检查" }}</h2>
                                 <p class="safety-write-melody">
                                     <span>本次写入音乐</span><strong>{{ safetyWriteMelodySummary }}</strong>
                                 </p>
-                                <p>将逐路写入 {{ pendingWriteEscs.length }} 路电调，四项全部确认后才能继续。</p>
+                                <p v-if="writeResult?.ok" role="status">
+                                    已完成 {{ writeResult.written.length }} 路电调写入，全部目标均已读回校验。
+                                </p>
+                                <p v-else>
+                                    将逐路写入 {{ pendingWriteEscs.length }} 路电调，完成以下安全检查后才能继续。
+                                </p>
                             </div>
-                        </div>
-                        <button type="button" class="icon-button" aria-label="关闭" @click="safetyOpen = false">
-                            ×
-                        </button>
-                    </div>
-                    <label v-for="check in safetyCheckItems" :key="check.id" class="safety-check"
-                        ><input
-                            v-model="safetyChecks[check.id]"
-                            type="checkbox"
-                            :disabled="check.id === 'backupReady'"
-                        /><span class="check-box"><span class="fas fa-check" aria-hidden="true"></span></span
-                        ><span
-                            ><strong>{{ check.title }}</strong
-                            ><small>{{ check.description }}</small></span
-                        ></label
-                    >
-                    <div class="safety-backup">
-                        <div>
-                            <strong>强制本地 EEPROM 备份</strong><small>{{ backupSummary }}</small>
                         </div>
                         <button
                             type="button"
-                            class="regular-button compact-button"
-                            :disabled="backingUp || !writableEscs.length"
-                            @click="backupAll"
+                            class="icon-button"
+                            aria-label="关闭"
+                            @click="closeSafety"
+                            :disabled="writing || backingUp"
                         >
-                            <span class="fas fa-download" aria-hidden="true"></span
-                            >{{ backingUp ? "读取并下载中" : "备份到本机" }}
+                            ×
                         </button>
                     </div>
+                    <EscChannelPlan
+                        :rows="safetyChannelRows"
+                        :mode-label="arrangementLabel"
+                        :voice-count="presetTrackTabs.length"
+                        :warnings="writeResult?.ok ? [] : assignmentWarnings"
+                    />
+                    <template v-if="!writeResult?.ok">
+                        <p v-for="warning in writeValidation.warnings" :key="warning" class="assignment-warning">
+                            {{ warning }}
+                        </p>
+                        <label v-if="assignmentWarnings.length" class="safety-check"
+                            ><input
+                                v-model="assignmentAccepted"
+                                aria-label="确认声部分配"
+                                type="checkbox"
+                                :disabled="writing || backingUp"
+                            /><span>我已核对缺失或重复声部及未参与通道，本次按以上分配写入。</span></label
+                        >
+                        <label v-for="check in safetyCheckItems" :key="check.id" class="safety-check"
+                            ><input
+                                v-model="safetyChecks[check.id]"
+                                type="checkbox"
+                                :disabled="writing || backingUp"
+                            /><span class="check-box"
+                                ><UIcon
+                                    name="i-lucide-check"
+                                    class="fas fa-check esc-ui-icon"
+                                    aria-hidden="true" /></span
+                            ><span
+                                ><strong>{{ check.title }}</strong
+                                ><small>{{ check.description }}</small></span
+                            ></label
+                        >
+                        <div class="safety-backup">
+                            <div>
+                                <strong>本地 EEPROM 备份（可选）</strong><small>{{ backupSummary }}</small>
+                            </div>
+                            <button
+                                type="button"
+                                class="regular-button compact-button"
+                                :disabled="
+                                    backingUp || writing || !writableEscs.length || !!writeRecoveryTargets.length
+                                "
+                                @click="backupAll"
+                            >
+                                <UIcon
+                                    name="i-lucide-download"
+                                    class="fas fa-download esc-ui-icon"
+                                    aria-hidden="true"
+                                />{{ backingUp ? "读取并下载中" : "备份到本机" }}
+                            </button>
+                        </div>
+                    </template>
                     <div v-if="writeResult && !writeResult.ok" class="write-failure">
-                        <strong><span class="fas fa-exclamation-triangle" aria-hidden="true"></span> 写入已停止</strong
+                        <strong
+                            ><UIcon
+                                name="i-lucide-triangle-alert"
+                                class="fas fa-exclamation-triangle esc-ui-icon"
+                                aria-hidden="true"
+                            />
+                            写入已停止</strong
                         ><span>第 {{ (writeResult.failed?.channel || 0) + 1 }} 路写入失败，后续通道未继续。</span
                         ><small>{{ writeResult.error?.message || "4-way 通讯或读回校验失败。" }}</small
-                        ><button type="button" class="regular-button compact-button" @click="recoverWritten">
-                            <span class="fas fa-undo" aria-hidden="true"></span> 恢复已写入通道
+                        ><button
+                            type="button"
+                            class="regular-button compact-button"
+                            :disabled="writing || !writeRecoveryTargets.length"
+                            @click="recoverWritten"
+                        >
+                            <UIcon name="i-lucide-undo-2" class="fas fa-undo esc-ui-icon" aria-hidden="true" />
+                            恢复受影响通道（{{ writeRecoveryTargets.length }}）
                         </button>
                     </div>
                     <div class="safety-dialog-footer">
-                        <span class="safety-hint"
-                            ><span class="fas fa-info-circle" aria-hidden="true"></span> 试听只使用 Web
-                            Audio，不会向电机发送 DShot 命令。</span
-                        ><button type="button" class="regular-button" @click="safetyOpen = false">取消</button
-                        ><button
-                            type="button"
-                            class="primary-button"
-                            :disabled="!safetyReady || writing"
-                            @click="performWrite"
-                        >
-                            <span class="fas fa-bolt" aria-hidden="true"></span
-                            >{{ writing ? "串行写入中" : "开始写入" }}
+                        <button v-if="writeResult?.ok" type="button" class="primary-button" @click="closeSafety">
+                            <UIcon name="i-lucide-check" class="fas fa-check esc-ui-icon" aria-hidden="true" />
+                            完成
                         </button>
+                        <template v-else>
+                            <span class="safety-hint"
+                                ><UIcon
+                                    name="i-lucide-info"
+                                    class="fas fa-info-circle esc-ui-icon"
+                                    aria-hidden="true"
+                                />
+                                试听只使用 Web Audio，不会向电机发送 DShot 命令。</span
+                            ><button
+                                type="button"
+                                class="regular-button"
+                                @click="closeSafety"
+                                :disabled="writing || backingUp"
+                            >
+                                取消</button
+                            ><button
+                                type="button"
+                                class="primary-button"
+                                :disabled="!safetyReady || writing || !!writeRecoveryTargets.length"
+                                @click="performWrite"
+                            >
+                                <UIcon name="i-lucide-zap" class="fas fa-bolt esc-ui-icon" aria-hidden="true" />{{
+                                    writing ? "串行操作中" : "开始写入"
+                                }}
+                            </button>
+                        </template>
                     </div>
                 </section>
             </div>
@@ -943,9 +1585,10 @@
                 aria-labelledby="restore-title"
             >
                 <section class="safety-dialog restore-dialog">
+                    <EscOperationProgress :rows="restoreProgressRows" />
                     <div class="safety-dialog-header">
                         <div>
-                            <span class="fas fa-history" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-history" class="fas fa-history esc-ui-icon" aria-hidden="true" />
                             <div>
                                 <h2 id="restore-title">从备份恢复 EEPROM</h2>
                                 <p>
@@ -966,7 +1609,11 @@
                     </div>
 
                     <div class="restore-warning">
-                        <span class="fas fa-exclamation-triangle" aria-hidden="true"></span>
+                        <UIcon
+                            name="i-lucide-triangle-alert"
+                            class="fas fa-exclamation-triangle esc-ui-icon"
+                            aria-hidden="true"
+                        />
                         <div>
                             <strong>完整 EEPROM 恢复会覆盖电调全部配置</strong>
                             <span>只允许恢复到原通道且硬件身份完全一致的电调，不支持跨通道映射。</span>
@@ -986,7 +1633,12 @@
                                     :disabled="restoring || restoreBackingUp || Boolean(restoreRollbackCount)"
                                     @click="chooseRestoreFile"
                                 >
-                                    <span class="fas fa-file-import" aria-hidden="true"></span> 重新导入
+                                    <UIcon
+                                        name="i-lucide-file-input"
+                                        class="fas fa-file-import esc-ui-icon"
+                                        aria-hidden="true"
+                                    />
+                                    重新导入
                                 </button>
                             </div>
                             <div class="restore-match-list">
@@ -1007,7 +1659,12 @@
                                             Boolean(restoreRollbackCount)
                                         "
                                     />
-                                    <span class="check-box"><span class="fas fa-check" aria-hidden="true"></span></span>
+                                    <span class="check-box"
+                                        ><UIcon
+                                            name="i-lucide-check"
+                                            class="fas fa-check esc-ui-icon"
+                                            aria-hidden="true"
+                                    /></span>
                                     <span class="restore-match-main">
                                         <span>
                                             <strong>ESC {{ match.backupEntry.channel + 1 }}</strong>
@@ -1018,10 +1675,11 @@
                                             >
                                         </span>
                                         <span class="restore-match-status">
-                                            <span
-                                                class="fas"
+                                            <UIcon
+                                                :name="match.valid ? 'i-lucide-circle-check' : 'i-lucide-ban'"
+                                                class="fas esc-ui-icon"
                                                 :class="match.valid ? 'fa-check-circle' : 'fa-ban'"
-                                            ></span>
+                                            />
                                             {{ match.valid ? "身份匹配" : "不可恢复" }}
                                         </span>
                                         <small v-if="match.valid" class="restore-layout">
@@ -1053,7 +1711,9 @@
                                     type="checkbox"
                                     :disabled="check.id === 'currentBackupReady' || restoring || restoreBackingUp"
                                 />
-                                <span class="check-box"><span class="fas fa-check" aria-hidden="true"></span></span>
+                                <span class="check-box"
+                                    ><UIcon name="i-lucide-check" class="fas fa-check esc-ui-icon" aria-hidden="true"
+                                /></span>
                                 <span
                                     ><strong>{{ check.title }}</strong
                                     ><small>{{ check.description }}</small></span
@@ -1070,14 +1730,22 @@
                                     :disabled="!selectedRestoreMatches.length || restoreBackingUp || restoring"
                                     @click="backupRestoreTargets"
                                 >
-                                    <span class="fas fa-download" aria-hidden="true"></span>
+                                    <UIcon
+                                        name="i-lucide-download"
+                                        class="fas fa-download esc-ui-icon"
+                                        aria-hidden="true"
+                                    />
                                     {{ restoreBackingUp ? "读取并下载中" : "备份当前状态" }}
                                 </button>
                             </div>
                         </section>
 
                         <div v-if="restoring && restoreProgress" class="restore-progress" role="status">
-                            <span class="fas fa-circle-notch fa-spin" aria-hidden="true"></span>
+                            <UIcon
+                                name="i-lucide-loader-circle"
+                                class="fas fa-circle-notch fa-spin esc-ui-icon"
+                                aria-hidden="true"
+                            />
                             <span>
                                 {{ restoreProgress.phase === "recover" ? "正在回滚" : "正在恢复" }}
                                 ESC {{ (restoreProgress.channel ?? 0) + 1 }} ·
@@ -1093,11 +1761,12 @@
                             :class="restoreResult.ok ? 'success' : 'failure'"
                         >
                             <strong>
-                                <span
-                                    class="fas"
+                                <UIcon
+                                    :name="restoreResult.ok ? 'i-lucide-circle-check' : 'i-lucide-triangle-alert'"
+                                    class="fas esc-ui-icon"
                                     :class="restoreResult.ok ? 'fa-check-circle' : 'fa-exclamation-triangle'"
                                     aria-hidden="true"
-                                ></span>
+                                />
                                 {{
                                     restoreResult.rolledBack
                                         ? "本次恢复已回滚"
@@ -1122,14 +1791,15 @@
                                 :disabled="restoring"
                                 @click="rollbackRestore"
                             >
-                                <span class="fas fa-undo" aria-hidden="true"></span> 回滚本次恢复
+                                <UIcon name="i-lucide-undo-2" class="fas fa-undo esc-ui-icon" aria-hidden="true" />
+                                回滚本次恢复
                             </button>
                         </div>
                     </div>
 
                     <div class="safety-dialog-footer restore-dialog-footer">
                         <span class="safety-hint">
-                            <span class="fas fa-info-circle" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-info" class="fas fa-info-circle esc-ui-icon" aria-hidden="true" />
                             恢复按 ESC 编号串行执行；首路失败后立即停止。
                         </span>
                         <button
@@ -1146,7 +1816,7 @@
                             :disabled="!restoreReady || restoring || restoreBackingUp"
                             @click="performRestore"
                         >
-                            <span class="fas fa-history" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-history" class="fas fa-history esc-ui-icon" aria-hidden="true" />
                             {{ restoring ? "串行恢复中" : "开始恢复" }}
                         </button>
                     </div>
@@ -1163,7 +1833,7 @@
                 <section class="rtttl-code-dialog" :class="{ 'rtttl-code-dialog-multi': multiCodeMode }">
                     <div class="safety-dialog-header">
                         <div>
-                            <span class="fas fa-code" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-code" class="fas fa-code esc-ui-icon" aria-hidden="true" />
                             <div>
                                 <h2 id="rtttl-code-title">RTTTL 电调音乐代码</h2>
                                 <p>
@@ -1219,7 +1889,11 @@
                                             title="粘贴"
                                             @click="pasteMultiRtttlCode(item.entry)"
                                         >
-                                            <span class="fas fa-paste" aria-hidden="true"></span>
+                                            <UIcon
+                                                name="i-lucide-clipboard-paste"
+                                                class="fas fa-paste esc-ui-icon"
+                                                aria-hidden="true"
+                                            />
                                         </button>
                                         <button
                                             type="button"
@@ -1228,7 +1902,11 @@
                                             title="复制"
                                             @click="copyMultiRtttlCode(item.entry)"
                                         >
-                                            <span class="fas fa-copy" aria-hidden="true"></span>
+                                            <UIcon
+                                                name="i-lucide-copy"
+                                                class="fas fa-copy esc-ui-icon"
+                                                aria-hidden="true"
+                                            />
                                         </button>
                                         <button
                                             type="button"
@@ -1236,13 +1914,18 @@
                                             :disabled="Boolean(item.preview.error) || !item.preview.pitchedNoteCount"
                                             @click="playCodeEntry(item)"
                                         >
-                                            <span
-                                                class="fas"
+                                            <UIcon
+                                                :name="
+                                                    activeCodePreviewIds.includes(item.entry.id)
+                                                        ? 'i-lucide-square'
+                                                        : 'i-lucide-play'
+                                                "
+                                                class="fas esc-ui-icon"
                                                 :class="
                                                     activeCodePreviewIds.includes(item.entry.id) ? 'fa-stop' : 'fa-play'
                                                 "
                                                 aria-hidden="true"
-                                            ></span>
+                                            />
                                             {{ activeCodePreviewIds.includes(item.entry.id) ? "停止" : "播放" }}
                                         </button>
                                     </div>
@@ -1254,7 +1937,11 @@
                                     spellcheck="false"
                                 ></textarea>
                                 <div v-if="item.preview.error" class="rtttl-code-error">
-                                    <span class="fas fa-exclamation-triangle" aria-hidden="true"></span>
+                                    <UIcon
+                                        name="i-lucide-triangle-alert"
+                                        class="fas fa-exclamation-triangle esc-ui-icon"
+                                        aria-hidden="true"
+                                    />
                                     <span>{{ item.preview.error }} · 修正后才能保存，卷帘未发生变化</span>
                                 </div>
                                 <div v-else class="rtttl-code-summary">
@@ -1263,7 +1950,7 @@
                                         {{ formatDuration(item.preview.durationMs) }}</span
                                     ><strong>{{ item.preview.encodedLength }}/{{ item.capacity }} B</strong
                                     ><span :class="item.preview.valid ? 'code-valid' : 'code-adjust'">{{
-                                        item.preview.valid ? "可写入" : "需调整"
+                                        item.preview.valid ? "编码通过" : "编码需调整"
                                     }}</span>
                                 </div>
                                 <ul v-if="!item.preview.error && item.preview.errors.length" class="rtttl-code-errors">
@@ -1280,16 +1967,20 @@
                             spellcheck="false"
                         ></textarea>
                         <div v-if="codePreview.error" class="rtttl-code-error">
-                            <span class="fas fa-exclamation-triangle" aria-hidden="true"></span>
+                            <UIcon
+                                name="i-lucide-triangle-alert"
+                                class="fas fa-exclamation-triangle esc-ui-icon"
+                                aria-hidden="true"
+                            />
                             <span>{{ codePreview.error }} · 修正后才能保存，卷帘未发生变化</span>
                         </div>
                         <div v-else class="rtttl-code-summary">
                             <span
                                 >{{ codePreview.pitchedNoteCount }} 音符 · {{ codePreview.restCount }} 休止 ·
                                 {{ formatDuration(codePreview.durationMs) }}</span
-                            ><strong>{{ codePreview.encodedLength }}/128 B</strong
+                            ><strong>{{ codePreview.encodedLength }}/{{ targetCapacity }} B</strong
                             ><span :class="codePreview.valid ? 'code-valid' : 'code-adjust'">{{
-                                codePreview.valid ? "可写入" : "需调整"
+                                codePreview.valid ? "编码通过" : "编码需调整"
                             }}</span>
                         </div>
                         <div
@@ -1309,10 +2000,18 @@
                             <li v-for="error in codePreview.errors" :key="error">{{ error }}</li>
                         </ul>
                     </div>
+                    <div v-if="codeDiscardConfirm" class="code-discard-confirm" role="alert">
+                        <strong>代码更改尚未保存到旋律。</strong
+                        ><button type="button" class="regular-button" @click="codeDiscardConfirm = false">
+                            继续编辑</button
+                        ><button type="button" class="danger-button" @click="closeCodeDialog({ discard: true })">
+                            放弃更改并关闭
+                        </button>
+                    </div>
                     <div v-if="multiCodeMode" class="safety-dialog-footer rtttl-code-footer rtttl-code-footer-multi">
                         <span class="safety-hint"
-                            ><span class="fas fa-info-circle" aria-hidden="true"></span> 同时试听只使用 Web
-                            Audio，不会向 ESC 发送命令。</span
+                            ><UIcon name="i-lucide-info" class="fas fa-info-circle esc-ui-icon" aria-hidden="true" />
+                            同时试听只使用 Web Audio，不会向 ESC 发送命令。</span
                         >
                         <button
                             type="button"
@@ -1320,11 +2019,12 @@
                             :disabled="!multiCodePlayableCount"
                             @click="playAllCodes"
                         >
-                            <span
-                                class="fas"
+                            <UIcon
+                                :name="activeCodePreviewIds.length ? 'i-lucide-square' : 'i-lucide-play'"
+                                class="fas esc-ui-icon"
                                 :class="activeCodePreviewIds.length ? 'fa-stop' : 'fa-play'"
                                 aria-hidden="true"
-                            ></span>
+                            />
                             {{ activeCodePreviewIds.length ? "停止全部" : "播放全部" }}
                         </button>
                         <button
@@ -1334,15 +2034,20 @@
                             :disabled="!codeSaveReady"
                             @click="saveCodeDialog"
                         >
-                            <span class="fas fa-save" aria-hidden="true"></span> 保存
+                            <UIcon name="i-lucide-save" class="fas fa-save esc-ui-icon" aria-hidden="true" /> 保存
                         </button>
                     </div>
                     <div v-else class="safety-dialog-footer rtttl-code-footer">
                         <button type="button" class="regular-button compact-button" @click="pasteRtttlCode">
-                            <span class="fas fa-paste" aria-hidden="true"></span> 粘贴
+                            <UIcon
+                                name="i-lucide-clipboard-paste"
+                                class="fas fa-paste esc-ui-icon"
+                                aria-hidden="true"
+                            />
+                            粘贴
                         </button>
                         <button type="button" class="regular-button compact-button" @click="copyRtttlCode">
-                            <span class="fas fa-copy" aria-hidden="true"></span> 复制
+                            <UIcon name="i-lucide-copy" class="fas fa-copy esc-ui-icon" aria-hidden="true" /> 复制
                         </button>
                         <button
                             type="button"
@@ -1351,11 +2056,12 @@
                             :disabled="!codePreview.melody || !codePreview.pitchedNoteCount"
                             @click="playSingleCode"
                         >
-                            <span
-                                class="fas"
+                            <UIcon
+                                :name="previewMode === 'code-single' ? 'i-lucide-square' : 'i-lucide-play'"
+                                class="fas esc-ui-icon"
                                 :class="previewMode === 'code-single' ? 'fa-stop' : 'fa-play'"
                                 aria-hidden="true"
-                            ></span>
+                            />
                             {{ previewMode === "code-single" ? "停止" : "播放" }}
                         </button>
                         <span class="rtttl-code-spacer"></span>
@@ -1366,7 +2072,7 @@
                             :disabled="!codeSaveReady"
                             @click="saveCodeDialog"
                         >
-                            <span class="fas fa-save" aria-hidden="true"></span> 保存
+                            <UIcon name="i-lucide-save" class="fas fa-save esc-ui-icon" aria-hidden="true" /> 保存
                         </button>
                     </div>
                 </section>
@@ -1384,7 +2090,7 @@
                 <section class="safety-dialog melody-contribution-dialog" @keydown.tab="trapDialogFocus">
                     <div class="safety-dialog-header">
                         <div>
-                            <span class="fas fa-compact-disc" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-disc-3" class="fas fa-compact-disc esc-ui-icon" aria-hidden="true" />
                             <div>
                                 <h2 id="melody-contribution-title">音乐投稿</h2>
                                 <p>扫码加入 QQ 群，联系群主提交你的旋律作品。</p>
@@ -1396,7 +2102,7 @@
                             aria-label="关闭音乐投稿"
                             @click="closeContributionDialog"
                         >
-                            <span class="fas fa-times" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-x" class="fas fa-times esc-ui-icon" aria-hidden="true" />
                         </button>
                     </div>
                     <div class="melody-contribution-dialog-body">
@@ -1404,11 +2110,12 @@
                             <img :src="qqQrUrl" alt="花生 FPV 官方 QQ 群二维码" />
                         </div>
                         <strong>花生 FPV 官方交流群</strong>
+                        <QqGroupNumber />
                         <span>扫码加入后，请联系群主投稿；可附上音乐名称、RTTTL 代码或草稿文件。</span>
                     </div>
                     <div class="safety-dialog-footer">
                         <span class="safety-hint">
-                            <span class="fas fa-info-circle" aria-hidden="true"></span>
+                            <UIcon name="i-lucide-info" class="fas fa-info-circle esc-ui-icon" aria-hidden="true" />
                             投稿前建议先使用电脑试听确认旋律。
                         </span>
                         <button type="button" class="primary-button" @click="closeContributionDialog">完成</button>
@@ -1422,6 +2129,12 @@
 <script>
 import { computed, defineComponent, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import BaseTab from "./BaseTab.vue";
+import QqGroupNumber from "../elements/QqGroupNumber.vue";
+import EscChannelPlan from "../esc-melody/EscChannelPlan.vue";
+import EscOperationProgress from "../esc-melody/EscOperationProgress.vue";
+import MelodyOverview from "../esc-melody/MelodyOverview.vue";
+import { autoAdaptBlheli32Tracks } from "../../js/esc_melody/blheli32_adapt";
+import { ESC_OPERATION_LABELS } from "../../js/esc_melody/operation_progress";
 import GUI from "../../js/gui.js";
 import {
     cloneMelody,
@@ -1457,7 +2170,12 @@ import {
     saveMelodyDraft,
 } from "../../js/esc_melody/drafts.js";
 import { EscFourWayController } from "../../js/esc_melody/esc_four_way_controller.js";
-import { ESC_MELODY_READ_STATUS, getIdentifiedEscCount } from "../../js/esc_melody/esc_capabilities.js";
+import {
+    ESC_FIRMWARE,
+    ESC_FIRMWARE_CONFIRMATION_STATUS,
+    ESC_MELODY_READ_STATUS,
+    getIdentifiedEscCount,
+} from "../../js/esc_melody/esc_capabilities.js";
 import {
     createEscBackupPackage,
     downloadEscBackup,
@@ -1470,24 +2188,23 @@ import {
 } from "../../js/esc_melody/backups.js";
 import BFClipboard from "../../js/Clipboard.js";
 import qqQrUrl from "../../images/hs-qq-qr.png";
+import {
+    loadLibraryState,
+    saveLibraryState,
+    loadEditRecovery,
+    saveEditRecovery,
+} from "../../js/esc_melody/library_state.ts";
 
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const PITCH_OPTIONS = Array.from(
-    { length: ESC_MELODY_MAX_MIDI - ESC_MELODY_MIN_MIDI + 1 },
-    (_, index) => ESC_MELODY_MIN_MIDI + index,
-);
-const NOTE_ROWS = Array.from(
-    { length: ESC_MELODY_MAX_MIDI - ESC_MELODY_MIN_MIDI + 1 },
-    (_, index) => ESC_MELODY_MAX_MIDI - index,
-);
 const PIANO_ROLL_ROW_HEIGHT = 16;
 
 export default defineComponent({
     name: "EscMelodyTab",
-    components: { BaseTab },
+    components: { BaseTab, QqGroupNumber, EscChannelPlan, EscOperationProgress, MelodyOverview },
     setup() {
         const model = inject("betaflightModel", null);
         const melody = ref(cloneMelody(PRESET_MELODIES[0]));
+        const editorBaseline = ref(cloneMelody(melody.value));
         const drafts = ref(loadMelodyDrafts());
         const draftLimit = ESC_MELODY_DRAFT_LIMIT;
         const escs = ref([]);
@@ -1500,11 +2217,31 @@ export default defineComponent({
         const lastDraftSavedAt = ref(null);
         const selectedNoteId = ref(melody.value.notes[0]?.id || null);
         const pianoRollWrap = ref(null);
+        const zoomPixels = ref(56);
+        const editorTool = ref("select");
+        const snapStep = ref(0.125);
+        const autoFollow = ref(true);
+        const workspaceView = ref("library");
+        const librarySection = ref("all");
+        const deviceDetailsOpen = ref(false);
+        const deviceInspectionId = ref(null);
+        const previewVolume = ref(70);
+        const previewMuted = ref(false);
+        const previewOutput = ref(null);
+        const previewElapsedMs = ref(0);
+        const previewShowsTimeline = ref(false);
+        const codeDiscardConfirm = ref(false);
+        let codeBaseline = "";
+        let previewClock = null;
+        let previewRequest = 0;
         const history = ref([]);
         const future = ref([]);
         const scanning = ref(false);
         const selectedEscId = ref(null);
         const presetTrackSession = ref(null);
+        const voiceAssignments = reactive({});
+        const assignmentAccepted = ref(false);
+        const writeProgressRows = ref([]);
         const activePresetTrackIndex = ref(0);
         const melodyConflict = ref(false);
         const syncConfirmOpen = ref(false);
@@ -1512,6 +2249,16 @@ export default defineComponent({
             Boolean(model?.CONFIGURATOR?.connectionValid ?? globalThis.CONFIGURATOR?.connectionValid),
         );
         const identifiedEscCount = computed(() => getIdentifiedEscCount(escs.value));
+        const headerConnectionLabel = computed(() => {
+            if (!connected.value) return "离线编辑";
+            if (scanning.value) return "扫描中";
+            if (!escs.value.length) return "已连接 · 待扫描";
+            const families = [...new Set(displayedEscs.value.map((esc) => esc.firmwareLabel).filter(Boolean))];
+            return `${identifiedEscCount.value} 路 · ${families.join(" / ") || "待识别"}`;
+        });
+        watch(workspaceView, (view) => {
+            if (view === "editor") void nextTick(scrollMelodyIntoView);
+        });
         const connectionSummary = computed(() => {
             if (!connected.value) return "连接后可扫描电调能力";
             if (scanning.value) return "正在逐路识别电调";
@@ -1523,15 +2270,41 @@ export default defineComponent({
             const writableFamilies = escs.value.filter((esc) => esc.canWrite).map((esc) => esc.firmwareFamily);
             if (writableFamilies.length && writableFamilies.every((family) => family === "bluejay")) return "bluejay";
             if (writableFamilies.length && writableFamilies.every((family) => family === "ox32")) return "ox32";
+            if (writableFamilies.length && writableFamilies.every((family) => family === "blheli32")) return "blheli32";
+            if (!escs.value.length && melody.value.blheli32) return "blheli32";
             return "am32";
         });
-        const validation = computed(() => validateMelody(melody.value, { firmware: targetFirmware.value }));
+        const targetCapacity = computed(() => (targetFirmware.value === "blheli32" ? 48 : 128));
+        const validation = computed(() =>
+            validateMelody(effectiveMelody.value, { firmware: targetFirmware.value, capacity: targetCapacity.value }),
+        );
         const selectedNote = computed(
             () => melody.value.notes.find((note) => note.id === selectedNoteId.value) || null,
         );
         const timelineBeats = computed(() => Math.max(8, Math.ceil(melodyDurationBeats(melody.value) + 1)));
-        const timelineStyle = computed(() => ({ "--timeline-beats": timelineBeats.value }));
+        const timelineWidth = computed(() => timelineBeats.value * zoomPixels.value);
+        const timelineStyle = computed(() => ({
+            "--timeline-beats": timelineBeats.value,
+            width: `${timelineWidth.value}px`,
+            flex: `0 0 ${timelineWidth.value}px`,
+        }));
+        const timelineTicks = computed(() => {
+            const step = Math.max(1, Math.ceil(72 / zoomPixels.value), Math.ceil(timelineBeats.value / 512));
+            return Array.from({ length: Math.ceil(timelineBeats.value / step) }, (_, index) => ({
+                beat: index * step,
+                seconds: ((melody.value.waitMs + (index * step * 60000) / melody.value.bpm) / 1000).toFixed(1),
+            }));
+        });
+        const previewBeat = computed(() => ((previewElapsedMs.value - melody.value.waitMs) * melody.value.bpm) / 60000);
+        const presetSessionName = computed(() => presetTrackSession.value?.name || "");
+        watch([previewVolume, previewMuted], () => {
+            if (previewOutput.value)
+                previewOutput.value.gain.value = previewMuted.value ? 0 : previewVolume.value / 100;
+        });
         const writableEscs = computed(() => escs.value.filter((esc) => esc.canWrite));
+        const failedFirmwareDetectionCount = computed(
+            () => escs.value.filter((esc) => esc.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED).length,
+        );
         const selectedEsc = computed(() => escs.value.find((esc) => esc.id === selectedEscId.value) || null);
         const displayedEscs = computed(() =>
             escs.value.filter((esc) => esc && !["idle", "unavailable"].includes(esc.status)),
@@ -1554,6 +2327,57 @@ export default defineComponent({
             );
         });
         const editableEscs = computed(() => displayedEscs.value.filter(isEscMelodyEditable));
+        const automaticSourceTracks = computed(() => {
+            if (presetTrackSession.value)
+                return presetTrackSession.value.tracks.map((track, index) =>
+                    index === activePresetTrackIndex.value ? melody.value : track.melody,
+                );
+            if (!syncAll.value && editableEscs.value.length > 1)
+                return [...editableEscs.value]
+                    .sort((a, b) => a.channel - b.channel)
+                    .map((esc) => (esc.id === selectedEscId.value ? melody.value : esc.editorMelody));
+            return [melody.value];
+        });
+        function outputVoiceIndex(esc) {
+            if (presetTrackSession.value) return voiceIndexForEsc(esc);
+            if (syncAll.value || editableEscs.value.length <= 1) return 0;
+            return [...editableEscs.value]
+                .sort((a, b) => a.channel - b.channel)
+                .findIndex((item) => item.id === esc.id);
+        }
+        const automaticBl32 = computed(() => {
+            if (!presetTrackSession.value && !syncAll.value && editableEscs.value.length > 1) {
+                const channels = [...editableEscs.value].sort((a, b) => a.channel - b.channel);
+                const results = automaticSourceTracks.value.map((track, index) =>
+                    autoAdaptBlheli32Tracks([track], channels[index].firmwareFamily === "blheli32" ? [0] : []),
+                );
+                return {
+                    tracks: results.flatMap((result) => result.tracks),
+                    adapted: results.some((result) => result.adapted),
+                    errors: results.flatMap((result) => result.errors),
+                };
+            }
+            return autoAdaptBlheli32Tracks(automaticSourceTracks.value, [
+                ...new Set(
+                    writableEscs.value
+                        .filter((esc) => esc.firmwareFamily === "blheli32")
+                        .map(outputVoiceIndex)
+                        .filter((index) => index !== null && index >= 0),
+                ),
+            ]);
+        });
+        const outputTracks = computed(() => automaticBl32.value.tracks);
+        const effectiveMelody = computed(() => {
+            const index = presetTrackSession.value
+                ? activePresetTrackIndex.value
+                : selectedEsc.value
+                    ? outputVoiceIndex(selectedEsc.value)
+                    : 0;
+            return outputTracks.value[index] || melody.value;
+        });
+        function outputMelodyForEsc(esc) {
+            return outputTracks.value[outputVoiceIndex(esc)] || esc.editorMelody;
+        }
         const showPresetTrackTabs = computed(() => (presetTrackSession.value?.tracks.length || 0) > 1);
         const presetTrackTabs = computed(
             () =>
@@ -1593,13 +2417,20 @@ export default defineComponent({
             }
             return "已保存在此浏览器";
         });
-        const dirtyEscs = computed(() => writableEscs.value.filter((esc) => esc.melodyDirty && esc.editorMelody));
+        const dirtyEscs = computed(() =>
+            writableEscs.value.filter(
+                (esc) =>
+                    esc.editorMelody &&
+                    (esc.melodyReplacementReady || !melodiesEqual(outputMelodyForEsc(esc), esc.originalMelody)),
+            ),
+        );
         const pendingWriteEscs = computed(() =>
             syncAll.value ? writableEscs.value.filter((esc) => esc.editorMelody) : dirtyEscs.value,
         );
         const pendingWriteEscIds = computed(() => new Set(pendingWriteEscs.value.map((esc) => esc.id)));
         const safetyWriteMelodySummary = computed(() => {
-            const entries = pendingWriteEscs.value.map((esc) => ({
+            const targets = writeResult.value?.ok ? writeResult.value.written : pendingWriteEscs.value;
+            const entries = targets.map((esc) => ({
                 channel: esc.channel,
                 name: String(esc.editorMelody?.name || "未命名旋律"),
             }));
@@ -1621,14 +2452,16 @@ export default defineComponent({
         });
         const writeValidation = computed(() => {
             const errors = [];
+            const warnings = [];
             for (const esc of pendingWriteEscs.value) {
-                const result = validateMelody(esc.editorMelody, {
+                const result = validateMelody(outputMelodyForEsc(esc), {
                     firmware: esc.firmwareFamily,
                     capacity: esc.capacity || 128,
                 });
                 errors.push(...result.errors.map((error) => `第 ${esc.channel + 1} 路：${error}`));
+                warnings.push(...(result.warnings || []).map((warning) => `第 ${esc.channel + 1} 路：${warning}`));
             }
-            return { valid: pendingWriteEscs.value.length > 0 && errors.length === 0, errors };
+            return { valid: pendingWriteEscs.value.length > 0 && errors.length === 0, errors, warnings };
         });
         const activeBackup = ref(null);
         const lastBackupFilename = ref("");
@@ -1637,8 +2470,9 @@ export default defineComponent({
             return (
                 connected.value &&
                 Object.values(safetyChecks).every(Boolean) &&
-                backupStatus.value.valid &&
-                writeValidation.value.valid
+                writeValidation.value.valid &&
+                (!assignmentWarnings.value.length || assignmentAccepted.value) &&
+                !writeRecoveryTargets.value.length
             );
         });
         const backupSummary = computed(() => {
@@ -1646,7 +2480,7 @@ export default defineComponent({
             if (backupStatus.value.valid) {
                 return `${writableEscs.value.length}/${writableEscs.value.length} 路已持久保存并下载 · ${lastBackupFilename.value}`;
             }
-            return "写入前必须读取全部可写电调，并下载 JSON 备份文件";
+            return "未备份也可写入；建议先备份全部可写电调，写入失败时可据此恢复";
         });
 
         const keys = NOTE_NAMES;
@@ -1654,21 +2488,233 @@ export default defineComponent({
         const rtttlBpmMin = RTTTL_BPM_MIN;
         const rtttlBpmMax = RTTTL_BPM_MAX;
         const durations = [0.0625, 0.125, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
-        const pitchOptions = PITCH_OPTIONS;
-        const noteRows = NOTE_ROWS;
-        const pianoRollStyle = {
-            "--note-rows": noteRows.length,
-            "--piano-roll-height": `${noteRows.length * PIANO_ROLL_ROW_HEIGHT}px`,
-        };
+        const pianoMaxMidi = computed(() =>
+            targetFirmware.value === "blheli32" || melody.value.notes.some((note) => note.midi > 98)
+                ? ESC_MELODY_MAX_MIDI
+                : 98,
+        );
+        const pitchOptions = computed(() =>
+            Array.from(
+                { length: pianoMaxMidi.value - ESC_MELODY_MIN_MIDI + 1 },
+                (_, index) => ESC_MELODY_MIN_MIDI + index,
+            ),
+        );
+        const noteRows = computed(() => [...pitchOptions.value].reverse());
+        const pianoRollStyle = computed(() => ({
+            "--note-rows": noteRows.value.length,
+            "--piano-roll-height": `${noteRows.value.length * PIANO_ROLL_ROW_HEIGHT}px`,
+        }));
         const presets = PRESET_MELODIES.map((preset) => ({ ...preset, notes: cloneMelody(preset).notes }));
         const presetQuery = ref("");
-        const filteredPresets = computed(() => {
-            const query = presetQuery.value.trim().toLocaleLowerCase();
-            if (!query) return presets;
-            return presets.filter((preset) =>
-                `${preset.name} ${preset.description}`.toLocaleLowerCase().includes(query),
+        const libraryState = loadLibraryState(presets);
+        const favoriteIds = ref(libraryState.favorites);
+        const recentIds = ref(libraryState.recent);
+        const presetScope = ref("all");
+        const presetVoices = ref("all");
+        const auditionPresetId = ref(null);
+        const editRecovery = ref(loadEditRecovery());
+        const offlineSelection = ref(false);
+        const presetCompatibility = computed(() => {
+            if (!connected.value || scanning.value || !escs.value.length) return {};
+            return Object.fromEntries(
+                presets.map((preset) => {
+                    const tracks = preset.trackMelodies?.length ? preset.trackMelodies : [preset];
+                    // Match loadPreset's shared melody and cyclic multi-voice assignment.
+                    const targets = [...(tracks.length > 1 ? editableEscs.value : writableEscs.value)]
+                        .sort((left, right) => left.channel - right.channel)
+                        .map((esc, index) => ({ esc, trackIndex: index % tracks.length }))
+                        .filter(({ esc }) => esc.canWrite);
+                    if (!targets.length)
+                        return [
+                            preset.id,
+                            {
+                                label: "暂不可写",
+                                reasons: ["当前没有可载入并写入此曲目的电调，请查看各路识别与读取结果。"],
+                            },
+                        ];
+                    const automatic = autoAdaptBlheli32Tracks(tracks, [
+                        ...new Set(
+                            targets
+                                .filter(({ esc }) => esc.firmwareFamily === "blheli32")
+                                .map(({ trackIndex }) => trackIndex),
+                        ),
+                    ]);
+                    const failures = new Map();
+                    const results = new Map();
+                    let failedCount = 0;
+                    targets.forEach(({ esc, trackIndex }) => {
+                        const key = `${trackIndex}:${esc.firmwareFamily}:${esc.capacity || 128}`;
+                        if (!results.has(key))
+                            results.set(
+                                key,
+                                validateMelody(automatic.tracks[trackIndex], {
+                                    firmware: esc.firmwareFamily,
+                                    capacity: esc.capacity || 128,
+                                }),
+                            );
+                        const result = results.get(key);
+                        if (result.valid) return;
+                        failedCount++;
+                        const failure = failures.get(key) || {
+                            channels: [],
+                            label: `${esc.firmwareLabel || esc.firmwareFamily}${tracks.length > 1 ? ` · 声部 ${trackIndex + 1}` : ""}`,
+                            errors: result.errors,
+                        };
+                        failure.channels.push(esc.channel + 1);
+                        failures.set(key, failure);
+                    });
+                    return [
+                        preset.id,
+                        failedCount
+                            ? {
+                                label: failedCount === targets.length ? "不适用" : "部分通道不适用",
+                                reasons: [...failures.values()].map(
+                                    (failure) =>
+                                        `ESC ${failure.channels.join("、")} · ${failure.label}：${failure.errors.join("；")}`,
+                                ),
+                            }
+                            : automatic.adapted
+                                ? {
+                                    label: "自动适配 BL32",
+                                    reasons: ["选择或试听时自动使用完整适配版；原曲保留，不裁剪或删减音符。"],
+                                }
+                                : null,
+                    ];
+                }),
             );
         });
+        const filteredPresets = computed(() => {
+            const query = presetQuery.value.trim().toLocaleLowerCase();
+            const voiceCount = (preset) => preset.trackMelodies?.length || 1;
+            const scoped = presets.filter(
+                (preset) =>
+                    (presetScope.value !== "favorites" || favoriteIds.value.includes(preset.id)) &&
+                    (presetScope.value !== "recent" || recentIds.value.includes(preset.id)) &&
+                    (presetVoices.value !== "solo" || voiceCount(preset) === 1) &&
+                    (presetVoices.value !== "multi" || voiceCount(preset) > 1) &&
+                    (!query || `${preset.name} ${preset.description}`.toLocaleLowerCase().includes(query)),
+            );
+            return presetScope.value === "recent"
+                ? scoped.sort((a, b) => recentIds.value.indexOf(a.id) - recentIds.value.indexOf(b.id))
+                : scoped;
+        });
+        function persistLibrary() {
+            try {
+                saveLibraryState({ favorites: favoriteIds.value, recent: recentIds.value });
+            } catch {
+                showMessage("浏览器未能保存曲库偏好，本次会话仍可使用。", "error");
+            }
+        }
+        function toggleFavorite(id) {
+            favoriteIds.value = favoriteIds.value.includes(id)
+                ? favoriteIds.value.filter((item) => item !== id)
+                : [...favoriteIds.value, id];
+            persistLibrary();
+        }
+        const selectedLibraryDescription = computed(() =>
+            activeLibrarySource.value?.type === "preset"
+                ? presets.find((preset) => preset.id === activeLibrarySource.value.id)?.description || ""
+                : "",
+        );
+        const previewVoiceCount = computed(() => Math.max(1, presetTrackTabs.value.length));
+        /** Returns the source voices without counting assigned ESC copies as extra voices. */
+        function libraryTrackCount(preset) {
+            return preset.trackMelodies?.length || 1;
+        }
+        function libraryDuration(preset) {
+            const tracks = preset.trackMelodies?.length ? preset.trackMelodies : [preset];
+            return formatDuration(Math.max(...tracks.map((track) => melodyDurationMs(track))));
+        }
+        function openDeviceDetails() {
+            deviceDetailsOpen.value = true;
+            void nextTick(() => {
+                const heading = document.querySelector("#melody-device-details h2");
+                heading?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+                heading?.focus({ preventScroll: true });
+            });
+        }
+        function closeDeviceDetails() {
+            deviceDetailsOpen.value = false;
+            void nextTick(() => document.querySelector('[aria-controls="melody-device-details"]')?.focus());
+        }
+        function focusLibrary() {
+            workspaceView.value = "library";
+            void nextTick(() => document.querySelector('[aria-label="搜索旋律库"]')?.focus());
+        }
+        async function previewLibraryPreset(preset) {
+            if (locked.value) return;
+            if (auditionPresetId.value === preset.id && playing.value) {
+                stopPreview();
+                return;
+            }
+            if (!loadPreset(preset)) return;
+            const tracks = outputTracks.value;
+            const started = await startAudioPreview(
+                tracks.map((melody, index) => ({ melody, id: `library-${index}` })),
+                { mode: "library" },
+            );
+            if (started && previewMode.value === "library") auditionPresetId.value = preset.id;
+        }
+        function stashEditorBeforeSwitch({ force = false } = {}) {
+            if (!flushCurrentDraft()) return false;
+            const changed =
+                JSON.stringify(cloneMelody(melody.value)) !== JSON.stringify(editorBaseline.value) ||
+                history.value.length ||
+                presetTrackSession.value?.tracks.some((track) => !melodiesEqual(track.melody, track.originalMelody)) ||
+                dirtyEscs.value.length;
+            if (!force && !changed) return true;
+            syncEditorState();
+            const melodies = presetTrackSession.value
+                ? presetTrackSession.value.tracks.map((track) => track.melody)
+                : !syncAll.value && editableEscs.value.length > 1
+                    ? [...editableEscs.value].sort((a, b) => a.channel - b.channel).map((esc) => esc.editorMelody)
+                    : [melody.value];
+            try {
+                editRecovery.value = saveEditRecovery(melodies, activePresetTrackIndex.value);
+                return true;
+            } catch (error) {
+                showMessage(error.message || "无法保留编辑，请先保存或导出草稿。", "error");
+                return false;
+            }
+        }
+        function restoreEditorRecovery() {
+            if (!editRecovery.value || locked.value) return;
+            const saved = editRecovery.value;
+            if (!stashEditorBeforeSwitch()) return;
+            stopPreview();
+            clearPresetTrackSession();
+            const tracks = saved.package.drafts.map((draft) => ({
+                id: draft.id,
+                originalMelody: cloneMelody(draft.melody),
+                melody: cloneMelody(draft.melody),
+                history: [],
+                future: [],
+            }));
+            if (tracks.length > 1) {
+                presetTrackSession.value = { presetId: "edit-recovery", name: "保留的多声部编排", tracks };
+                activePresetTrackIndex.value = saved.activeIndex;
+                syncAll.value = false;
+                syncPresetTracksToEscs();
+                loadPresetTrack(saved.activeIndex);
+            } else {
+                syncAll.value = true;
+                applyMelody(tracks[0].melody);
+                clearActiveLibrarySource();
+            }
+            currentDraftId.value = null;
+            history.value = [cloneMelody(melody.value)];
+            workspaceView.value = "editor";
+            offlineSelection.value = true;
+            showMessage("已恢复保留编排，请重新核对声部分配与容量。", "success");
+        }
+        function exportEditorRecovery() {
+            if (!editRecovery.value) return;
+            downloadTextFile(
+                "betaflight-preserved-arrangement.json",
+                JSON.stringify(editRecovery.value.package, null, 2),
+                "application/json",
+            );
+        }
         const syncAll = ref(true);
         const draftNameDialogOpen = ref(false);
         const draftNameMode = ref("create");
@@ -1684,7 +2730,7 @@ export default defineComponent({
         const codeDialogOpen = ref(false);
         const rtttlCode = ref("");
         const multiCodeEntries = ref([]);
-        const safetyChecks = reactive({ unlocked: false, propsRemoved: false, powerStable: false, backupReady: false });
+        const safetyChecks = reactive({ unlocked: false, propsRemoved: false, powerStable: false });
         const restoreFileInput = ref(null);
         const restoreOpen = ref(false);
         const restoreFileName = ref("");
@@ -1702,6 +2748,7 @@ export default defineComponent({
         const restoring = ref(false);
         const restoreResult = ref(null);
         const restoreProgress = ref(null);
+        const restoreProgressRows = ref([]);
         const operationMessage = ref("");
         const operationType = ref("info");
         const backingUp = ref(false);
@@ -1713,7 +2760,250 @@ export default defineComponent({
         const locked = computed(
             () => writing.value || restoring.value || restoreBackingUp.value || scanning.value || GUI.connect_lock,
         );
+        const safetyWriteDisabledReason = computed(() => {
+            if (!connected.value) return "请先连接飞控";
+            if (scanning.value) return "正在扫描电调";
+            if (restoreResult.value?.ok === false && restoreRollbackCount.value) return "请先完成 EEPROM 故障回滚";
+            if (writing.value) return "正在写入电调";
+            if (restoring.value || restoreBackingUp.value) return "正在恢复 EEPROM";
+            if (GUI.connect_lock) return "串口正被其他操作占用";
+            if (!escs.value.length) return "请先扫描电调";
+            if (!writableEscs.value.length && failedFirmwareDetectionCount.value) {
+                return `${failedFirmwareDetectionCount.value} 路固件或布局验证失败，通道保持锁定；请查看失败原因`;
+            }
+            const unsupportedAm32 = escs.value.find(
+                (esc) =>
+                    esc.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED &&
+                    esc.confirmedFirmwareFamily === ESC_FIRMWARE.AM32,
+            );
+            if (!writableEscs.value.length && unsupportedAm32) {
+                return "AM32 已识别，但 MCU 配置布局未支持";
+            }
+            if (!writableEscs.value.length) return "未识别到可写入的电调";
+            if (!pendingWriteEscs.value.length) {
+                return syncAll.value ? "请先选择或编辑一首音乐" : "请先修改至少一路音乐";
+            }
+            if (!writeValidation.value.valid) {
+                return writeValidation.value.errors[0] || "旋律未通过写入校验";
+            }
+            return "";
+        });
         const writeResult = ref(null);
+        const writeRecoveryTargets = computed(() =>
+            writeResult.value?.ok === false ? (writeResult.value.rollback ?? writeResult.value.written ?? []) : [],
+        );
+        const arrangementMode = computed(() =>
+            showPresetTrackTabs.value ? "poly" : syncAll.value ? "sync" : "independent",
+        );
+        const arrangementLabel = computed(() =>
+            showPresetTrackTabs.value ? "多声部合奏" : syncAll.value ? "同曲同步" : "各路独立",
+        );
+        const deviceReadiness = computed(() => {
+            if (!connected.value) return "未连接";
+            if (scanning.value) return "扫描中";
+            if (!escs.value.length) return "待扫描";
+            if (failedFirmwareDetectionCount.value) {
+                return `${writableEscs.value.length} 路已验证 · ${failedFirmwareDetectionCount.value} 路验证失败`;
+            }
+            return writableEscs.value.length ? `${writableEscs.value.length} 路已验证` : "不支持写入";
+        });
+        const hasDeviceIssues = computed(() =>
+            displayedEscs.value.some(
+                (esc) =>
+                    esc.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED ||
+                    Boolean(esc.melodyReadError) ||
+                    Boolean(esc.reason && !esc.canWrite),
+            ),
+        );
+        const inspectedDeviceId = computed(() => {
+            if (escs.value.some((esc) => esc.id === deviceInspectionId.value)) return deviceInspectionId.value;
+            return (
+                escs.value.find((esc) => esc.melodyReadError || !esc.canWrite)?.id ||
+                selectedEsc.value?.id ||
+                escs.value[0]?.id ||
+                null
+            );
+        });
+        const operationReadiness = computed(() => {
+            if (writeRecoveryTargets.value.length) return "需要恢复受影响通道";
+            if (writing.value) return "串行操作中，请保持连接与供电";
+            if (writeResult.value?.ok) return "本次目标已读回校验";
+            if (safetyWriteDisabledReason.value) return safetyWriteDisabledReason.value;
+            return safetyReady.value ? "检查与备份已完成，可开始写入" : "待安全检查与备份";
+        });
+        function voiceIndexForEsc(esc) {
+            const count = presetTrackSession.value?.tracks.length || 0;
+            if (!count) return null;
+            const index = [...editableEscs.value]
+                .sort((a, b) => a.channel - b.channel)
+                .findIndex((item) => item.id === esc.id);
+            return index < 0 ? null : (voiceAssignments[esc.id] ?? index % count);
+        }
+        const assignmentRows = computed(() =>
+            [...displayedEscs.value]
+                .sort((a, b) => a.channel - b.channel)
+                .map((esc) => {
+                    const editable = esc.canWrite && isEscMelodyEditable(esc);
+                    const voiceIndex = editable ? voiceIndexForEsc(esc) : null;
+                    const result = editable
+                        ? validateMelody(outputMelodyForEsc(esc), {
+                            firmware: esc.firmwareFamily,
+                            capacity: esc.capacity || 128,
+                        })
+                        : null;
+                    return {
+                        id: esc.id,
+                        channel: esc.channel,
+                        firmware: esc.firmwareLabel,
+                        editable,
+                        voiceIndex,
+                        voiceLabel: !editable
+                            ? "未参与"
+                            : voiceIndex !== null
+                                ? `声部 ${voiceIndex + 1}`
+                                : esc.editorMelody.name,
+                        capacity: result ? `${result.encodedLength}/${esc.capacity || 128} B` : "",
+                        status: !editable
+                            ? esc.canWrite
+                                ? "音乐待处理"
+                                : firmwareDetectionLabel(esc)
+                            : !result.valid
+                                ? "编码需调整"
+                                : pendingWriteEscIds.value.has(esc.id)
+                                    ? "将写入"
+                                    : "无修改",
+                    };
+                }),
+        );
+        const completedWriteRows = computed(() => {
+            const completedIds = new Set((writeResult.value?.written || []).map((esc) => esc.id));
+            return assignmentRows.value
+                .filter((row) => completedIds.has(row.id))
+                .map((row) => ({ ...row, status: "已完成" }));
+        });
+        const safetyChannelRows = computed(() => {
+            const progressByChannel = new Map(writeProgressRows.value.map((row) => [row.channel, row]));
+            const rows = writeResult.value?.ok ? completedWriteRows.value : assignmentRows.value;
+            return rows.map((row) => {
+                const progress = progressByChannel.get(row.channel);
+                return progress
+                    ? {
+                        ...row,
+                        state: progress.state,
+                        status: writeResult.value?.ok
+                            ? row.status
+                            : ESC_OPERATION_LABELS[progress.state] || row.status,
+                        error: progress.error,
+                    }
+                    : row;
+            });
+        });
+        const assignmentWarnings = computed(() => {
+            const warnings = [];
+            const inactive = assignmentRows.value.filter((row) => !row.editable);
+            if (inactive.length)
+                warnings.push(`${inactive.map((row) => `ESC ${row.channel + 1}`).join("、")} 未参与写入。`);
+            if (showPresetTrackTabs.value && assignmentRows.value.length) {
+                const used = assignmentRows.value.filter((row) => row.editable).map((row) => row.voiceIndex);
+                const missing = presetTrackTabs.value.filter((track) => !used.includes(track.index));
+                if (missing.length)
+                    warnings.push(`缺少声部 ${missing.map((track) => track.index + 1).join("、")}，无法完整合奏。`);
+                const repeated = [...new Set(used.filter((voice, i) => used.indexOf(voice) !== i))];
+                if (repeated.length)
+                    warnings.push(`声部 ${repeated.map((voice) => voice + 1).join("、")} 将分配到多路电调。`);
+            }
+            return warnings;
+        });
+        watch(
+            () =>
+                JSON.stringify(
+                    assignmentRows.value.map(({ id, voiceIndex, editable }) => ({ id, voiceIndex, editable })),
+                ),
+            () => {
+                assignmentAccepted.value = false;
+            },
+        );
+        function assignVoice(id, voice) {
+            if (
+                locked.value ||
+                writeRecoveryTargets.value.length ||
+                !Number.isInteger(voice) ||
+                !presetTrackSession.value?.tracks[voice]
+            )
+                return;
+            voiceAssignments[id] = voice;
+            assignmentAccepted.value = false;
+            syncPresetTracksToEscs();
+        }
+        function closeSafety() {
+            if (!writing.value && !backingUp.value) safetyOpen.value = false;
+        }
+        const modalKey = computed(() =>
+            draftNameDialogOpen.value
+                ? "draft-name-title"
+                : draftDeleteTarget.value
+                    ? "draft-delete-title"
+                    : contributionDialogOpen.value
+                        ? "melody-contribution-title"
+                        : codeDialogOpen.value
+                            ? "rtttl-code-title"
+                            : syncConfirmOpen.value
+                                ? "sync-confirm-title"
+                                : restoreOpen.value
+                                    ? "restore-title"
+                                    : safetyOpen.value
+                                        ? "safety-title"
+                                        : "",
+        );
+        const modalOpen = computed(() => Boolean(modalKey.value));
+        let modalReturnFocus = null;
+        let modalReturnView = null;
+        watch(modalKey, async (key, previous) => {
+            if (key) {
+                if (!previous) {
+                    modalReturnFocus = document.activeElement;
+                    modalReturnView = workspaceView.value;
+                }
+                await nextTick();
+                document
+                    .querySelector(
+                        `.safety-overlay[aria-labelledby="${key}"] button:not([disabled]), .safety-overlay[aria-labelledby="${key}"] input:not([disabled])`,
+                    )
+                    ?.focus();
+            } else {
+                await nextTick();
+                if (modalReturnView !== workspaceView.value)
+                    document.querySelector('.melody-mode-nav [aria-pressed="true"]')?.focus();
+                else modalReturnFocus?.focus?.();
+                modalReturnFocus = null;
+                modalReturnView = null;
+            }
+        });
+        function handleDialogKeydown(event) {
+            if (!modalKey.value || event.defaultPrevented) return;
+            const overlay = document.querySelector(`.safety-overlay[aria-labelledby="${modalKey.value}"]`);
+            if (event.key === "Tab" && overlay) {
+                trapDialogFocus({
+                    currentTarget: overlay,
+                    shiftKey: event.shiftKey,
+                    preventDefault: () => event.preventDefault(),
+                });
+                return;
+            }
+            if (event.key !== "Escape" || writing.value || backingUp.value || restoring.value || restoreBackingUp.value)
+                return;
+            event.preventDefault();
+            const close = {
+                "draft-name-title": closeDraftNameDialog,
+                "draft-delete-title": closeDeleteDraftDialog,
+                "melody-contribution-title": closeContributionDialog,
+                "rtttl-code-title": closeCodeDialog,
+                "safety-title": closeSafety,
+                "restore-title": closeRestoreDialog,
+                "sync-confirm-title": cancelSyncAll,
+            };
+            close[modalKey.value]?.();
+        }
         const controller = ref(null);
         const audioContext = ref(null);
         const audioNodes = [];
@@ -1778,7 +3068,7 @@ export default defineComponent({
             }));
         });
         const codePreview = computed(() => {
-            const primary = parseCodePreview(rtttlCode.value, targetFirmware.value, 128);
+            const primary = parseCodePreview(rtttlCode.value, targetFirmware.value, targetCapacity.value);
             if (primary.error || !sharedCodeTargetPreviews.value.length) return primary;
             const errors = sharedCodeTargetPreviews.value.flatMap(({ esc, preview }) =>
                 preview.errors.map((error) => `ESC ${esc.channel + 1}：${error}`),
@@ -1837,24 +3127,28 @@ export default defineComponent({
         const allMelodyPreviewEntries = computed(() => {
             if (showPresetTrackTabs.value) {
                 return presetTrackSession.value.tracks
-                    .filter((track) => track.melody.notes.some((note) => !note.rest && note.midi !== null))
-                    .map((track) => ({ melody: track.melody, id: track.id }));
+                    .map((track, index) => ({ melody: outputTracks.value[index], id: track.id }))
+                    .filter((entry) => entry.melody.notes.some((note) => !note.rest && note.midi !== null));
             }
             return editableEscs.value
                 .filter((esc) => esc.editorMelody?.notes.some((note) => !note.rest && note.midi !== null))
-                .map((esc) => ({ melody: esc.editorMelody, id: esc.id }));
+                .map((esc) => ({ melody: outputMelodyForEsc(esc), id: esc.id, firmware: esc.firmwareFamily }));
         });
         const canPlayAllMelodies = computed(() => allMelodyPreviewEntries.value.length > 1);
+        const selectionPreviewPlayable = computed(() =>
+            showPresetTrackTabs.value ? allMelodyPreviewEntries.value.length > 0 : currentMelodyPlayable.value,
+        );
+        function toggleSelectionPreview() {
+            if (playing.value) stopPreview();
+            else if (showPresetTrackTabs.value)
+                void startAudioPreview(allMelodyPreviewEntries.value, { highlight: true, mode: "all" });
+            else playMelody();
+        }
 
         const safetyCheckItems = [
             { id: "unlocked", title: "飞控已锁定（未解锁）", description: "确认当前不会发送解锁命令。" },
-            { id: "propsRemoved", title: "桨叶已拆除", description: "四个电机和所有外露桨叶都已移除。" },
+            { id: "propsRemoved", title: "桨叶已拆除", description: "确认所有电机上的桨叶均已拆除。" },
             { id: "powerStable", title: "ESC 稳定供电", description: "使用限流电源，连接和电压保持稳定。" },
-            {
-                id: "backupReady",
-                title: "原始 EEPROM 已强制备份到本机",
-                description: "全部通道均已保存到本地历史，并下载可恢复的 JSON 文件。",
-            },
         ];
         const restoreSafetyItems = [
             { id: "unlocked", title: "飞控已锁定（未解锁）", description: "确认当前不会发送解锁命令。" },
@@ -1928,12 +3222,21 @@ export default defineComponent({
 
         function recomputeMelodyMode() {
             const melodyCapable = escs.value.filter((esc) =>
-                [ESC_MELODY_READ_STATUS.LOADED, ESC_MELODY_READ_STATUS.EMPTY, ESC_MELODY_READ_STATUS.ERROR].includes(
-                    esc.melodyReadStatus,
-                ),
+                [
+                    ESC_MELODY_READ_STATUS.LOADED,
+                    ESC_MELODY_READ_STATUS.EMPTY,
+                    ESC_MELODY_READ_STATUS.ERROR,
+                    ESC_MELODY_READ_STATUS.REPLACEMENT,
+                ].includes(esc.melodyReadStatus),
             );
             const editable = escs.value.filter(isEscMelodyEditable);
-            const allMelodiesReadable = melodyCapable.length > 0 && editable.length === melodyCapable.length;
+            const allMelodiesReadable =
+                melodyCapable.length > 0 &&
+                melodyCapable.every(
+                    (esc) =>
+                        esc.melodyReadStatus === ESC_MELODY_READ_STATUS.LOADED ||
+                        esc.melodyReadStatus === ESC_MELODY_READ_STATUS.EMPTY,
+                );
             const sameMelody =
                 editable.length > 0 &&
                 editable.slice(1).every((esc) => melodiesEqual(esc.editorMelody, editable[0].editorMelody));
@@ -1956,12 +3259,14 @@ export default defineComponent({
             if (!session || !editableEscs.value.length) return;
             const targets = [...editableEscs.value].sort((left, right) => left.channel - right.channel);
             for (const [index, esc] of targets.entries()) {
-                const track = session.tracks[index % session.tracks.length];
+                const track = session.tracks[voiceAssignments[esc.id] ?? index % session.tracks.length];
                 esc.editorMelody = cloneMelody(track.melody);
                 esc.editorHistory = cloneMelodyHistory(track.history);
                 esc.editorFuture = cloneMelodyHistory(track.future);
-                esc.editorSource = { type: "preset", id: session.presetId };
-                esc.editorDraftId = null;
+                esc.editorSource = track.draftId
+                    ? { type: "draft", id: track.draftId }
+                    : { type: "preset", id: session.presetId };
+                esc.editorDraftId = track.draftId || null;
                 esc.melodyDirty =
                     Boolean(esc.melodyReplacementReady) || !melodiesEqual(esc.editorMelody, esc.originalMelody);
             }
@@ -2006,10 +3311,17 @@ export default defineComponent({
             loadingEditor = true;
             activePresetTrackIndex.value = index;
             melody.value = cloneMelody(track.melody);
+            editorBaseline.value = cloneMelody(melody.value);
             history.value = cloneMelodyHistory(track.history);
             future.value = cloneMelodyHistory(track.future);
-            setActiveLibrarySource({ type: "preset", id: session.presetId });
-            currentDraftId.value = null;
+            setActiveLibrarySource(
+                track.draftId ? { type: "draft", id: track.draftId } : { type: "preset", id: session.presetId },
+            );
+            currentDraftId.value = track.draftId || null;
+            if (track.draftId)
+                lastDraftSavedAt.value = new Date(
+                    drafts.value.find((draft) => draft.id === track.draftId)?.updatedAt || Date.now(),
+                );
             selectedNoteId.value = melody.value.notes[0]?.id || null;
             loadingEditor = false;
             void nextTick(scrollMelodyIntoView);
@@ -2018,12 +3330,13 @@ export default defineComponent({
 
         function selectPresetTrack(index) {
             if (index === activePresetTrackIndex.value) return;
-            flushCurrentDraft();
+            if (!flushCurrentDraft()) return;
             syncActivePresetTrackState();
             loadPresetTrack(index);
         }
 
         function clearPresetTrackSession() {
+            Object.keys(voiceAssignments).forEach((key) => delete voiceAssignments[key]);
             presetTrackSession.value = null;
             activePresetTrackIndex.value = 0;
         }
@@ -2035,6 +3348,7 @@ export default defineComponent({
             loadingEditor = true;
             selectedEscId.value = esc.id;
             melody.value = cloneMelody(esc.editorMelody);
+            editorBaseline.value = cloneMelody(melody.value);
             history.value = (esc.editorHistory || []).map(cloneMelody);
             future.value = (esc.editorFuture || []).map(cloneMelody);
             setActiveLibrarySource(esc.editorSource);
@@ -2061,6 +3375,11 @@ export default defineComponent({
             }
             if (!loadEscEditor(esc)) {
                 showMessage(`第 ${esc.channel + 1} 路当前音乐无法编辑，请先明确使用当前卷帘替换。`, "error");
+            } else if (esc.melodyReadStatus === ESC_MELODY_READ_STATUS.ERROR) {
+                showMessage(
+                    `第 ${esc.channel + 1} 路原开机音乐损坏（${esc.melodyReadError}），已置为待替换草稿。`,
+                    "info",
+                );
             }
         }
 
@@ -2080,6 +3399,24 @@ export default defineComponent({
             showMessage(`第 ${esc.channel + 1} 路将使用当前卷帘替换无法解析的原音乐。`, "info");
         }
 
+        function changeArrangement(event) {
+            const next = event.target.value;
+            event.target.value = arrangementMode.value;
+            if (locked.value || next === arrangementMode.value) return;
+            if (showPresetTrackTabs.value) {
+                if (!stashEditorBeforeSwitch({ force: true })) return;
+                if (next === "sync") {
+                    syncConfirmOpen.value = true;
+                    return;
+                }
+                if (next === "independent" && editableEscs.value.length) {
+                    syncEditorState();
+                    clearPresetTrackSession();
+                    syncAll.value = false;
+                    loadEscEditor(selectedEsc.value || editableEscs.value[0]);
+                }
+            } else handleSyncModeChange({ target: { checked: next === "sync" } });
+        }
         function handleSyncModeChange(event) {
             const wantsSync = event.target.checked;
             if (wantsSync === syncAll.value) return;
@@ -2114,6 +3451,7 @@ export default defineComponent({
         function confirmSyncAll() {
             syncEditorState();
             const shared = cloneMelody(melody.value);
+            clearPresetTrackSession();
             for (const esc of writableEscs.value) {
                 esc.editorMelody = cloneMelody(shared);
                 esc.editorHistory = [];
@@ -2151,6 +3489,19 @@ export default defineComponent({
             return labels[esc.melodyReadStatus] || "未读取";
         }
 
+        function firmwareDetectionLabel(esc) {
+            const labels = {
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.PENDING]: "未识别",
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFYING]: "布局验证中",
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED]: "布局未支持",
+                [ESC_FIRMWARE_CONFIRMATION_STATUS.FAILED]: "识别失败",
+            };
+            if (esc?.confirmationStatus === ESC_FIRMWARE_CONFIRMATION_STATUS.VERIFIED) {
+                return esc.canWrite ? "已识别可读写" : "已识别 · 受限";
+            }
+            return labels[esc?.confirmationStatus] || "未识别";
+        }
+
         watch(
             melody,
             () => {
@@ -2173,7 +3524,7 @@ export default defineComponent({
             if (!isConnected) {
                 resetRestoreState();
                 safetyOpen.value = false;
-                invalidateMelodyBackupGate();
+                invalidateLocalEscBackup();
             }
         });
 
@@ -2208,17 +3559,20 @@ export default defineComponent({
         }
 
         function loadCurrentMelody() {
-            if (!currentMelodySource.value) return;
-            flushCurrentDraft();
+            if (!currentMelodySource.value || !stashEditorBeforeSwitch()) return;
             clearPresetTrackSession();
             pushHistory();
             currentDraftId.value = null;
             setActiveLibrarySource({ type: "current" });
             applyMelody(currentMelodySource.value);
+            editorBaseline.value = cloneMelody(melody.value);
         }
 
-        function loadPreset(preset) {
-            flushCurrentDraft();
+        function loadPreset(preset, { preserveEdits = true, draftIds = [] } = {}) {
+            if (preserveEdits && !stashEditorBeforeSwitch()) return false;
+            recentIds.value = [preset.id, ...recentIds.value.filter((id) => id !== preset.id)].slice(0, 12);
+            persistLibrary();
+            offlineSelection.value = !editableEscs.value.length;
             currentDraftId.value = null;
             const source = { type: "preset", id: preset.id };
             const tracks = preset.trackMelodies?.length ? preset.trackMelodies : [preset];
@@ -2226,6 +3580,7 @@ export default defineComponent({
             if (tracks.length > 1) {
                 stopPreview();
                 syncEditorState();
+                Object.keys(voiceAssignments).forEach((key) => delete voiceAssignments[key]);
                 presetTrackSession.value = {
                     presetId: preset.id,
                     name: preset.name,
@@ -2233,6 +3588,7 @@ export default defineComponent({
                         const trackMelody = cloneMelody(track);
                         return {
                             id: `${preset.id}-track-${index + 1}`,
+                            draftId: draftIds[index] || null,
                             originalMelody: cloneMelody(trackMelody),
                             melody: trackMelody,
                             history: [],
@@ -2251,7 +3607,7 @@ export default defineComponent({
                         : `已加载“${preset.name}”的 ${tracks.length} 个声部，可通过顶部标签逐路查看。`,
                     "info",
                 );
-                return;
+                return true;
             }
 
             clearPresetTrackSession();
@@ -2279,23 +3635,27 @@ export default defineComponent({
             future.value = [];
             setActiveLibrarySource(source);
             applyMelody(shared);
+            editorBaseline.value = cloneMelody(melody.value);
             if (writableEscs.value.length) {
                 showMessage(
                     `已加载“${preset.name}”，将以相同旋律覆盖 ${writableEscs.value.length} 路可写电调。`,
                     "info",
                 );
             }
+            return true;
         }
 
-        function loadDraft(draft) {
+        function loadDraft(draft, { preserveEdits = true } = {}) {
             if (currentDraftId.value === draft.id && !draftDirty.value) return;
-            flushCurrentDraft();
+            if (preserveEdits && !stashEditorBeforeSwitch()) return;
+            offlineSelection.value = !editableEscs.value.length;
             clearPresetTrackSession();
             currentDraftId.value = draft.id;
             setActiveLibrarySource({ type: "draft", id: draft.id });
             history.value = [];
             future.value = [];
             applyMelody(draft.melody);
+            editorBaseline.value = cloneMelody(melody.value);
             lastDraftSavedAt.value = draft.updatedAt ? new Date(draft.updatedAt) : null;
             draftMenuId.value = null;
         }
@@ -2396,13 +3756,14 @@ export default defineComponent({
                     draftNameMode.value === "create"
                         ? { name, bpm: 120, key: "C", waitMs: 0, notes: [] }
                         : { ...cloneMelody(melody.value), name };
-                flushCurrentDraft();
+                if (!stashEditorBeforeSwitch()) return;
                 clearPresetTrackSession();
                 const draft = createMelodyDraft({ name, melody: source });
                 drafts.value = loadMelodyDrafts();
                 currentDraftId.value = draft.id;
                 setActiveLibrarySource({ type: "draft", id: draft.id });
                 if (draftNameMode.value === "create") {
+                    workspaceView.value = "editor";
                     history.value = [];
                     future.value = [];
                 }
@@ -2598,31 +3959,101 @@ export default defineComponent({
             selectedNoteId.value = note.id;
         }
 
+        function fitTimeline() {
+            zoomPixels.value = Math.max(
+                8,
+                Math.min(160, ((pianoRollWrap.value?.clientWidth || 640) - 32) / timelineBeats.value),
+            );
+        }
+        function locateSelectedNote() {
+            if (!selectedNote.value || !pianoRollWrap.value) return;
+            const wrap = pianoRollWrap.value;
+            wrap.scrollLeft = Math.max(0, selectedNote.value.start * zoomPixels.value - wrap.clientWidth / 3);
+            wrap.scrollTop = Math.max(
+                0,
+                (pianoMaxMidi.value - (selectedNote.value.midi ?? 60) + 0.5) * PIANO_ROLL_ROW_HEIGHT -
+                    wrap.clientHeight / 2,
+            );
+        }
+        function selectNoteFromList(note) {
+            selectedNoteId.value = note.id;
+            locateSelectedNote();
+            void nextTick(() => document.querySelector('.esc-melody-note[tabindex="0"]')?.focus());
+        }
+        function editNoteFromList(note, patch) {
+            selectedNoteId.value = note.id;
+            updateSelected(patch);
+        }
+        function onNoteKeydown(event, note) {
+            if (locked.value) return;
+            const ordered = [...melody.value.notes].sort((a, b) => a.start - b.start);
+            selectedNoteId.value = note.id;
+            if (event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+                event.preventDefault();
+                const index = ordered.findIndex((item) => item.id === note.id);
+                selectNoteFromList(
+                    ordered[Math.max(0, Math.min(ordered.length - 1, index + (event.key === "ArrowRight" ? 1 : -1)))],
+                );
+                return;
+            }
+            const patches = {
+                ArrowLeft: { start: Math.max(0, note.start - snapStep.value) },
+                ArrowRight: { start: note.start + snapStep.value },
+                ArrowUp: { midi: Math.min(pianoMaxMidi.value, (note.midi ?? 60) + 1) },
+                ArrowDown: { midi: Math.max(ESC_MELODY_MIN_MIDI, (note.midi ?? 60) - 1) },
+            };
+            if (patches[event.key]) {
+                event.preventDefault();
+                updateSelected(patches[event.key]);
+                locateSelectedNote();
+            } else if (["Delete", "Backspace"].includes(event.key)) {
+                event.preventDefault();
+                removeNote(note.id);
+                void nextTick(() => document.querySelector('.esc-melody-note[tabindex="0"]')?.focus());
+            } else if (["Enter", " "].includes(event.key)) event.preventDefault();
+        }
         function addNoteAtPointer(event) {
+            if (editorTool.value === "select" || locked.value) return;
             if (event.target !== event.currentTarget && !event.target.classList.contains("roll-grid")) return;
             const rect = event.currentTarget.getBoundingClientRect();
             const start = Math.max(
                 0,
-                Math.floor(((event.clientX - rect.left) / rect.width) * timelineBeats.value * 8) / 8,
+                Math.floor((((event.clientX - rect.left) / rect.width) * timelineBeats.value) / snapStep.value) *
+                    snapStep.value,
             );
             const row = Math.max(
                 0,
-                Math.min(noteRows.length - 1, Math.floor(((event.clientY - rect.top) / rect.height) * noteRows.length)),
+                Math.min(
+                    noteRows.value.length - 1,
+                    Math.floor(((event.clientY - rect.top) / rect.height) * noteRows.value.length),
+                ),
             );
             clearActiveLibrarySource();
             pushHistory();
-            const note = createNote({ midi: noteRows[row], start, duration: 1, rest: false });
+            const note = createNote({
+                midi: noteRows.value[row],
+                start,
+                duration: 1,
+                rest: editorTool.value === "rest",
+            });
             melody.value.notes.push(note);
             melody.value = normalizeMelody(melody.value);
             selectedNoteId.value = note.id;
         }
 
         function startNoteDrag(event, note) {
+            if (locked.value) return;
             selectedNoteId.value = note.id;
-            clearActiveLibrarySource();
-            pushHistory();
+            event.currentTarget.focus();
             const rect = event.currentTarget.parentElement.getBoundingClientRect();
-            dragState = { noteId: note.id, startX: event.clientX, startY: event.clientY, rect, initial: { ...note } };
+            dragState = {
+                changed: false,
+                noteId: note.id,
+                startX: event.clientX,
+                startY: event.clientY,
+                rect,
+                initial: { ...note },
+            };
             window.addEventListener("pointermove", onNoteDrag);
             window.addEventListener("pointerup", stopNoteDrag, { once: true });
         }
@@ -2632,12 +4063,23 @@ export default defineComponent({
             const note = melody.value.notes.find((item) => item.id === dragState.noteId);
             if (!note) return;
             const deltaBeat = ((event.clientX - dragState.startX) / dragState.rect.width) * timelineBeats.value;
-            const deltaRow = Math.round(((event.clientY - dragState.startY) / dragState.rect.height) * noteRows.length);
-            note.start = Math.max(0, Math.round((dragState.initial.start + deltaBeat) * 8) / 8);
+            const deltaRow = Math.round(
+                ((event.clientY - dragState.startY) / dragState.rect.height) * noteRows.value.length,
+            );
+            const start = Math.max(
+                0,
+                Math.round((dragState.initial.start + deltaBeat) / snapStep.value) * snapStep.value,
+            );
+            if (!dragState.changed && (start !== note.start || deltaRow !== 0)) {
+                clearActiveLibrarySource();
+                pushHistory();
+                dragState.changed = true;
+            }
+            note.start = start;
             if (!note.rest) {
                 note.midi = Math.max(
                     ESC_MELODY_MIN_MIDI,
-                    Math.min(ESC_MELODY_MAX_MIDI, dragState.initial.midi - deltaRow),
+                    Math.min(pianoMaxMidi.value, dragState.initial.midi - deltaRow),
                 );
             }
         }
@@ -2668,10 +4110,10 @@ export default defineComponent({
         }
 
         function noteStyle(note) {
-            const top = ((ESC_MELODY_MAX_MIDI - (note.midi ?? 60) + 0.5) / noteRows.length) * 100;
+            const top = ((pianoMaxMidi.value - (note.midi ?? 60) + 0.5) / noteRows.value.length) * 100;
             return {
                 left: `${(note.start / timelineBeats.value) * 100}%`,
-                width: `${Math.max(3, (note.duration / timelineBeats.value) * 100)}%`,
+                width: `${(note.duration / timelineBeats.value) * 100}%`,
                 top: `${Math.max(1, Math.min(99, top))}%`,
             };
         }
@@ -2685,7 +4127,7 @@ export default defineComponent({
             const highest = Math.max(...pitches);
             const lowest = Math.min(...pitches);
             const centreMidi = (highest + lowest) / 2;
-            const centreOffset = (ESC_MELODY_MAX_MIDI - centreMidi + 0.5) * PIANO_ROLL_ROW_HEIGHT;
+            const centreOffset = (pianoMaxMidi.value - centreMidi + 0.5) * PIANO_ROLL_ROW_HEIGHT;
             const maxScroll = Math.max(0, wrap.scrollHeight - wrap.clientHeight);
             wrap.scrollTop = Math.max(0, Math.min(maxScroll, centreOffset - wrap.clientHeight / 2));
         }
@@ -2731,6 +4173,7 @@ export default defineComponent({
 
         function createCodeSession(melodyValue, historyValue, futureValue, sourceValue, draftId) {
             return {
+                baselineCode: melodyToRtttl(melodyValue),
                 baselineMelody: cloneMelody(melodyValue),
                 baselineHistory: cloneMelodyHistory(historyValue),
                 baselineFuture: cloneMelodyHistory(futureValue),
@@ -2796,10 +4239,20 @@ export default defineComponent({
             if (showPresetTrackTabs.value || (!syncAll.value && editableEscs.value.length > 1)) {
                 initializeMultiCodeEditor();
             } else initializeSingleCodeEditor();
+            codeDiscardConfirm.value = false;
+            codeBaseline = JSON.stringify([rtttlCode.value, multiCodeEntries.value.map((entry) => entry.code)]);
             codeDialogOpen.value = true;
         }
 
-        function closeCodeDialog() {
+        function closeCodeDialog({ discard = false } = {}) {
+            if (
+                !discard &&
+                JSON.stringify([rtttlCode.value, multiCodeEntries.value.map((entry) => entry.code)]) !== codeBaseline
+            ) {
+                codeDiscardConfirm.value = true;
+                return;
+            }
+            codeDiscardConfirm.value = false;
             stopPreview();
             codeDialogOpen.value = false;
             multiCodeEntries.value = [];
@@ -2855,6 +4308,7 @@ export default defineComponent({
             const imported = codePreview.value.melody;
             const session = singleCodeSession;
             if (!imported || !session) return false;
+            if (rtttlCode.value === session.baselineCode) return true;
             if (codeMelodiesEqual(imported, session.baselineMelody)) return true;
 
             history.value = [...cloneMelodyHistory(session.baselineHistory), cloneMelody(session.baselineMelody)];
@@ -2871,6 +4325,7 @@ export default defineComponent({
                 const track = presetTrackSession.value?.tracks[item.entry.trackIndex];
                 const session = item.entry.session;
                 if (!track || !session || !item.preview.melody) return false;
+                if (item.entry.code === session.baselineCode) continue;
                 if (codeMelodiesEqual(item.preview.melody, session.baselineMelody)) continue;
 
                 track.history = [...cloneMelodyHistory(session.baselineHistory), cloneMelody(session.baselineMelody)];
@@ -2891,6 +4346,7 @@ export default defineComponent({
                 const esc = item.esc;
                 const session = item.entry.session;
                 if (!esc || !session || !item.preview.melody) return false;
+                if (item.entry.code === session.baselineCode) continue;
                 if (codeMelodiesEqual(item.preview.melody, session.baselineMelody)) continue;
 
                 esc.editorHistory = [
@@ -2920,7 +4376,7 @@ export default defineComponent({
             } else {
                 saved = saveSingleCode();
             }
-            if (saved) closeCodeDialog();
+            if (saved) closeCodeDialog({ discard: true });
         }
 
         function mirrorPresetTrackToRoll(track) {
@@ -2961,7 +4417,7 @@ export default defineComponent({
                 stopPreview();
                 return;
             }
-            startAudioPreview([{ melody: melody.value, id: null }], { highlight: true, mode: "single" });
+            startAudioPreview([{ melody: effectiveMelody.value, id: null }], { highlight: true, mode: "single" });
         }
 
         function playAllMelodies() {
@@ -3005,6 +4461,7 @@ export default defineComponent({
 
         async function startAudioPreview(entries, { highlight = false, mode = "single" } = {}) {
             stopPreview();
+            const request = previewRequest;
             const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
             if (!AudioContext) {
                 showMessage("当前浏览器不支持 Web Audio 试听。", "error");
@@ -3013,11 +4470,26 @@ export default defineComponent({
             audioContext.value ||= new AudioContext();
             try {
                 const context = await ensureAudioContextRunning(audioContext.value);
+                if (request !== previewRequest) return false;
+                previewOutput.value = context.createGain();
+                previewOutput.value.gain.value = previewMuted.value ? 0 : previewVolume.value / 100;
+                previewOutput.value.connect(context.destination);
                 const startAt = context.currentTime + 0.04;
                 const channelGain = previewGainForChannelCount(entries.length);
                 let maxDuration = 0;
                 for (const entry of entries) {
-                    const previewMelody = normalizeMelody(entry.melody);
+                    let previewMelody = normalizeMelody(entry.melody);
+                    if ((entry.firmware || targetFirmware.value) === "blheli32") {
+                        const target = validateMelody(previewMelody, { firmware: "blheli32" });
+                        if (target.valid) {
+                            const sourceTones = previewMelody.notes.filter((note) => !note.rest);
+                            previewMelody = normalizeMelody(target.encoded.playbackMelody);
+                            let toneIndex = 0;
+                            for (const note of previewMelody.notes) {
+                                if (!note.rest) note.id = sourceTones[toneIndex++]?.id || note.id;
+                            }
+                        }
+                    }
                     const beatSeconds = 60 / previewMelody.bpm;
                     const waitSeconds = previewMelody.waitMs / 1000;
                     maxDuration = Math.max(maxDuration, melodyDurationMs(previewMelody));
@@ -3028,6 +4500,7 @@ export default defineComponent({
                             start: startAt + waitSeconds + note.start * beatSeconds,
                             duration: note.duration * beatSeconds,
                             gain: channelGain,
+                            destination: previewOutput.value,
                         });
                         audioNodes.push(tone.oscillator);
                         if (highlight) {
@@ -3042,10 +4515,23 @@ export default defineComponent({
                 activeCodePreviewIds.value = entries.map((entry) => entry.id).filter(Boolean);
                 previewMode.value = mode;
                 playing.value = true;
+                previewShowsTimeline.value = highlight;
+                const clockStart = Date.now() + 40;
+                previewClock = window.setInterval(() => {
+                    previewElapsedMs.value = Math.max(0, Date.now() - clockStart);
+                    const wrap = pianoRollWrap.value;
+                    if (highlight && autoFollow.value && wrap) {
+                        const x = Math.max(0, previewBeat.value) * zoomPixels.value;
+                        if (x < wrap.scrollLeft || x > wrap.scrollLeft + wrap.clientWidth - 80)
+                            wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 3);
+                    }
+                }, 40);
                 previewTimer = window.setTimeout(() => {
                     if (playing.value) stopPreview();
                 }, maxDuration + 160);
+                return true;
             } catch (error) {
+                if (request !== previewRequest) return false;
                 stopPreview();
                 showMessage(error?.message || "无法启动浏览器音频输出。", "error");
             }
@@ -3069,6 +4555,14 @@ export default defineComponent({
         }
 
         function stopPreview() {
+            auditionPresetId.value = null;
+            previewRequest += 1;
+            clearInterval(previewClock);
+            previewClock = null;
+            previewElapsedMs.value = 0;
+            previewShowsTimeline.value = false;
+            previewOutput.value?.disconnect?.();
+            previewOutput.value = null;
             if (previewTimer !== null) {
                 window.clearTimeout(previewTimer);
                 previewTimer = null;
@@ -3101,9 +4595,8 @@ export default defineComponent({
             ownsSerialLock = false;
         }
 
-        function invalidateMelodyBackupGate() {
+        function invalidateLocalEscBackup() {
             for (const esc of writableEscs.value) esc.backedUp = false;
-            safetyChecks.backupReady = false;
             activeBackup.value = null;
             lastBackupFilename.value = "";
         }
@@ -3128,17 +4621,26 @@ export default defineComponent({
             selectedRestoreChannels.value = [];
             restoreResult.value = null;
             restoreProgress.value = null;
+            restoreProgressRows.value = [];
             resetRestoreSafety();
             if (restoreFileInput.value) restoreFileInput.value.value = "";
         }
 
         function chooseRestoreFile() {
+            if (restoreResult.value?.ok === false && restoreRollbackCount.value) {
+                restoreOpen.value = true;
+                return;
+            }
             if (!connected.value || !escs.value.length || locked.value) return;
             restoreFileInput.value?.click();
         }
 
         function closeRestoreDialog() {
             if (restoring.value || restoreBackingUp.value) return;
+            if (restoreResult.value?.ok === false && restoreRollbackCount.value) {
+                restoreOpen.value = false;
+                return;
+            }
             resetRestoreState();
         }
 
@@ -3227,6 +4729,45 @@ export default defineComponent({
         }
 
         function handleControllerProgress(progress) {
+            if (
+                restoring.value &&
+                [
+                    "restore",
+                    "restoreVerify",
+                    "restored",
+                    "restoreFailed",
+                    "recover",
+                    "recoverVerify",
+                    "recovered",
+                    "recoverFailed",
+                ].includes(progress?.phase)
+            ) {
+                const row = restoreProgressRows.value.find((item) => item.channel === progress.channel);
+                if (row) {
+                    row.state = progress.phase;
+                    row.error = progress.error || "";
+                }
+            }
+            if (
+                [
+                    "write",
+                    "verify",
+                    "written",
+                    "failed",
+                    "recover",
+                    "recoverVerify",
+                    "recovered",
+                    "recoverFailed",
+                ].includes(progress?.phase)
+            ) {
+                const row = writing.value
+                    ? writeProgressRows.value.find((item) => item.channel === progress.channel)
+                    : null;
+                if (row) {
+                    row.state = progress.phase;
+                    row.error = progress.error || "";
+                }
+            }
             if (progress?.phase === "restore" || progress?.phase === "recover") {
                 restoreProgress.value = progress;
             }
@@ -3246,12 +4787,20 @@ export default defineComponent({
             syncEditorState();
             restoring.value = true;
             restoreResult.value = null;
+            restoreProgressRows.value = currentTargets.map((esc) => ({ channel: esc.channel, state: "pending" }));
             restoreProgress.value = { phase: "restore", index: 0, total: targets.length };
             try {
                 acquireSerialLock();
                 restoreResult.value = await controller.value.restoreBackup(targets);
+                for (const row of restoreProgressRows.value) {
+                    if (restoreResult.value.restored.some((esc) => esc.channel === row.channel)) row.state = "restored";
+                    else if (restoreResult.value.failed?.channel === row.channel) {
+                        row.state = "restoreFailed";
+                        row.error = restoreResult.value.error?.message;
+                    } else row.state = "skipped";
+                }
                 refreshEditorsAfterRestore(restoreResult.value.restored);
-                invalidateMelodyBackupGate();
+                invalidateLocalEscBackup();
                 resetRestoreSafety();
                 if (restoreResult.value.ok) {
                     showMessage(`已恢复并校验 ${restoreResult.value.restored.length} 路完整 EEPROM。`, "success");
@@ -3259,7 +4808,7 @@ export default defineComponent({
                     showMessage(restoreResult.value.error?.message || "EEPROM 恢复失败，后续通道已停止。", "error");
                 }
             } catch (error) {
-                invalidateMelodyBackupGate();
+                invalidateLocalEscBackup();
                 resetRestoreSafety();
                 restoreResult.value = { ok: false, restored: [], rollback: [], failed: null, error };
                 showMessage(error?.message || "EEPROM 恢复失败，串口已恢复普通 MSP。", "error");
@@ -3278,7 +4827,7 @@ export default defineComponent({
                 acquireSerialLock();
                 const recovered = await controller.value.recoverEscs(targets);
                 refreshEditorsAfterRestore(recovered);
-                invalidateMelodyBackupGate();
+                invalidateLocalEscBackup();
                 restoreResult.value = { ok: true, restored: recovered, rollback: [], rolledBack: true };
                 showMessage("已回滚到本次 EEPROM 恢复开始前的当前状态。", "success");
             } catch (error) {
@@ -3290,12 +4839,20 @@ export default defineComponent({
         }
 
         async function scanEscs() {
-            if (!connected.value || scanning.value) return;
+            if (!connected.value || scanning.value || locked.value) return;
+            if (
+                writeRecoveryTargets.value.length ||
+                (restoreResult.value?.ok === false && restoreRollbackCount.value)
+            ) {
+                showMessage("请先恢复受影响通道，原始备份必须保留。", "error");
+                return;
+            }
+            writeProgressRows.value = [];
+            if (!stashEditorBeforeSwitch({ force: offlineSelection.value })) return;
             stopPreview();
             scanning.value = true;
             writeResult.value = null;
             safetyOpen.value = false;
-            safetyChecks.backupReady = false;
             activeBackup.value = null;
             lastBackupFilename.value = "";
             escs.value = [];
@@ -3305,15 +4862,18 @@ export default defineComponent({
             melodyConflict.value = false;
             syncConfirmOpen.value = false;
             resetRestoreState();
-            controller.value ||= new EscFourWayController({ onProgress: handleControllerProgress });
+            controller.value ||= new EscFourWayController({
+                onProgress: handleControllerProgress,
+                probeAlive: true,
+                passthroughExitDelay: 600,
+            });
             try {
                 acquireSerialLock();
                 escs.value = await controller.value.scan();
-                const melodyCount = initializeEscEditorState(escs.value);
+                initializeEscEditorState(escs.value);
                 if (identifiedEscCount.value) {
-                    const conflictCopy = melodyConflict.value ? "，检测到多路音乐不同，已切换为分路编辑" : "";
                     showMessage(
-                        `扫描完成：识别到 ${identifiedEscCount.value} 路电调，读取 ${melodyCount} 路当前音乐${conflictCopy}。`,
+                        `扫描完成：识别到 ${identifiedEscCount.value} 路电调，${writableEscs.value.length} 路支持写入；已读取支持布局的当前音乐。`,
                         "success",
                     );
                 } else {
@@ -3323,6 +4883,10 @@ export default defineComponent({
                     );
                 }
             } catch (error) {
+                if (error.escs?.length) {
+                    escs.value = error.escs;
+                    initializeEscEditorState(escs.value);
+                }
                 showMessage(error?.message || "4-way 扫描失败，串口已恢复普通 MSP。", "error");
             } finally {
                 releaseSerialLock();
@@ -3331,7 +4895,16 @@ export default defineComponent({
         }
 
         function openSafety() {
+            if (restoreResult.value?.ok === false && restoreRollbackCount.value) {
+                restoreOpen.value = true;
+                return;
+            }
+            if (writeRecoveryTargets.value.length) {
+                safetyOpen.value = true;
+                return;
+            }
             writeResult.value = null;
+            writeProgressRows.value = [];
             if (!escs.value.length) {
                 showMessage("请先扫描电调后再安全写入。", "error");
                 return;
@@ -3351,7 +4924,6 @@ export default defineComponent({
         async function backupAll() {
             if (!controller.value) return;
             backingUp.value = true;
-            safetyChecks.backupReady = false;
             activeBackup.value = null;
             lastBackupFilename.value = "";
             try {
@@ -3364,13 +4936,11 @@ export default defineComponent({
                 if (!persisted.valid) throw new Error(persisted.errors[0]);
                 activeBackup.value = persisted.backup;
                 lastBackupFilename.value = filename;
-                safetyChecks.backupReady = true;
                 showMessage(`原始 EEPROM 已保存到本地历史并下载：${filename}`, "success");
             } catch (error) {
-                safetyChecks.backupReady = false;
                 activeBackup.value = null;
                 lastBackupFilename.value = "";
-                showMessage(error?.message || "本地备份失败，写入已禁用。", "error");
+                showMessage(error?.message || "本地备份失败，仍可继续写入。", "error");
             } finally {
                 releaseSerialLock();
                 backingUp.value = false;
@@ -3378,30 +4948,43 @@ export default defineComponent({
         }
 
         async function performWrite() {
-            if (!controller.value) return;
+            if (!controller.value || writing.value || writeResult.value?.ok || writeRecoveryTargets.value.length)
+                return;
             syncEditorState();
             const targets = [...pendingWriteEscs.value];
             if (!targets.length || !writeValidation.value.valid) {
                 showMessage(writeValidation.value.errors[0] || "当前没有可写入的修改。", "error");
                 return;
             }
-            const persisted = getPersistedEscBackupStatus(activeBackup.value?.id, writableEscs.value);
-            if (!persisted.valid) {
-                safetyChecks.backupReady = false;
-                activeBackup.value = null;
-                lastBackupFilename.value = "";
-                showMessage(`本地 EEPROM 备份校验失败：${persisted.errors[0]} 请重新备份。`, "error");
-                return;
-            }
-            activeBackup.value = persisted.backup;
             if (!safetyReady.value) return;
             writing.value = true;
+            writeProgressRows.value = targets.map((esc) => ({ channel: esc.channel, state: "pending" }));
             try {
                 acquireSerialLock();
-                writeResult.value = await controller.value.writeMelody(targets, (esc) => esc.editorMelody);
+                const output = new Map(targets.map((esc) => [esc.id, cloneMelody(outputMelodyForEsc(esc))]));
+                const writtenVoices = presetTrackSession.value
+                    ? {
+                        session: presetTrackSession.value,
+                        tracks: outputTracks.value.map(cloneMelody),
+                        byEsc: new Map(targets.map((esc) => [esc.id, voiceIndexForEsc(esc)])),
+                    }
+                    : null;
+                writeResult.value = await controller.value.writeMelody(targets, (esc) => output.get(esc.id));
+                for (const row of writeProgressRows.value) {
+                    if (writeResult.value.written.some((esc) => esc.channel === row.channel)) row.state = "written";
+                    else if (writeResult.value.failed?.channel === row.channel) {
+                        row.state = "failed";
+                        row.error = writeResult.value.error?.message;
+                    } else row.state = "skipped";
+                }
                 if (writeResult.value.ok) {
                     for (const esc of writeResult.value.written) {
-                        esc.currentMelody = cloneMelody(esc.editorMelody);
+                        if (esc.firmwareFamily !== "blheli32" || !esc.currentMelody)
+                            esc.currentMelody = cloneMelody(output.get(esc.id));
+                        if (writtenVoices && esc.firmwareFamily === "blheli32") {
+                            writtenVoices.tracks[writtenVoices.byEsc.get(esc.id)] = cloneMelody(esc.currentMelody);
+                        }
+                        esc.editorMelody = cloneMelody(esc.currentMelody);
                         esc.originalMelody = cloneMelody(esc.editorMelody);
                         esc.editorSource = { type: "current" };
                         esc.editorDraftId = null;
@@ -3409,20 +4992,58 @@ export default defineComponent({
                         esc.melodyDirty = false;
                         esc.melodyReadStatus = ESC_MELODY_READ_STATUS.LOADED;
                     }
+                    if (writtenVoices && presetTrackSession.value === writtenVoices.session) {
+                        writtenVoices.session.tracks.forEach((track, index) => {
+                            track.melody = cloneMelody(writtenVoices.tracks[index]);
+                            track.originalMelody = cloneMelody(track.melody);
+                            track.history = [];
+                            track.future = [];
+                            track.draftId = null;
+                        });
+                        loadingEditor = true;
+                        try {
+                            melody.value = cloneMelody(activePresetTrack().melody);
+                            editorBaseline.value = cloneMelody(melody.value);
+                            history.value = [];
+                            future.value = [];
+                        } finally {
+                            loadingEditor = false;
+                        }
+                        syncPresetTracksToEscs();
+                    }
                     if (writeResult.value.written.some((esc) => esc.id === selectedEscId.value)) {
                         currentDraftId.value = null;
                         setActiveLibrarySource({ type: "current" });
+                        if (!writtenVoices && selectedEsc.value?.firmwareFamily === "blheli32") {
+                            loadingEditor = true;
+                            melody.value = cloneMelody(selectedEsc.value.editorMelody);
+                            editorBaseline.value = cloneMelody(melody.value);
+                            loadingEditor = false;
+                        }
                     }
                     for (const esc of writableEscs.value) esc.backedUp = false;
-                    safetyChecks.backupReady = false;
                     activeBackup.value = null;
                     lastBackupFilename.value = "";
                     showMessage(`已串行写入并校验 ${writeResult.value.written.length} 路电调。`, "success");
-                    safetyOpen.value = false;
+                    // Keep verified channel results visible until the user closes the task.
                 } else {
                     showMessage(writeResult.value.error?.message || "写入失败，已停止后续通道。", "error");
                 }
             } catch (error) {
+                const touched = targets.filter((esc) => esc.writeTouched);
+                writeResult.value = {
+                    ok: false,
+                    error,
+                    written: targets.filter((esc) => esc.verified),
+                    rollback: touched,
+                    failed: targets.find((esc) => esc.writeTouched && !esc.verified),
+                };
+                for (const row of writeProgressRows.value)
+                    if (row.state === "pending") row.state = "skipped";
+                    else if (!["written", "recovered"].includes(row.state)) {
+                        row.state = "failed";
+                        row.error = error.message;
+                    }
                 showMessage(error?.message || "写入失败，串口已恢复普通 MSP。", "error");
             } finally {
                 releaseSerialLock();
@@ -3431,12 +5052,20 @@ export default defineComponent({
         }
 
         async function recoverWritten() {
-            if (!writeResult.value?.written?.length || !controller.value) return;
+            const targets = [...writeRecoveryTargets.value];
+            if (!targets.length || !controller.value) return;
             writing.value = true;
             try {
                 acquireSerialLock();
-                await controller.value.recoverEscs(writeResult.value.written);
-                showMessage("已恢复本次写入前保存的 EEPROM。", "success");
+                const recovered = await controller.value.recoverEscs(targets);
+                for (const row of writeProgressRows.value)
+                    if (recovered.some((esc) => esc.channel === row.channel)) {
+                        row.state = "recovered";
+                        row.error = "";
+                    }
+                refreshEditorsAfterRestore(recovered);
+                invalidateLocalEscBackup();
+                showMessage(`已恢复并校验 ${targets.length} 路受影响电调的原始 EEPROM。`, "success");
                 writeResult.value = null;
             } catch (error) {
                 showMessage(error?.message || "恢复失败，请保持供电并重试。", "error");
@@ -3446,12 +5075,29 @@ export default defineComponent({
             }
         }
 
+        function handleBeforeUnload(event) {
+            const unsafeToLeave =
+                writing.value ||
+                restoring.value ||
+                writeRecoveryTargets.value.length > 0 ||
+                (restoreResult.value?.ok === false && restoreRollbackCount.value > 0) ||
+                escs.value.some((esc) => esc.writeTouched || esc.restoreTouched);
+            if (unsafeToLeave || !stashEditorBeforeSwitch()) {
+                event.preventDefault();
+                event.returnValue = "";
+            }
+        }
+
         onMounted(() => {
+            window.addEventListener("beforeunload", handleBeforeUnload);
+            document.addEventListener("keydown", handleDialogKeydown);
             GUI.content_ready();
             void nextTick(scrollMelodyIntoView);
         });
         onBeforeUnmount(() => {
-            flushCurrentDraft();
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+            document.removeEventListener("keydown", handleDialogKeydown);
+            stashEditorBeforeSwitch();
             stopPreview();
             stopNoteDrag();
             releaseSerialLock();
@@ -3459,7 +5105,11 @@ export default defineComponent({
         });
 
         return {
+            automaticBl32,
+            effectiveMelody,
+            stopPreview,
             melody,
+            targetCapacity,
             drafts,
             draftLimit,
             draftDirty,
@@ -3480,6 +5130,7 @@ export default defineComponent({
             presets,
             presetQuery,
             filteredPresets,
+            presetCompatibility,
             keys,
             rtttlBpmMin,
             rtttlBpmMax,
@@ -3541,6 +5192,7 @@ export default defineComponent({
             restoreBackupSummary,
             restoreBackingUp,
             restoring,
+            restoreProgressRows,
             restoreProgress,
             restoreResult,
             restoreRollbackCount,
@@ -3557,6 +5209,7 @@ export default defineComponent({
             writeValidation,
             syncSourceLabel,
             actionbarStatusText,
+            safetyWriteDisabledReason,
             operationMessage,
             operationType,
             scanning,
@@ -3569,7 +5222,65 @@ export default defineComponent({
             currentMelodyPlayable,
             canPlayAllMelodies,
             locked,
+            favoriteIds,
+            recentIds,
+            presetScope,
+            presetVoices,
+            auditionPresetId,
+            editRecovery,
+            toggleFavorite,
+            focusLibrary,
+            previewLibraryPreset,
+            restoreEditorRecovery,
+            exportEditorRecovery,
+            modalOpen,
+            codeDiscardConfirm,
+            workspaceView,
+            librarySection,
+            deviceDetailsOpen,
+            deviceInspectionId,
+            inspectedDeviceId,
+            openDeviceDetails,
+            closeDeviceDetails,
+            headerConnectionLabel,
+            selectionPreviewPlayable,
+            toggleSelectionPreview,
+            selectedLibraryDescription,
+            previewVoiceCount,
+            libraryTrackCount,
+            libraryDuration,
+            zoomPixels,
+            editorTool,
+            snapStep,
+            autoFollow,
+            previewVolume,
+            previewMuted,
+            previewShowsTimeline,
+            previewBeat,
+            timelineWidth,
+            timelineTicks,
+            presetSessionName,
+            fitTimeline,
+            locateSelectedNote,
+            onNoteKeydown,
+            selectNoteFromList,
+            editNoteFromList,
+            arrangementMode,
+            changeArrangement,
+            arrangementLabel,
+            assignmentRows,
+            completedWriteRows,
+            safetyChannelRows,
+            assignmentWarnings,
+            assignmentAccepted,
+            assignVoice,
+            deviceReadiness,
+            hasDeviceIssues,
+            operationReadiness,
+            writeProgressRows,
+            closeSafety,
             writeResult,
+            writeRecoveryTargets,
             loadCurrentMelody,
             loadPreset,
             loadDraft,
@@ -3634,6 +5345,8 @@ export default defineComponent({
             rollbackRestore,
             restoreFirmwareLabel,
             formatRestoreAddress,
+            failedFirmwareDetectionCount,
+            firmwareDetectionLabel,
             backupAll,
             performWrite,
             recoverWritten,

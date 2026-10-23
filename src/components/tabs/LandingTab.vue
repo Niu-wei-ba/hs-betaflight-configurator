@@ -204,6 +204,7 @@
                         <figure class="community-panel__qr">
                             <img :src="qqQrUrl" alt="花生 FPV 官方交流群二维码" />
                             <figcaption>扫码加入交流群</figcaption>
+                            <QqGroupNumber />
                         </figure>
                     </aside>
                 </section>
@@ -231,6 +232,7 @@
 <script>
 import { defineComponent, onMounted, ref } from "vue";
 import BaseTab from "./BaseTab.vue";
+import QqGroupNumber from "../elements/QqGroupNumber.vue";
 import GUI from "../../js/gui";
 import { i18n } from "../../js/localization";
 import { isAndroidNative } from "../../js/AndroidAppUpdate.js";
@@ -282,7 +284,7 @@ const ANDROID_DEFAULT_VERSION = "2026.6.1";
 
 export default defineComponent({
     name: "LandingTab",
-    components: { BaseTab },
+    components: { BaseTab, QqGroupNumber },
     setup() {
         const isAndroidApp = isAndroidNative();
         const availableLanguages = ref(["DEFAULT", ...i18n.getLanguagesAvailables()]);

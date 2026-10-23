@@ -63,8 +63,12 @@ export function createUniqueMelodyDraftName(drafts, requestedName) {
     const base = normalizedDraftName(requestedName) || "未命名草稿";
     if (!hasMelodyDraftName(drafts, base)) return base;
     let suffix = 2;
-    while (hasMelodyDraftName(drafts, `${base} (${suffix})`)) suffix += 1;
-    return `${base.slice(0, Math.max(1, 28 - String(suffix).length))} (${suffix})`;
+    let candidate;
+    do {
+        const ending = ` (${suffix++})`;
+        candidate = `${base.slice(0, 32 - ending.length)}${ending}`;
+    } while (hasMelodyDraftName(drafts, candidate));
+    return candidate;
 }
 
 export function saveMelodyDraft(draft, storage = globalThis.localStorage) {
@@ -100,6 +104,7 @@ export function createMelodyDraft({ name = "未命名草稿", melody = {} } = {}
         key: source.key || "C",
         waitMs: source.waitMs ?? 0,
         notes: source.notes || [],
+        blheli32: source.blheli32,
     });
     return saveMelodyDraft({ name: nextMelody.name, melody: nextMelody }, storage);
 }

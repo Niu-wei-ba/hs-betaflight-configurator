@@ -1,5 +1,6 @@
 import Rtttl from "bluejay-rtttl-parse";
 import escConfiguratorMelodies from "./esc_configurator_melodies.json";
+import { decodeBlheli32Melody, encodeBlheli32Melody } from "./blheli32_melody.ts";
 
 /**
  * Shared ESC startup melody model.
@@ -13,7 +14,7 @@ export const ESC_MELODY_CAPACITY = 128;
 export const ESC_MELODY_MAX_NOTES = 64;
 export const ESC_MELODY_MAX_DURATION_MS = 120000;
 export const ESC_MELODY_MIN_MIDI = 51; // D#3
-export const ESC_MELODY_MAX_MIDI = 98; // D7
+export const ESC_MELODY_MAX_MIDI = 107; // B7; firmware encoders validate their own range.
 export const RTTTL_BPM_MIN = 25;
 export const RTTTL_BPM_MAX = 900;
 export const RTTTL_DENOMINATORS = Object.freeze([1, 2, 4, 8, 16, 32, 64]);
@@ -39,12 +40,12 @@ const BUILT_IN_PRESET_MELODIES = [
 export const ESC_CONFIGURATOR_PRESETS = escConfiguratorMelodies.map(createEscConfiguratorPreset);
 export const PRESET_MELODIES = [...BUILT_IN_PRESET_MELODIES, ...ESC_CONFIGURATOR_PRESETS];
 
-export function createNote({ id, midi = 60, start = 0, duration = 1, rest = false } = {}) {
+export function createNote({ id, midi = 60, start = 0, duration = 1, rest = false } = {}, { allowShort = false } = {}) {
     return {
         id: id || `note-${Date.now().toString(36)}-${nextNoteId++}`,
         midi: rest ? null : clamp(Math.round(midi), ESC_MELODY_MIN_MIDI, ESC_MELODY_MAX_MIDI),
         start: Math.max(0, roundBeat(start)),
-        duration: clamp(roundBeat(duration), 0.0625, 8),
+        duration: clamp(roundBeat(duration), allowShort ? 0.001 : 0.0625, 8),
         rest: Boolean(rest),
     };
 }
@@ -56,13 +57,26 @@ export function cloneMelody(melody) {
         key: melody?.key || "C",
         waitMs: Number(melody?.waitMs) || 0,
         notes: (melody?.notes || []).map((note) => ({ ...note })),
+        blheli32: melody?.blheli32,
     });
 }
 
 export function normalizeMelody(melody = {}) {
     const bpm = normalizeBpm(melody.bpm);
+    const native = melody.blheli32;
+    const nativeMetadata =
+        native &&
+        Number.isInteger(native.mode) &&
+        native.mode >= 0 &&
+        native.mode <= 255 &&
+        Array.isArray(native.bytes) &&
+        native.bytes.length === 48 &&
+        native.bytes.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255) &&
+        typeof native.fingerprint === "string"
+            ? { mode: native.mode, bytes: [...native.bytes], fingerprint: native.fingerprint }
+            : null;
     const notes = (melody.notes || [])
-        .map((note) => createNote(note))
+        .map((note) => createNote(note, { allowShort: Boolean(nativeMetadata) }))
         .sort((a, b) => a.start - b.start || a.id.localeCompare(b.id));
 
     let cursor = 0;
@@ -79,6 +93,7 @@ export function normalizeMelody(melody = {}) {
         key: NOTE_NAMES.includes(melody.key) ? melody.key : "C",
         waitMs: clamp(Math.round(Number(melody.waitMs) || 0), 0, 65535),
         notes: normalized,
+        ...(nativeMetadata ? { blheli32: nativeMetadata } : {}),
     };
 }
 
@@ -92,17 +107,44 @@ export function melodyDurationMs(melody) {
     return waitMs + (melodyDurationBeats(melody) * 60000) / bpm;
 }
 
-export function validateMelody(melody, { capacity = ESC_MELODY_CAPACITY, firmware = "am32" } = {}) {
+export function validateMelody(melody, { capacity = ESC_MELODY_CAPACITY, firmware = "bluejay" } = {}) {
     const normalized = normalizeMelody(melody);
-    const rtttl = melodyToRtttl(normalized, { includeWait: firmware !== "bluejay" });
+    if (firmware === "blheli32") {
+        const errors = [];
+        let encoded = null;
+        try {
+            encoded = encodeBlheli32Melody(melody);
+        } catch (error) {
+            errors.push(error.message);
+        }
+        if (melodyDurationMs(normalized) > ESC_MELODY_MAX_DURATION_MS) errors.push("旋律时长不能超过 120 秒。");
+        return {
+            valid: errors.length === 0,
+            errors,
+            warnings: encoded?.warnings || [],
+            noteCount: normalized.notes.length,
+            durationMs: encoded?.durationMs || Math.round(melodyDurationMs(normalized)),
+            encodedLength: encoded?.encodedLength || 0,
+            rtttl: errors.length ? "" : melodyToRtttl(normalized),
+            melody: normalized,
+            encoded,
+        };
+    }
+    // Bluejay v0.21 plays rests in the melody; 0xF0 is only editor metadata.
+    const rtttl = melodyToRtttl(normalized, { includeWait: true });
     // The upstream encoder expects at least one note token.  An empty draft is
     // still a valid editor state, so report it through normal validation
     // instead of passing an empty sequence to the encoder.
-    const encoded = normalized.notes.length
-        ? encodeRtttlForEsc(rtttl, capacity)
-        : { data: new Uint8Array(), errorCodes: [] };
-    const encodedLength = normalized.notes.length ? getUsedBinaryLength(encoded.data) : 0;
     const errors = [];
+    let encoded = { data: new Uint8Array(), errorCodes: [] };
+    if (normalized.notes.length) {
+        try {
+            encoded = encodeRtttlForEsc(rtttl, capacity);
+        } catch (error) {
+            errors.push(`旋律编码失败：${error.message}`);
+        }
+    }
+    const encodedLength = encoded.data.length ? getUsedBinaryLength(encoded.data) : 0;
 
     if (normalized.notes.length === 0) errors.push("旋律至少需要一个音符或休止符。");
     if (normalized.notes.length > ESC_MELODY_MAX_NOTES) errors.push(`旋律最多支持 ${ESC_MELODY_MAX_NOTES} 个事件。`);
@@ -289,6 +331,15 @@ export function melodyToRtttl(melody, { name = melody?.name || "BF ESC", include
 export function encodeFirmwareMelody(melody, firmware = "bluejay", capacity = ESC_MELODY_CAPACITY) {
     const validation = validateMelody(melody, { capacity, firmware });
     if (!validation.valid) throw new Error(validation.errors.join(" "));
+    if (firmware === "blheli32") {
+        return {
+            ...validation.encoded,
+            firmware,
+            rtttl: validation.rtttl,
+            waitMs: validation.melody.waitMs,
+            validation,
+        };
+    }
 
     const encoded = encodeRtttlForEsc(validation.rtttl, capacity);
     const bytes = new Uint8Array(encoded.data);
@@ -301,12 +352,56 @@ export function encodeFirmwareMelody(melody, firmware = "bluejay", capacity = ES
     };
 }
 
-export function decodeFirmwareMelody(bytes, { name = "Imported", waitMs } = {}) {
+export function decodeFirmwareMelody(bytes, { name = "Imported", firmware = "bluejay", mode } = {}) {
+    if (firmware === "blheli32") return decodeBlheli32Melody(bytes, { name, mode });
     const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
     if (view.length < 4 || view.every((byte) => byte === 0 || byte === 0xff)) return null;
-    const melody = rtttlToMelody(Rtttl.fromBluejayStartupMelody(view, name));
-    if (waitMs === undefined) return melody;
-    return normalizeMelody({ ...melody, waitMs });
+    const { bpm } = parseRtttlDefaults(`b=${(view[0] << 8) | view[1]},o=${view[2]},d=${view[3]}`);
+    const events = decodeFirmwareEvents(view);
+    // Playback rests are authoritative; stale editor metadata must not add or remove a delay.
+    let waitMs = 0;
+    while (events[0]?.rest) waitMs += events.shift().durationMs;
+    let cursor = 0;
+    const notes = [];
+    for (const event of events) {
+        let remaining = (event.durationMs * bpm) / 60000;
+        do {
+            const timing = beatToRtttlDuration(Math.min(6, remaining));
+            const duration = (4 / timing.denominator) * (timing.dotted ? 1.5 : 1);
+            const note = createNote({ midi: event.midi, rest: event.rest, start: cursor, duration });
+            notes.push(note);
+            cursor = roundBeat(cursor + note.duration);
+            remaining -= duration;
+        } while (remaining > 0.03125);
+    }
+    return normalizeMelody({ name, bpm, waitMs, notes });
+}
+
+/** Decode pulse tuples before quantizing to musical durations, including dotted 64ths. */
+function decodeFirmwareEvents(bytes) {
+    const events = [];
+    let previousCount = 0;
+    let previousWidth = -1;
+    for (let index = 4; index + 1 < bytes.length; index += 2) {
+        const count = bytes[index];
+        const width = bytes[index + 1];
+        if (!count) break;
+        const midi = width ? frequencyToMidi(1000000 / (24.72 * width + 399.3)) : null;
+        if (midi !== null && (midi < ESC_MELODY_MIN_MIDI || midi > 98)) {
+            throw new Error("RTTTL pitch is outside the ESC range");
+        }
+        const frequency = midi === null ? 0 : Math.round(261.63 * 2 ** ((midi - 60) / 12) * 10) / 10;
+        const durationMs = frequency ? (count * 1000) / frequency : count;
+        // A full 255-count tuple signals a continuation of the same event.
+        if (previousCount === 255 && width === previousWidth) {
+            events.at(-1).durationMs += durationMs;
+        } else {
+            events.push({ midi, rest: midi === null, durationMs });
+        }
+        previousCount = count;
+        previousWidth = width;
+    }
+    return events;
 }
 
 export function melodyFingerprint(melody) {
@@ -417,7 +512,7 @@ function choosePresetOctaveShift(events) {
     const highest = Math.max(...pitches);
     const shifts = [];
     for (let shift = -60; shift <= 60; shift += 12) {
-        if (lowest + shift >= ESC_MELODY_MIN_MIDI && highest + shift <= ESC_MELODY_MAX_MIDI) {
+        if (lowest + shift >= ESC_MELODY_MIN_MIDI && highest + shift <= 98) {
             shifts.push(shift);
         }
     }
@@ -482,7 +577,8 @@ function chooseDefaultDuration(events) {
     for (const event of events) {
         if (!event.dotted) counts.set(event.denominator, (counts.get(event.denominator) || 0) + 1);
     }
-    return RTTTL_DENOMINATORS.reduce(
+    // The encoder accepts explicit 64th-note tokens but rejects d=64 defaults.
+    return RTTTL_DENOMINATORS.filter((denominator) => denominator !== 64).reduce(
         (best, denominator) => (counts.get(denominator) > counts.get(best) ? denominator : best),
         4,
     );
