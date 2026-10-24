@@ -51,8 +51,16 @@ import "./main";
 
 import GUI from "./gui";
 import { registerSW } from "virtual:pwa-register";
+import { monitorServiceWorkerUpdates } from "./pwaUpdates";
 
 const updateSW = registerSW({
+    /**
+     * @param {string} _url
+     * @param {ServiceWorkerRegistration | undefined} registration
+     */
+    onRegisteredSW(_url, registration) {
+        monitorServiceWorkerUpdates(registration);
+    },
     onNeedRefresh() {
         console.log("Detected onNeedRefresh");
         GUI.showYesNoDialog({
