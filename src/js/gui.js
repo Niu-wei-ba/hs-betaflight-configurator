@@ -12,6 +12,8 @@ import { gui_log } from "./gui_log";
 import { appConfig, buildDocsUrl } from "./AppConfig";
 
 const TABS = {};
+/** @type {WeakMap<HTMLInputElement, Switchery>} */
+const switcheryInstances = new WeakMap();
 
 class GuiControl {
     constructor() {
@@ -259,9 +261,15 @@ class GuiControl {
             callback();
         }
     }
+    /** @returns {void} */
     switchery() {
         const COLOR_ACCENT = "var(--primary-500)";
         const COLOR_SWITCHERY_SECOND = "var(--switcherysecond)";
+
+        // Vue updates checked without firing change; reuse the existing visual control.
+        $("input[data-switchery='true']").each(function (index, elem) {
+            switcheryInstances.get(elem)?.setPosition();
+        });
 
         $(".togglesmall").each(function (index, elem) {
             if ($(elem).next(".switchery").length) return;
@@ -270,6 +278,7 @@ class GuiControl {
                 color: COLOR_ACCENT,
                 secondaryColor: COLOR_SWITCHERY_SECOND,
             });
+            switcheryInstances.set(elem, switchery);
             $(elem).on("change", function () {
                 switchery.setPosition();
             });
@@ -282,6 +291,7 @@ class GuiControl {
                 color: COLOR_ACCENT,
                 secondaryColor: COLOR_SWITCHERY_SECOND,
             });
+            switcheryInstances.set(elem, switchery);
             $(elem).on("change", function () {
                 switchery.setPosition();
             });
@@ -295,6 +305,7 @@ class GuiControl {
                 color: COLOR_ACCENT,
                 secondaryColor: COLOR_SWITCHERY_SECOND,
             });
+            switcheryInstances.set(elem, switchery);
             $(elem).on("change", function () {
                 switchery.setPosition();
             });
