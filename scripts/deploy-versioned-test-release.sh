@@ -84,6 +84,11 @@ release_root="$app_root/releases"
 release="$release_root/$release_id"
 
 [[ -f "$release/index.html" ]]
+# Cached pages and open tabs still reference assets from the previous release.
+if [[ -d "$app_root/current/assets" ]]; then
+    mkdir -p "$release/assets"
+    rsync -a --ignore-existing "$app_root/current/assets/" "$release/assets/"
+fi
 ln -sfn "$release" "$app_root/current.next"
 mv -Tf "$app_root/current.next" "$app_root/current"
 mapfile -t releases < <(find "$release_root" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)

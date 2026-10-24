@@ -56,6 +56,14 @@ BFC_PROMOTE_CONFIRM=bf.hs-fpv.com scripts/promote-version-portal.sh <test-portal
 
 Promotion copies the tested static files to the corresponding production channel and atomically changes only that channel's `current` symlink. A failure or rollback of one version must never switch the other version or restart `bfc_firmware_api`.
 
+## Cached clients during a release
+
+Before switching a channel, both deployment scripts carry forward missing files from the previous active release's `assets/` directory. New files take precedence. Keep these hashed assets even when deleting old release directories: cached HTML, installed PWAs, and open tabs may still request them. Production promotion also retains production assets that were never present on the test host.
+
+The 2025.12.2 Nginx locations revalidate the app shell and Service Worker (`Cache-Control: no-cache`), cache hashed assets for a year, and return 404 for missing assets instead of the app's HTML. Configure the CDN to respect these origin cache headers for `/v/2025.12.2/`, `index.html`, and `sw.js`; overriding them with a fixed HTML TTL defeats revalidation. After installing this policy, purge existing cached HTML responses, including any HTML accidentally cached at a JavaScript asset URL.
+
+Validate an upgrade using a page loaded before the release and an ordinary reload after switching, without clearing browser data. The previous main script and lazy chunks must remain JavaScript responses, the new app must load, and a nonexistent asset must return 404. The existing PWA update dialog provides the user-facing update action; never force a reload while a controller is connected or settings are unsaved.
+
 ## Rollback
 
 On the server, point `apps/<version>/current` to a previous release for only the affected version. Point `portal/current` to a previous portal release only when the version-selection page itself must be rolled back.

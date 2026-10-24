@@ -45,6 +45,9 @@ destination_release="$destination_root/releases/$release_id"
 [[ ! -e "$destination_release" ]]
 mkdir -p "$destination_release"
 cp -a "$source_release/." "$destination_release/"
+if [[ -d "$destination_root/current/assets" ]]; then
+    rsync -a --ignore-existing "$destination_root/current/assets/" "$destination_release/assets/"
+fi
 ln -sfn "$destination_release" "$destination_root/current.next"
 mv -Tf "$destination_root/current.next" "$destination_root/current"
 REMOTE
