@@ -14,10 +14,18 @@ import { pinia } from "./pinia_instance";
 import { useDialogStore } from "../stores/dialog";
 import { registerSW } from "virtual:pwa-register";
 import { isPwaContext } from "./utils/checkCompatibility.js";
+import { monitorServiceWorkerUpdates } from "./pwaUpdates";
 
 if (isPwaContext()) {
     const dialogStore = useDialogStore(pinia);
     const updateSW = registerSW({
+        /**
+         * @param {string} _url
+         * @param {ServiceWorkerRegistration | undefined} registration
+         */
+        onRegisteredSW(_url, registration) {
+            monitorServiceWorkerUpdates(registration);
+        },
         onNeedRefresh() {
             console.log("Detected onNeedRefresh");
             dialogStore.open(

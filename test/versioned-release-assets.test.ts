@@ -24,11 +24,11 @@ function prepareRelease(script: string, args: string[]) {
     expect(result.status, result.stderr).toBe(0);
 }
 
-describe("versioned release asset retention", () => {
+describe.each(["2025.12.2", "2026.6.1"])("versioned release asset retention (%s)", (channel) => {
     it("keeps old entry scripts and lazy chunks across two test releases without copying the old shell", () => {
         const root = mkdtempSync(join(tmpdir(), "bfc-release-"));
         fixtures.push(root);
-        const app = join(root, "apps/2025.12.2");
+        const app = join(root, "apps", channel);
         const old = join(app, "releases/old");
         write(join(old, "index.html"), "old shell");
         write(join(old, "assets/main-old.js"), "old entry");
@@ -39,7 +39,7 @@ describe("versioned release asset retention", () => {
             const next = join(app, "releases", id);
             write(join(next, "index.html"), id);
             write(join(next, "assets/shared.js"), "newest copy");
-            prepareRelease("deploy-versioned-test-release.sh", [root, "2025.12.2", id, "1"]);
+            prepareRelease("deploy-versioned-test-release.sh", [root, channel, id, "1"]);
             rmSync(old, { recursive: true, force: true });
             expect(readFileSync(join(next, "assets/main-old.js"), "utf8")).toBe("old entry");
             expect(readFileSync(join(next, "assets/lazy-old.js"), "utf8")).toBe("old lazy chunk");
@@ -55,17 +55,17 @@ describe("versioned release asset retention", () => {
         fixtures.push(root);
         const staging = join(root, "test");
         const production = join(root, "production");
-        const staged = join(staging, "apps/2025.12.2/releases/new");
-        const old = join(production, "apps/2025.12.2/releases/old");
+        const staged = join(staging, "apps", channel, "releases/new");
+        const old = join(production, "apps", channel, "releases/old");
         write(join(staged, "index.html"), "tested shell");
         write(join(staged, "assets/shared.js"), "tested asset");
         write(join(old, "assets/main-production-only.js"), "old production entry");
         write(join(old, "assets/shared.js"), "previous copy");
-        symlinkSync(staged, join(staging, "apps/2025.12.2/current"));
-        symlinkSync(old, join(production, "apps/2025.12.2/current"));
+        symlinkSync(staged, join(staging, "apps", channel, "current"));
+        symlinkSync(old, join(production, "apps", channel, "current"));
 
-        prepareRelease("promote-versioned-release.sh", [staging, production, "2025.12.2", "new"]);
-        const release = join(production, "apps/2025.12.2/releases/new");
+        prepareRelease("promote-versioned-release.sh", [staging, production, channel, "new"]);
+        const release = join(production, "apps", channel, "releases/new");
         expect(readFileSync(join(release, "assets/main-production-only.js"), "utf8")).toBe("old production entry");
         expect(readFileSync(join(release, "assets/shared.js"), "utf8")).toBe("tested asset");
         expect(readFileSync(join(release, "index.html"), "utf8")).toBe("tested shell");
