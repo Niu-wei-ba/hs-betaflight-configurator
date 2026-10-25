@@ -114,11 +114,21 @@ describe("BLHeli32 protected full-config controller", () => {
         expect(h.calls.filter((c) => c.command === C.deviceRead)).toHaveLength(1);
         expect(h.calls.some((c) => c.command === C.deviceReset)).toBe(false);
     });
-    it("uses official bounded cold-init recovery when normal init receives device errors", async () => {
+    it("does not reset an unidentified channel after bounded scan initialization attempts", async () => {
         const h = setup();
         h.initFailures = 7;
         const [esc] = await h.ctl.scan();
-        expect(esc.canWrite).toBe(true);
+        expect(esc).toMatchObject({ status: "unavailable", canWrite: false });
+        expect(h.waits).toEqual([500, 1000]);
+        expect(h.calls.filter((c) => c.command === C.deviceReset)).toHaveLength(0);
+        expect(h.calls.filter((c) => c.command === C.interfaceSetMode)).toHaveLength(0);
+    });
+    it("retains bounded ARM recovery when reselecting a previously identified BLHeli32", async () => {
+        const h = setup();
+        const [esc] = await h.ctl.scan();
+        h.initFailures = 7;
+        await h.ctl.backupEsc(esc);
+        expect(esc.backedUp).toBe(true);
         expect(h.waits).toEqual([500, 1000, 100, 500, 500, 500, 5000]);
         expect(h.calls.filter((c) => c.command === C.deviceReset)).toHaveLength(1);
     });

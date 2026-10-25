@@ -166,7 +166,7 @@ export class EscFourWayController {
                 this.report({ phase: "scan", channel, total: channelCount });
                 let record;
                 try {
-                    const initResponse = await this.initFlash(channel);
+                    const initResponse = await this.initFlash(channel, { armRecovery: false });
                     this.activeChannel = channel;
                     record = decodeEscInfo(initResponse.params, channel);
                     record.status = "ready";
@@ -202,7 +202,12 @@ export class EscFourWayController {
         }
     }
 
-    async initFlash(channel, { armRecovery = true } = {}) {
+    /**
+     * Unknown channels may be SiLabs devices; family-specific reset recovery must be explicitly requested.
+     * @param {number} channel
+     * @param {{armRecovery?: boolean}} options
+     */
+    async initFlash(channel, { armRecovery = false } = {}) {
         let lastError;
         const retryDelays = [...this.initRetryDelays];
         while (retryDelays.length) {
