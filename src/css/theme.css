@@ -79,3 +79,33 @@ body.dark-theme {
 
     --text: hsl(0, 0%, 95%);
 }
+
+.site-registration {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 2px 16px;
+    padding: 3px 16px;
+    background-color: var(--surface-300);
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: right;
+}
+
+.site-registration a {
+    color: inherit;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.site-registration a:hover {
+    text-decoration: underline;
+}
+
+.site-registration a:focus-visible {
+    outline: 2px solid var(--primary-500);
+    outline-offset: 2px;
+}
