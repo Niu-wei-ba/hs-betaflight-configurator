@@ -56,6 +56,15 @@
                 :firmware-version="FC.CONFIG.flightControllerVersion"
                 :firmware-target="FC.CONFIG.hardwareName"
             ></status-bar>
+            <footer class="site-registration">
+                <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">皖ICP备2026005018号</a>
+                <a
+                    href="https://beian.mps.gov.cn/#/query/webSearch?code=34030002001370"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >皖公网安备34030002001370号</a
+                >
+            </footer>
             <VideoTutorialFloatingPlayer />
             <div id="cache">
                 <div class="data-loading">
