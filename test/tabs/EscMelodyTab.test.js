@@ -1,6 +1,7 @@
 import { createApp, nextTick, reactive } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEscBackupPackage } from "../../src/js/esc_melody/backups.js";
+import { ESC_MELODY_DRAFTS_KEY } from "../../src/js/esc_melody/drafts.js";
 
 const controllerProgress = vi.hoisted(() => ({ send: null }));
 const contentReady = vi.fn();
@@ -181,7 +182,7 @@ describe("EscMelodyTab", () => {
         const { saveMelodyDraft } = await import("../../src/js/esc_melody/drafts.js");
         const source = { ...createCurrentMelody(0, 59), name: "Source draft" };
         const draft = saveMelodyDraft({ name: source.name, melody: source });
-        const before = localStorage.getItem("betaflight.esc-melody.drafts.v1");
+        const before = localStorage.getItem(ESC_MELODY_DRAFTS_KEY);
         globalThis.CONFIGURATOR.connectionValid = true;
         scanEscs.mockResolvedValue(
             createWritableEscs([60]).map((esc) => ({
@@ -199,7 +200,7 @@ describe("EscMelodyTab", () => {
             expect(vm.automaticBl32.adapted).toBe(true);
             expect(vm.effectiveMelody.notes.find((note) => !note.rest).midi).toBe(71);
             expect(vm.melody.notes[0].midi).toBe(59);
-            expect(localStorage.getItem("betaflight.esc-melody.drafts.v1")).toBe(before);
+            expect(localStorage.getItem(ESC_MELODY_DRAFTS_KEY)).toBe(before);
             vm.melody.notes = Array.from({ length: 49 }, (_, i) => ({
                 id: `edit-${i}`,
                 midi: 59,
@@ -1365,12 +1366,12 @@ describe("EscMelodyTab", () => {
         expect(container.querySelector(".editor-title strong").textContent).toBe("起飞提示音");
         expect(container.querySelectorAll(".draft-item")).toHaveLength(1);
         expect(container.querySelector(".draft-item").classList.contains("active")).toBe(true);
-        expect(JSON.parse(localStorage.getItem("betaflight.esc-melody.drafts.v1"))).toHaveLength(1);
+        expect(JSON.parse(localStorage.getItem(ESC_MELODY_DRAFTS_KEY))).toHaveLength(1);
 
         expect(findButton(container, "已自动保存").disabled).toBe(true);
         findButton(container, "已自动保存").click();
         await nextTick();
-        expect(JSON.parse(localStorage.getItem("betaflight.esc-melody.drafts.v1"))).toHaveLength(1);
+        expect(JSON.parse(localStorage.getItem(ESC_MELODY_DRAFTS_KEY))).toHaveLength(1);
 
         app.unmount();
     });
@@ -1403,7 +1404,7 @@ describe("EscMelodyTab", () => {
 
         expect(container.querySelector(".draft-name-dialog")).toBeNull();
         expect(container.querySelector(".editor-title strong").textContent).toBe("返航提示音");
-        expect(JSON.parse(localStorage.getItem("betaflight.esc-melody.drafts.v1"))[0].name).toBe("返航提示音");
+        expect(JSON.parse(localStorage.getItem(ESC_MELODY_DRAFTS_KEY))[0].name).toBe("返航提示音");
 
         app.unmount();
     });
@@ -1420,7 +1421,7 @@ describe("EscMelodyTab", () => {
 
         await vi.advanceTimersByTimeAsync(450);
         await nextTick();
-        expect(JSON.parse(localStorage.getItem("betaflight.esc-melody.drafts.v1"))[0].melody.notes).toHaveLength(1);
+        expect(JSON.parse(localStorage.getItem(ESC_MELODY_DRAFTS_KEY))[0].melody.notes).toHaveLength(1);
         expect(findButton(container, "已自动保存").disabled).toBe(true);
 
         findButton(container, "Two-Tigers").click();
@@ -1445,12 +1446,12 @@ describe("EscMelodyTab", () => {
         await nextTick();
 
         expect(container.querySelector(".draft-item").classList.contains("active")).toBe(true);
-        expect(JSON.parse(localStorage.getItem("betaflight.esc-melody.drafts.v1"))[0].melody.notes).toHaveLength(0);
+        expect(JSON.parse(localStorage.getItem(ESC_MELODY_DRAFTS_KEY))[0].melody.notes).toHaveLength(0);
         codeSaveButton(container).click();
         await nextTick();
         await vi.advanceTimersByTimeAsync(450);
         await nextTick();
-        const storedDrafts = JSON.parse(localStorage.getItem("betaflight.esc-melody.drafts.v1"));
+        const storedDrafts = JSON.parse(localStorage.getItem(ESC_MELODY_DRAFTS_KEY));
         expect(storedDrafts).toHaveLength(1);
         expect(storedDrafts[0].name).toBe("代码同步测试");
         expect(storedDrafts[0].melody.notes).toHaveLength(1);

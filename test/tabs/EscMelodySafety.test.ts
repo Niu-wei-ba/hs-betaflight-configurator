@@ -88,6 +88,69 @@ afterEach(() => {
 });
 
 describe("ESC music safety and native-data regressions", () => {
+    it("retains imported Music Off after a verified write and enables a newly selected melody", async () => {
+        const channel = esc();
+        mocks.scan.mockResolvedValue([channel]);
+        const { app, vm, container } = await mount();
+        try {
+            await vm.scanEscs();
+            vm.loadDraft(
+                { id: "off-draft", name: "Off draft", melody: { ...channel.currentMelody, musicOff: true } },
+                { preserveEdits: false },
+            );
+            await nextTick();
+            expect(vm.melody.musicOff).toBe(true);
+            expect(vm.writeValidation.valid).toBe(true);
+            expect(vm.pendingWriteEscs).toHaveLength(1);
+            expect(vm.safetyWriteMelodySummary).toBe("Music Off");
+            await approve(vm, container);
+            mocks.write.mockImplementation(async (targets, getMelody) => {
+                expect(encodeBlheli32Melody(getMelody(targets[0])).mode).toBe(255);
+                targets[0].currentMelody = null;
+                targets[0].currentMelodyMode = 255;
+                return { ok: true, written: targets, rollback: [] };
+            });
+            await vm.performWrite();
+            expect(mocks.write).toHaveBeenCalledOnce();
+            expect(vm.escs[0].currentMelody).toBeNull();
+            expect(vm.escs[0].melodyReadStatus).toBe("empty");
+            expect(vm.dirtyEscs).toHaveLength(0);
+            expect(vm.melody.musicOff).toBe(true);
+            vm.closeSafety();
+            await nextTick();
+            vm.loadPreset(
+                {
+                    id: "enabled-song",
+                    name: "Enabled song",
+                    bpm: 120,
+                    notes: [{ midi: 60, start: 0, duration: 1, rest: false }],
+                },
+                { preserveEdits: false },
+            );
+            await nextTick();
+            expect(vm.melody.musicOff).not.toBe(true);
+            expect(vm.writeValidation.valid).toBe(true);
+            expect(encodeBlheli32Melody(vm.melody).mode).not.toBe(255);
+        } finally {
+            app.unmount();
+        }
+    });
+    it("loads mode FF as Music Off and an empty non-FF array as an empty editor", async () => {
+        mocks.scan.mockResolvedValue([
+            { ...esc(0), currentMelody: null, melodyReadStatus: "empty", currentMelodyMode: 255 },
+            { ...esc(1), currentMelody: null, melodyReadStatus: "empty", currentMelodyMode: 128 },
+        ]);
+        const { app, vm } = await mount();
+        try {
+            await vm.scanEscs();
+            expect(vm.escs[0].editorMelody.musicOff).toBe(true);
+            expect(vm.escs[1].editorMelody.musicOff).not.toBe(true);
+            expect(vm.syncAll).toBe(false);
+            expect(vm.melodyReadLabel(vm.escs[0])).toBe("Music Off");
+        } finally {
+            app.unmount();
+        }
+    });
     it("warns before leaving during a pending write, then permits leaving after completion", async () => {
         mocks.scan.mockResolvedValue([esc()]);
         const { app, vm, container } = await mount();

@@ -10,6 +10,8 @@ import {
     createMelodyDraft,
     createMelodyDraftPackage,
     parseMelodyDraftPackage,
+    loadMelodyDrafts,
+    ESC_MELODY_DRAFTS_KEY,
 } from "../../src/js/esc_melody/drafts.js";
 const bytes = (...values: number[]) => {
     const b = new Uint8Array(48).fill(255);
@@ -18,6 +20,83 @@ const bytes = (...values: number[]) => {
 };
 
 describe("BLHeli32 native music", () => {
+    it("requires explicit Music Off and never equates a cleared editor with disabling music", () => {
+        expect(() => encodeBlheli32Melody({ bpm: 120, notes: [] })).toThrow("至少一个事件");
+        const off = encodeBlheli32Melody({ bpm: 120, notes: [], musicOff: true });
+        expect(off.mode).toBe(255);
+        expect(off.bytes).toEqual(bytes());
+        expect(off.durationMs).toBe(0);
+        expect(off.playbackMelody.notes).toEqual([]);
+        expect(validateMelody({ bpm: 120, notes: [], musicOff: true }, { firmware: "bluejay" }).valid).toBe(false);
+    });
+    it("retains explicit off in drafts, distinguishes it from empty and rejects mismatched capacities", () => {
+        const map = new Map();
+        const storage = {
+            getItem: (key: string) => map.get(key) || null,
+            setItem: (key: string, value: string) => map.set(key, value),
+        };
+        const draft = createMelodyDraft({ name: "off", melody: { bpm: 120, notes: [], musicOff: true } }, storage);
+        const packageValue = createMelodyDraftPackage([draft]);
+        expect(packageValue.version).toBe(2);
+        const imported = parseMelodyDraftPackage(JSON.stringify(packageValue)).drafts[0].melody;
+        expect(encodeFirmwareMelody(imported, "blheli32").mode).toBe(255);
+        expect(validateMelody(imported, { firmware: "blheli32" }).durationMs).toBe(0);
+        expect(validateMelody(imported, { firmware: "blheli32", capacity: 128 }).valid).toBe(false);
+    });
+    it("migrates legacy drafts on save while keeping old storage intact and still imports v1 packages", () => {
+        const legacy = [{ id: "old", name: "old", melody: { bpm: 120, notes: [] } }];
+        const map = new Map([["betaflight.esc-melody.drafts.v1", JSON.stringify(legacy)]]);
+        const storage = {
+            getItem: (key: string) => map.get(key) ?? null,
+            setItem: (key: string, value: string) => map.set(key, value),
+        };
+        expect(loadMelodyDrafts(storage)).toHaveLength(1);
+        createMelodyDraft({ name: "off", melody: { bpm: 120, notes: [], musicOff: true } }, storage);
+        expect(JSON.parse(map.get(ESC_MELODY_DRAFTS_KEY)!)).toHaveLength(2);
+        expect(JSON.parse(map.get("betaflight.esc-melody.drafts.v1")!)).toEqual(legacy);
+        const packageValue = { ...createMelodyDraftPackage(legacy), version: 1 };
+        expect(parseMelodyDraftPackage(JSON.stringify(packageValue)).drafts).toHaveLength(1);
+        map.set(ESC_MELODY_DRAFTS_KEY, "[]");
+        expect(loadMelodyDrafts(storage)).toEqual([]);
+    });
+    it("changes pitches in a full native interval tune without expanding its rests", () => {
+        for (const mode of [0x08, 0x81, 0x8f, 0xfe]) {
+            const source = bytes(...new Array(48).fill(0xc0));
+            const melody = decodeBlheli32Melody(source, { mode })!;
+            melody.notes[0].midi = 107;
+            const encoded = encodeBlheli32Melody(melody);
+            expect(encoded.mode).toBe(mode);
+            expect(encoded.encodedLength).toBe(48);
+            expect(encoded.bytes[0]).toBe(0xfb);
+            expect(encoded.bytes.slice(1)).toEqual(source.slice(1));
+            expect(encoded.playbackMelody.notes.map(({ start, duration }) => [start, duration])).toEqual(
+                melody.notes.map(({ start, duration }) => [start, duration]),
+            );
+        }
+    });
+    it("retains native rests and their intervals through pitch edits and draft roundtrips", () => {
+        const melody = cloneMelody(decodeBlheli32Melody(bytes(0x3d, 0xc0, 0xfc, 0xc2), { mode: 0x8f })!);
+        melody.notes.find((note) => note.midi === 60)!.midi = 74;
+        const encoded = encodeBlheli32Melody(cloneMelody(melody));
+        expect(encoded.mode).toBe(0x8f);
+        expect(encoded.bytes).toEqual(bytes(0x3d, 0xd2, 0xfc, 0xc2));
+    });
+    it("does not reuse native interval timing after timing edits or forged metadata", () => {
+        const melody = decodeBlheli32Melody(bytes(0xc0), { mode: 0x81 })!;
+        melody.notes[0].duration = 0.5;
+        melody.notes[1].start = 0.5;
+        const encoded = encodeBlheli32Melody(melody);
+        expect(encoded.mode & 15).toBe(0);
+        expect(encoded.warnings.join(" ")).toContain("Interval");
+        const forged = decodeBlheli32Melody(bytes(0xc0), { mode: 0x81 })!;
+        forged.blheli32!.bytes[0] = 0xc2;
+        forged.notes[0].midi = 61;
+        expect(encodeBlheli32Melody(forged).mode & 15).toBe(0);
+    });
+    it("warns when a 60 ms tone is accepted as 62 ms", () => {
+        const encoded = encodeBlheli32Melody({ bpm: 120, notes: [{ midi: 60, start: 0, duration: 0.12 }] });
+        expect(encoded.warnings.join(" ")).toContain("2.0 ms");
+    });
     it("retains native intervals and short rests through draft export/import", () => {
         const source = bytes(0x3d, 0xfb);
         const melody = decodeBlheli32Melody(source, { mode: 0x8f })!;

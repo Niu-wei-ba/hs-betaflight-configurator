@@ -143,6 +143,21 @@ function timelineError(expected: Melody, actual: Melody): number {
 /** Generates a separate arrangement. Pitch shift, tempo scale and native timing grid are shared by all voices. */
 export function adaptBlheli32Tracks(source: Melody[], options: AdaptOptions = {}): AdaptResult {
     if (!source.length || source.length > 8) return fail("需要 1–8 个声部。");
+    if (source.some((track) => track.musicOff)) {
+        const active = source.filter((track) => !track.musicOff);
+        if (!active.length) return fail("所有声部的启动音乐均已关闭，无需适配。");
+        const result = adaptBlheli32Tracks(active, options);
+        if (!result.ok) return result;
+        let index = 0;
+        let byteIndex = 0;
+        return {
+            ...result,
+            tracks: source.map((track) => (track.musicOff ? copy(track) : result.tracks[index++])),
+            sourceBpms: source.map((track) => track.bpm),
+            targetBpms: source.map((track) => (track.musicOff ? track.bpm : track.bpm * result.tempoScale)),
+            usedBytes: source.map((track) => (track.musicOff ? 0 : result.usedBytes[byteIndex++])),
+        };
+    }
     for (const track of source) {
         if (
             !Number.isFinite(track.bpm) ||
@@ -334,6 +349,9 @@ export function adaptBlheli32Tracks(source: Melody[], options: AdaptOptions = {}
         }
     }
     return (
-        best || fail("无法在保留所选音符、统一声部速度及 48 事件限制下完成适配。请截取更短片段，或在编曲中简化节奏。")
+        best ||
+        fail(
+            "无法在保留所选音符、统一声部速度及 48 字节容量内完成适配（含等待与休止）。请截取更短片段，或在编曲中简化节奏。",
+        )
     );
 }

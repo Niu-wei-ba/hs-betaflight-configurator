@@ -50,6 +50,7 @@ export function createNote({ id, midi = 60, start = 0, duration = 1, rest = fals
     };
 }
 
+/** @param {object|null} melody */
 export function cloneMelody(melody) {
     return normalizeMelody({
         name: melody?.name || "My startup melody",
@@ -58,9 +59,11 @@ export function cloneMelody(melody) {
         waitMs: Number(melody?.waitMs) || 0,
         notes: (melody?.notes || []).map((note) => ({ ...note })),
         blheli32: melody?.blheli32,
+        musicOff: melody?.musicOff,
     });
 }
 
+/** @param {object} melody */
 export function normalizeMelody(melody = {}) {
     const bpm = normalizeBpm(melody.bpm);
     const native = melody.blheli32;
@@ -94,6 +97,7 @@ export function normalizeMelody(melody = {}) {
         waitMs: clamp(Math.round(Number(melody.waitMs) || 0), 0, 65535),
         notes: normalized,
         ...(nativeMetadata ? { blheli32: nativeMetadata } : {}),
+        ...(melody.musicOff === true ? { musicOff: true } : {}),
     };
 }
 
@@ -107,25 +111,32 @@ export function melodyDurationMs(melody) {
     return waitMs + (melodyDurationBeats(melody) * 60000) / bpm;
 }
 
-export function validateMelody(melody, { capacity = ESC_MELODY_CAPACITY, firmware = "bluejay" } = {}) {
+/** @param {object} melody @param {{capacity?: number, firmware?: string}} options */
+export function validateMelody(melody, { capacity, firmware = "bluejay" } = {}) {
+    capacity ??= firmware === "blheli32" ? 48 : ESC_MELODY_CAPACITY;
     const normalized = normalizeMelody(melody);
     if (firmware === "blheli32") {
         const errors = [];
         let encoded = null;
         try {
+            if (capacity !== 48) throw new Error("BLHeli_32 配置要求固定 48 字节音乐容量，请重新扫描电调。");
             encoded = encodeBlheli32Melody(melody);
         } catch (error) {
             errors.push(error.message);
         }
-        if (melodyDurationMs(normalized) > ESC_MELODY_MAX_DURATION_MS) errors.push("旋律时长不能超过 120 秒。");
+        if (!normalized.musicOff && melodyDurationMs(normalized) > ESC_MELODY_MAX_DURATION_MS)
+            errors.push("旋律时长不能超过 120 秒。");
         return {
             valid: errors.length === 0,
             errors,
             warnings: encoded?.warnings || [],
             noteCount: normalized.notes.length,
-            durationMs: encoded?.durationMs || Math.round(melodyDurationMs(normalized)),
+            toneCount: normalized.musicOff
+                ? 0
+                : normalized.notes.filter((note) => !note.rest && note.midi !== null).length,
+            durationMs: encoded?.durationMs ?? Math.round(melodyDurationMs(normalized)),
             encodedLength: encoded?.encodedLength || 0,
-            rtttl: errors.length ? "" : melodyToRtttl(normalized),
+            rtttl: errors.length || normalized.musicOff ? "" : melodyToRtttl(normalized),
             melody: normalized,
             encoded,
         };
@@ -136,6 +147,7 @@ export function validateMelody(melody, { capacity = ESC_MELODY_CAPACITY, firmwar
     // still a valid editor state, so report it through normal validation
     // instead of passing an empty sequence to the encoder.
     const errors = [];
+    if (normalized.musicOff) errors.push("关闭启动音乐仅支持已验证的 BLHeli_32 配置。");
     let encoded = { data: new Uint8Array(), errorCodes: [] };
     if (normalized.notes.length) {
         try {
@@ -328,7 +340,12 @@ export function melodyToRtttl(melody, { name = melody?.name || "BF ESC", include
     return `${sanitizeRtttlName(name)}:d=${defaults.duration},o=${defaults.octave},b=${normalized.bpm}:${tokens.join(",")}`;
 }
 
-export function encodeFirmwareMelody(melody, firmware = "bluejay", capacity = ESC_MELODY_CAPACITY) {
+/** @param {object} melody @param {string} firmware @param {number} capacity */
+export function encodeFirmwareMelody(
+    melody,
+    firmware = "bluejay",
+    capacity = firmware === "blheli32" ? 48 : ESC_MELODY_CAPACITY,
+) {
     const validation = validateMelody(melody, { capacity, firmware });
     if (!validation.valid) throw new Error(validation.errors.join(" "));
     if (firmware === "blheli32") {
@@ -404,12 +421,14 @@ function decodeFirmwareEvents(bytes) {
     return events;
 }
 
+/** @param {object|null} melody */
 export function melodyFingerprint(melody) {
     if (!melody) return "";
     const normalized = normalizeMelody(melody);
     return JSON.stringify({
         bpm: normalized.bpm,
         waitMs: normalized.waitMs,
+        ...(normalized.musicOff ? { musicOff: true } : {}),
         notes: normalized.notes.map(({ midi, start, duration, rest }) => ({
             midi,
             start,

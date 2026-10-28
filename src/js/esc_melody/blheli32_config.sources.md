@@ -58,6 +58,23 @@ The parser0x100570330 and its tables at0x101067D20,0x101067F60,
 - Native loaded arrays/mode retain lossless metadata through unchanged edits;
   stale or forged metadata is decoded and checked before it can be reused.
 
+## Music Off and pitch-edit changes (2026-10-26)
+
+The saved REA observation of official UI handler0x1008516A0 sets both mode
+nibbles to0xF when disabling music and restores the previous nibbles when
+enabling it (Evidence `ev_46af966eec32e66fe8b4976423b6997e679aefbc133da13d0fd1251faec91dd8`).
+The matching captured decoded fixtures have mode0xFF and48 note bytes0xFF.
+The explicit off operation uses that captured pair. This is a software choice
+based on static analysis and a captured off configuration, not an observed
+official on-to-off wire transition or a physical write/playback acceptance run.
+A non-off mode with an all0xFF array remains an empty sequence; firmware
+equivalence with Music Off is not established.
+
+Pitch-only edits reconstruct the decoded source timeline and native-byte
+mapping, verify the stored fingerprint, and preserve mode, rest opcodes and
+duration bits. Timing edits use the normal encoder with an explicit Interval
+normalization warning. This does not provide a general interval-aware encoder.
+
 The author's original investigation independently corroborates the layout and
 read-decode branch:
 https://elmagnifico.tech/2021/07/20/BLHeliSuite32-Reverse3/

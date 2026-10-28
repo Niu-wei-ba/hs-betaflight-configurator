@@ -10046,6 +10046,9 @@
     "preflightNotamShowLess": {
         "message": "Show less"
     },
+    "escMelodyMusicOff": {
+        "message": "Music Off"
+    },
     "preflightNotamLastFetched": {
         "message": "Last fetched"
     }

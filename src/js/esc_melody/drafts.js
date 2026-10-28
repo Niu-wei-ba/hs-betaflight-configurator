@@ -1,9 +1,10 @@
 import { cloneMelody, normalizeMelody } from "./melody.js";
 
-export const ESC_MELODY_DRAFTS_KEY = "betaflight.esc-melody.drafts.v1";
+export const ESC_MELODY_DRAFTS_KEY = "betaflight.esc-melody.drafts.v2";
+const LEGACY_DRAFTS_KEY = "betaflight.esc-melody.drafts.v1";
 export const ESC_MELODY_DRAFT_LIMIT = 20;
 export const ESC_MELODY_DRAFT_PACKAGE_FORMAT = "betaflight-esc-melody-drafts";
-export const ESC_MELODY_DRAFT_PACKAGE_VERSION = 1;
+export const ESC_MELODY_DRAFT_PACKAGE_VERSION = 2;
 export const ESC_MELODY_DRAFT_FILE_MAX_BYTES = 1024 * 1024;
 
 function normalizedDraftName(value) {
@@ -21,10 +22,12 @@ function serializeDraft(draft) {
     };
 }
 
+/** @param {Storage} storage */
 export function loadMelodyDrafts(storage = globalThis.localStorage) {
     if (!storage?.getItem) return [];
     try {
-        const value = JSON.parse(storage.getItem(ESC_MELODY_DRAFTS_KEY) || "[]");
+        // Older clients must not silently drop Music Off and write a saved tune as enabled.
+        const value = JSON.parse(storage.getItem(ESC_MELODY_DRAFTS_KEY) ?? storage.getItem(LEGACY_DRAFTS_KEY) ?? "[]");
         if (!Array.isArray(value)) return [];
         return value
             .filter((draft) => draft?.id && draft?.melody && normalizedDraftName(draft.name))
@@ -96,6 +99,7 @@ export function saveMelodyDraft(draft, storage = globalThis.localStorage) {
     return next;
 }
 
+/** @param {{name?: string, melody?: object}} options @param {Storage} storage */
 export function createMelodyDraft({ name = "未命名草稿", melody = {} } = {}, storage = globalThis.localStorage) {
     const source = melody || {};
     const nextMelody = normalizeMelody({
@@ -105,6 +109,7 @@ export function createMelodyDraft({ name = "未命名草稿", melody = {} } = {}
         waitMs: source.waitMs ?? 0,
         notes: source.notes || [],
         blheli32: source.blheli32,
+        musicOff: source.musicOff,
     });
     return saveMelodyDraft({ name: nextMelody.name, melody: nextMelody }, storage);
 }
@@ -132,6 +137,7 @@ export function createMelodyDraftPackage(drafts, now = new Date()) {
     };
 }
 
+/** @param {string} text */
 export function parseMelodyDraftPackage(text) {
     if (typeof text !== "string" || !text.trim()) throw new Error("草稿文件为空。");
     if (new TextEncoder().encode(text).byteLength > ESC_MELODY_DRAFT_FILE_MAX_BYTES) {
@@ -144,7 +150,10 @@ export function parseMelodyDraftPackage(text) {
     } catch {
         throw new Error("草稿文件不是有效的 JSON。");
     }
-    if (value?.format !== ESC_MELODY_DRAFT_PACKAGE_FORMAT || value?.version !== ESC_MELODY_DRAFT_PACKAGE_VERSION) {
+    if (
+        value?.format !== ESC_MELODY_DRAFT_PACKAGE_FORMAT ||
+        ![1, ESC_MELODY_DRAFT_PACKAGE_VERSION].includes(value?.version)
+    ) {
         throw new Error("不支持的草稿文件格式或版本。");
     }
     if (!Array.isArray(value.drafts)) throw new Error("草稿文件缺少 drafts 列表。");

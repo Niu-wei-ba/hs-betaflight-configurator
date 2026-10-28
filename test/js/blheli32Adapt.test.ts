@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adaptBlheli32Tracks } from "../../src/js/esc_melody/blheli32_adapt";
+import { adaptBlheli32Tracks, autoAdaptBlheli32Tracks } from "../../src/js/esc_melody/blheli32_adapt";
 import { decodeBlheli32Melody, encodeBlheli32Melody, type Melody } from "../../src/js/esc_melody/blheli32_melody";
 import { PRESET_MELODIES } from "../../src/js/esc_melody/melody.js";
 const track = (midi = 60, count = 4): Melody => ({
@@ -10,6 +10,18 @@ const track = (midi = 60, count = 4): Melody => ({
 });
 
 describe("BL32 explicit adaptation", () => {
+    it("keeps a disabled voice off while automatically adapting the other voices", () => {
+        const off = { ...track(12), musicOff: true };
+        const source = [off, track(48)];
+        const before = JSON.stringify(source);
+        const result = autoAdaptBlheli32Tracks(source, [0, 1]);
+        expect(result.errors).toEqual([]);
+        expect(result.adapted).toBe(true);
+        expect(result.tracks[0].musicOff).toBe(true);
+        expect(encodeBlheli32Melody(result.tracks[0]).mode).toBe(255);
+        expect(result.tracks[1].notes[0].midi).toBe(60);
+        expect(JSON.stringify(source)).toBe(before);
+    });
     it("keeps source immutable and shifts all voices together while retaining every tone", () => {
         const source = [
             { ...track(48), key: "D" },

@@ -14,6 +14,7 @@ export interface Melody {
     bpm: number;
     waitMs?: number;
     key?: string;
+    musicOff?: boolean;
     notes: Note[];
     blheli32?: { mode: number; bytes: number[]; fingerprint: string };
 }
@@ -82,20 +83,21 @@ export function encodeBlheli32Melody(melody: Melody, { length: requiredLength }:
         (!Number.isInteger(requiredLength) || requiredLength < 1 || requiredLength > 15)
     )
         throw new Error("BLHeli_32 音长档位必须为 1–15。");
+    if (melody.musicOff === true) {
+        return result(new Uint8Array(48).fill(255), 255, [], {
+            name: melody.name,
+            bpm: 120,
+            waitMs: 0,
+            notes: [],
+            musicOff: true,
+        });
+    }
     if (!Number.isFinite(melody.bpm) || melody.bpm <= 0 || !melody.notes?.length) {
         throw new Error("BLHeli_32 旋律需要有效 BPM 和至少一个事件。");
     }
     const saved = melody.blheli32;
-    if (
-        saved?.bytes?.length === 48 &&
-        saved.fingerprint === fingerprint(melody) &&
-        (requiredLength === undefined || saved.mode >>> 4 === requiredLength)
-    ) {
-        const original = decodeBlheli32Melody(Uint8Array.from(saved.bytes), { mode: saved.mode });
-        if (original && fingerprint(original) === fingerprint(melody)) {
-            return result(Uint8Array.from(saved.bytes), saved.mode, [], original);
-        }
-    }
+    const native = encodeNativePitchEdit(melody, requiredLength);
+    if (native) return native;
     const events: { midi: number | null; milliseconds: number }[] = [];
     if ((melody.waitMs || 0) > 0) events.push({ midi: null, milliseconds: melody.waitMs! });
     let cursor = 0;
@@ -118,7 +120,7 @@ export function encodeBlheli32Melody(melody: Melody, { length: requiredLength }:
         cursor = note.start + note.duration;
     }
     if (events.filter((event) => event.midi !== null).length > 48)
-        throw new Error("BLHeli_32 每路最多 48 个音符事件；请截取片段或简化旋律。");
+        throw new Error("BLHeli_32 每路最多 48 个有声音符；总容量为 48 字节，含等待与休止。请截取片段或简化旋律。");
     const lengths = (
         requiredLength === undefined ? Array.from({ length: 15 }, (_, i) => i + 1) : [requiredLength]
     ).filter((length) =>
@@ -182,19 +184,70 @@ export function encodeBlheli32Melody(melody: Melody, { length: requiredLength }:
             best = { bytes, mode: length << 4, score, maxError };
         }
     }
-    if (!best) throw new Error("BLHeli_32 的音长和休止无法在 48 个事件内编码；请合并休止、截取片段或调整 BPM。");
+    if (!best) throw new Error("BLHeli_32 的音长、等待与休止无法在 48 字节内编码；请合并休止、截取片段或调整 BPM。");
     const warnings =
         best.maxError > 1
             ? [
                   `BLHeli_32 使用离散音长档位，本曲单个音符最多偏差 ${best.maxError.toFixed(1)} ms（不超过 5%），写入前请试听目标编码。`,
               ]
             : [];
+    if (saved && saved.mode !== 255 && saved.mode & 15)
+        warnings.push("本次时序编辑会将 General Interval 归零，原间隔改为显式休止，并计入 48 字节容量。");
     return result(
         best.bytes,
         best.mode,
         warnings,
         decodeBlheli32Melody(best.bytes, { mode: best.mode, name: melody.name })!,
     );
+}
+
+function encodeNativePitchEdit(melody: Melody, requiredLength?: number) {
+    const saved = melody.blheli32;
+    if (
+        !saved ||
+        saved.bytes?.length !== 48 ||
+        !saved.bytes.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255) ||
+        (requiredLength !== undefined && saved.mode >>> 4 !== requiredLength)
+    )
+        return null;
+    let original: Melody | null;
+    try {
+        original = decodeBlheli32Melody(Uint8Array.from(saved.bytes), { mode: saved.mode });
+    } catch {
+        return null;
+    }
+    // Rebuild timing and event positions from validated bytes; imported metadata is not authoritative.
+    if (
+        !original ||
+        fingerprint(original) !== saved.fingerprint ||
+        original.bpm !== melody.bpm ||
+        (original.waitMs || 0) !== (melody.waitMs || 0) ||
+        original.notes.length !== melody.notes.length
+    )
+        return null;
+    for (let index = 0; index < original.notes.length; index++) {
+        const before = original.notes[index];
+        const after = melody.notes[index];
+        if (
+            before.start !== after.start ||
+            before.duration !== after.duration ||
+            Boolean(before.rest) !== Boolean(after.rest) ||
+            (before.midi === null
+                ? after.midi !== null
+                : !Number.isInteger(after.midi) || after.midi! < 60 || after.midi! > 107)
+        )
+            return null;
+    }
+    const tones = melody.notes.filter((note) => note.midi !== null && !note.rest);
+    let tone = 0;
+    const bytes = Uint8Array.from(saved.bytes, (byte) => {
+        if (byte === 255 || (byte & 15) >= 12) return byte;
+        const pitch = tones[tone++].midi! - 60;
+        return (byte & 0xc0) | (Math.floor(pitch / 12) << 4) | (pitch % 12);
+    });
+    const playback = decodeBlheli32Melody(bytes, { mode: saved.mode, name: melody.name })!;
+    if (fingerprint(playback) !== fingerprint(melody)) return null;
+    return result(bytes, saved.mode, [], playback);
 }
 
 function result(bytes: Uint8Array, mode: number, warnings: string[], playbackMelody: Melody) {

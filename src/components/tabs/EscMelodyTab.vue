@@ -159,9 +159,12 @@
                                     <strong
                                         >{{ validation.encodedLength }}<small>/{{ targetCapacity }} B</small></strong
                                     ><span>{{
-                                        targetFirmware === "blheli32" ? "BLHeli_32 音符容量" : "RTTTL 编码容量"
+                                        targetFirmware === "blheli32"
+                                            ? "BLHeli_32 · 48 字节，含等待与休止"
+                                            : "RTTTL 编码容量"
                                     }}</span>
                                 </div>
+                                <p v-if="targetFirmware === 'blheli32'">{{ validation.toneCount }} 个有声音符</p>
                                 <ul class="validation-list">
                                     <li
                                         v-for="warning in validation.warnings || []"
@@ -2128,6 +2131,7 @@
 
 <script>
 import { computed, defineComponent, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import i18next from "i18next";
 import BaseTab from "./BaseTab.vue";
 import QqGroupNumber from "../elements/QqGroupNumber.vue";
 import EscChannelPlan from "../esc-melody/EscChannelPlan.vue";
@@ -2271,7 +2275,7 @@ export default defineComponent({
             if (writableFamilies.length && writableFamilies.every((family) => family === "bluejay")) return "bluejay";
             if (writableFamilies.length && writableFamilies.every((family) => family === "ox32")) return "ox32";
             if (writableFamilies.length && writableFamilies.every((family) => family === "blheli32")) return "blheli32";
-            if (!escs.value.length && melody.value.blheli32) return "blheli32";
+            if (!escs.value.length && (melody.value.blheli32 || melody.value.musicOff)) return "blheli32";
             return "am32";
         });
         const targetCapacity = computed(() => (targetFirmware.value === "blheli32" ? 48 : 128));
@@ -2432,7 +2436,9 @@ export default defineComponent({
             const targets = writeResult.value?.ok ? writeResult.value.written : pendingWriteEscs.value;
             const entries = targets.map((esc) => ({
                 channel: esc.channel,
-                name: String(esc.editorMelody?.name || "未命名旋律"),
+                name: esc.editorMelody?.musicOff
+                    ? i18next.t("escMelodyMusicOff", { defaultValue: "Music Off" }) || "Music Off"
+                    : String(esc.editorMelody?.name || "未命名旋律"),
             }));
             const names = new Set(entries.map((entry) => entry.name));
             if (names.size === 1) return entries[0]?.name || "未命名旋律";
@@ -3179,6 +3185,7 @@ export default defineComponent({
             syncEditorState();
         }
 
+        /** @param {object} esc */
         function createEmptyEscMelody(esc) {
             return normalizeMelody({
                 name: `ESC ${esc.channel + 1}`,
@@ -3186,6 +3193,7 @@ export default defineComponent({
                 key: "C",
                 waitMs: 0,
                 notes: [],
+                musicOff: esc.firmwareFamily === "blheli32" && esc.currentMelodyMode === 255,
             });
         }
 
@@ -3478,7 +3486,10 @@ export default defineComponent({
             syncConfirmOpen.value = false;
         }
 
+        /** @param {object} esc */
         function melodyReadLabel(esc) {
+            if (esc.firmwareFamily === "blheli32" && esc.currentMelodyMode === 255)
+                return i18next.t("escMelodyMusicOff", { defaultValue: "Music Off" }) || "Music Off";
             const labels = {
                 [ESC_MELODY_READ_STATUS.LOADED]: "已读取",
                 [ESC_MELODY_READ_STATUS.EMPTY]: "空旋律",
@@ -4979,18 +4990,24 @@ export default defineComponent({
                 }
                 if (writeResult.value.ok) {
                     for (const esc of writeResult.value.written) {
-                        if (esc.firmwareFamily !== "blheli32" || !esc.currentMelody)
+                        const musicOff = esc.firmwareFamily === "blheli32" && output.get(esc.id).musicOff;
+                        if (musicOff) {
+                            esc.currentMelody = null;
+                            esc.currentMelodyMode = 255;
+                        } else if (esc.firmwareFamily !== "blheli32" || !esc.currentMelody)
                             esc.currentMelody = cloneMelody(output.get(esc.id));
                         if (writtenVoices && esc.firmwareFamily === "blheli32") {
-                            writtenVoices.tracks[writtenVoices.byEsc.get(esc.id)] = cloneMelody(esc.currentMelody);
+                            writtenVoices.tracks[writtenVoices.byEsc.get(esc.id)] = cloneMelody(
+                                musicOff ? output.get(esc.id) : esc.currentMelody,
+                            );
                         }
-                        esc.editorMelody = cloneMelody(esc.currentMelody);
+                        esc.editorMelody = cloneMelody(musicOff ? output.get(esc.id) : esc.currentMelody);
                         esc.originalMelody = cloneMelody(esc.editorMelody);
                         esc.editorSource = { type: "current" };
                         esc.editorDraftId = null;
                         esc.melodyReplacementReady = false;
                         esc.melodyDirty = false;
-                        esc.melodyReadStatus = ESC_MELODY_READ_STATUS.LOADED;
+                        esc.melodyReadStatus = musicOff ? ESC_MELODY_READ_STATUS.EMPTY : ESC_MELODY_READ_STATUS.LOADED;
                     }
                     if (writtenVoices && presetTrackSession.value === writtenVoices.session) {
                         writtenVoices.session.tracks.forEach((track, index) => {

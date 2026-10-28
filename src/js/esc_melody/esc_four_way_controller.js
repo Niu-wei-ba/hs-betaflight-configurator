@@ -202,6 +202,7 @@ export class EscFourWayController {
         }
     }
 
+    /** @param {number} channel @param {{armRecovery?: boolean}} options */
     async initFlash(channel, { armRecovery = true } = {}) {
         let lastError;
         const retryDelays = [...this.initRetryDelays];
@@ -220,7 +221,25 @@ export class EscFourWayController {
                 }
             }
         }
-        if (armRecovery && isRetryableInitFailure(lastError)) return this.initArmWithRecovery(channel);
+        if (armRecovery && isRetryableInitFailure(lastError)) {
+            try {
+                return await this.initArmWithRecovery(channel);
+            } catch (error) {
+                if (/serial adapter|connection was lost/i.test(error?.message || "")) throw error;
+                // Discard outstanding replies and mode state before scanning another channel.
+                try {
+                    await this.exit();
+                    await this.enter();
+                } catch (rebuildError) {
+                    const failure = new Error(`ARM 恢复后无法重建 4-way 会话：${rebuildError.message}`, { cause: rebuildError });
+                    failure.name = "FourWaySessionRecoveryError";
+                    throw failure;
+                }
+                const failure = new Error(`ESC ${channel + 1} ARM 初始化恢复失败：${error.message}`, { cause: error });
+                failure.name = "EscInitializationRecoveryError";
+                throw failure;
+            }
+        }
         throw lastError || new Error(`ESC ${channel + 1} did not respond to 4-way initialization`);
     }
 
@@ -350,7 +369,9 @@ export class EscFourWayController {
         return esc;
     }
 
-    /** Validate and read the channel already selected by scan, without re-entering passthrough. */
+    /** Validate and read the channel already selected by scan, without re-entering passthrough.
+     * @param {object} esc
+     */
     async verifyDetectedFirmware(esc) {
         const firmwareFamily = esc.firmwareFamily;
         esc.confirmedFirmwareFamily = firmwareFamily;
@@ -416,7 +437,9 @@ export class EscFourWayController {
             }
             const image = await this.readBlheli32Settings();
             const identity = parseBlheli32Settings(image, esc);
-            if (!identity.writable) throw new Error(identity.reason);
+            if (!identity.writable) {
+                return this.lockFirmwareFailure(esc, identity.reason, ESC_FIRMWARE_CONFIRMATION_STATUS.UNSUPPORTED);
+            }
             applyEscFirmwareFamily(esc, ESC_FIRMWARE.BLHELI32, {
                 model: identity.layout.replaceAll("#", ""),
                 version: identity.version,
@@ -1302,6 +1325,8 @@ export function patchSettingsImage(original, esc, melodyBytes, waitMs = 0, melod
 }
 
 function isTransportFailure(error) {
+    if (error?.name === "FourWaySessionRecoveryError") return true;
+    if (error?.name === "EscInitializationRecoveryError") return false;
     return /timed out|serial adapter|connection was lost/i.test(error?.message || "");
 }
 
