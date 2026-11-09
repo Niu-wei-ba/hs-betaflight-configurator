@@ -23,29 +23,32 @@
                     </svg>
                     <span>切换 2025.12.2版本</span>
                 </a>
-                <header class="landing-hero">
-                    <p class="hero-kicker">
-                        <svg
-                            aria-hidden="true"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                            <path d="m13 2-9 12h7l-1 8 10-13h-7z"></path>
-                        </svg>
-                        更快下载 · 更稳访问 · 官方同步
-                    </p>
-                    <h1 id="landing-title">Betaflight <em>中国镜像站</em></h1>
-                    <p class="hero-subtitle">为穿越机玩家提供更稳定、更快速的资源与交流平台</p>
-                </header>
+                <div class="landing-intro">
+                    <header class="landing-hero">
+                        <p class="hero-kicker">
+                            <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="m13 2-9 12h7l-1 8 10-13h-7z"></path>
+                            </svg>
+                            更快下载 · 更稳访问 · 官方同步
+                        </p>
+                        <h1 id="landing-title">Betaflight <em>中国镜像站</em></h1>
+                        <p class="hero-subtitle">为穿越机玩家提供更稳定、更快速的资源与交流平台</p>
+                    </header>
 
-                <aside class="landing-sponsor" aria-label="赞助商 BUCK">
-                    <p>赞助支持</p>
-                    <img :src="buckLogoUrl" alt="BUCK" />
-                </aside>
+                    <aside class="landing-sponsor" aria-label="赞助商 BUCK">
+                        <p>赞助支持</p>
+                        <img :src="buckLogoUrl" alt="BUCK" />
+                        <span class="landing-sponsor__description">穿越培训维修选择<br />微信小程序“飞维创科”</span>
+                    </aside>
+                </div>
 
                 <section class="resource-grid" aria-label="快捷入口">
                     <component
@@ -394,13 +397,19 @@ export default defineComponent({
     outline: 3px solid rgb(255 179 0 / 55%);
     outline-offset: 3px;
 }
+.landing-intro {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: start;
+    gap: 16px;
+    padding-bottom: 30px;
+}
 .landing-sponsor {
     box-shadow: rgba(16, 36, 79, 0.08) 0px 28px 64px 0px;
     border-radius: 8px;
-    padding: 30px;
-    position: absolute;
-    top: 28px;
-    right: 38px;
+    padding: 16px 30px;
+    grid-column: 3;
+    justify-self: end;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -421,11 +430,16 @@ export default defineComponent({
     width: 200px;
     object-fit: contain;
 }
+.landing-sponsor__description {
+    line-height: 1.5;
+    text-align: center;
+}
 .landing-hero {
     display: flex;
+    grid-column: 2;
     flex-direction: column;
     align-items: center;
-    padding: 4px 0 30px;
+    padding: 4px 0 0;
     text-align: center;
 }
 .hero-kicker {
@@ -605,7 +619,7 @@ export default defineComponent({
     box-shadow: 0 5px 18px rgba(16, 24, 39, 0.06);
 }
 .tutorial-section {
-    padding: 20px;
+    padding: 14px;
 }
 .section-heading {
     display: flex;
@@ -752,7 +766,7 @@ export default defineComponent({
     grid-template-columns: minmax(0, 1fr) 132px;
     align-items: center;
     gap: 10px;
-    padding: 21px;
+    padding: 14px;
 }
 .community-panel__copy {
     min-width: 0;
@@ -827,6 +841,20 @@ export default defineComponent({
     .landing-shell {
         padding: 28px;
     }
+    .version-switch-link {
+        position: static;
+        width: fit-content;
+        margin: 0 0 14px;
+    }
+    .landing-intro {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        padding-bottom: 18px;
+    }
+    .landing-sponsor {
+        justify-content: center;
+    }
     .support-grid {
         grid-template-columns: 1fr;
     }
@@ -840,16 +868,6 @@ export default defineComponent({
 @media (max-width: 820px) {
     .landing-shell {
         padding: 24px 18px 20px;
-    }
-    .version-switch-link {
-        position: static;
-        width: fit-content;
-        margin: 0 0 14px;
-    }
-    .landing-sponsor {
-        position: static;
-        justify-content: center;
-        margin: 0 0 18px;
     }
     .landing-sponsor p {
         font-size: 12px;
@@ -872,9 +890,6 @@ export default defineComponent({
     .landing-shell {
         padding: 20px 12px 16px;
     }
-    .landing-sponsor {
-        margin-bottom: 14px;
-    }
     .version-switch-link {
         min-height: 40px;
         margin-bottom: 12px;
@@ -883,9 +898,6 @@ export default defineComponent({
     .landing-sponsor img {
         width: 102px;
         height: 34px;
-    }
-    .landing-hero {
-        padding-bottom: 22px;
     }
     .landing-hero h1 {
         font-size: 32px;
