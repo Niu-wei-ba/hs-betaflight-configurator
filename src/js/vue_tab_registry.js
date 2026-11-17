@@ -30,6 +30,7 @@ import PresetsTab from "../components/tabs/PresetsTab.vue";
 import AutotuneTab from "../components/tabs/AutotuneTab.vue";
 import BlackboxViewerTab from "../components/tabs/BlackboxViewerTab.vue";
 import VideoTutorialsTab from "../components/tabs/VideoTutorialsTab.vue";
+import EscMelodyTab from "../components/tabs/EscMelodyTab.vue";
 
 export const VueTabComponents = {
     help: HelpTab,
@@ -64,4 +65,5 @@ export const VueTabComponents = {
     autotune: AutotuneTab,
     blackbox_viewer: BlackboxViewerTab,
     video_tutorials: VideoTutorialsTab,
+    esc_melody: EscMelodyTab,
 };

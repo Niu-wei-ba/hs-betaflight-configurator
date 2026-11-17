@@ -2,6 +2,7 @@ import "../../libraries/flightindicators.css";
 
 import "../css/theme.css";
 import "../css/main.less";
+import "../css/tabs/esc_melody.less";
 import "../css/opensans_webfontkit/fonts.css";
 import "../components/MotorOutputReordering/Styles.css";
 import "../components/EscDshotDirection/Styles.css";

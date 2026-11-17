@@ -30,6 +30,18 @@
                     <SettingRow :label="$t('showNotifications')">
                         <USwitch v-model="settings.showNotifications" size="sm" />
                     </SettingRow>
+                    <SettingRow>
+                        <USwitch
+                            id="options-esc-melody"
+                            :model-value="navigationStore.escMelodyEnabled"
+                            :disabled="navigationStore.activeTab === 'esc_melody' && connectionStore.connectLock"
+                            size="sm"
+                            @update:model-value="updateEscMelodyEnabled"
+                        />
+                        <template #label>
+                            <label for="options-esc-melody">{{ $t("tabEscMelody") }}</label>
+                        </template>
+                    </SettingRow>
                 </UiBox>
 
                 <UiBox :title="$t('languageAndAppearanceSettings')">
@@ -156,6 +168,8 @@
 <script setup>
 import { computed, onUnmounted, reactive, ref, watch } from "vue";
 import { useDialog } from "@/composables/useDialog";
+import { useConnectionStore } from "@/stores/connection";
+import { useNavigationStore } from "@/stores/navigation";
 import { get as getConfig, set as setConfig } from "../../js/ConfigStorage";
 import { applyUiScale, sanitizeUiScale, DEFAULT_UI_SCALE, MIN_UI_SCALE, MAX_UI_SCALE } from "../../js/UiScale";
 import { i18n } from "../../js/localization";
@@ -167,6 +181,7 @@ import NotificationManager from "../../js/utils/notifications";
 import { ispConnected } from "../../js/utils/connection";
 import { DEFAULT_DEVELOPMENT_OPTIONS, resetDevelopmentOptions } from "../../js/utils/developmentOptions";
 import { applyExpertMode } from "../../js/utils/applyExpertMode";
+import { switchTab } from "../../js/tab_switch";
 import UiBox from "../elements/UiBox.vue";
 import SettingRow from "../elements/SettingRow.vue";
 import { isAndroidNative } from "../../js/AndroidAppUpdate";
@@ -178,8 +193,23 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue"]);
 
 const dialog = useDialog();
+const connectionStore = useConnectionStore();
+const navigationStore = useNavigationStore();
 const isAndroidApp = isAndroidNative();
 const checkingAppUpdate = ref(false);
+
+/** @param {boolean} enabled */
+function updateEscMelodyEnabled(enabled) {
+    if (!enabled && navigationStore.activeTab === "esc_melody") {
+        const switched = connectionStore.connectionValid
+            ? switchTab("setup", { mode: "connected" })
+            : switchTab("landing", { mode: "disconnected" });
+        if (!switched) {
+            return;
+        }
+    }
+    navigationStore.setEscMelodyEnabled(enabled);
+}
 
 async function checkForAppUpdate() {
     checkingAppUpdate.value = true;

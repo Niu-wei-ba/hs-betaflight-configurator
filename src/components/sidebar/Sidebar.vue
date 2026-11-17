@@ -164,7 +164,7 @@ const isAllowed = (item) => {
     if (item.mode === "loggedin" || item.mode === "shared") {
         return true;
     }
-    return GUI.allowedTabs.includes(item.tab ?? item.key);
+    return GUI.isTabAllowed(item.tab ?? item.key);
 };
 
 const activeItems = computed(() =>
