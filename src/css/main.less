@@ -704,6 +704,10 @@ input[type="number"] {
     ul.mode-connected-cli {
         display: none;
     }
+    // The legacy connection handler sets inline display on connected tabs.
+    .tab_esc_melody[hidden] {
+        display: none !important;
+    }
     li {
         &:first-child {
             border-top: 0;

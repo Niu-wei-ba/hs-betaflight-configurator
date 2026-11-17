@@ -90,6 +90,7 @@ function appReady() {
 function startProcess() {
     // translate to user-selected language
     i18n.localizePage();
+    GUI.updateEscMelodyVisibility();
 
     gui_log(i18n.getMessage("infoVersionOs", { operatingSystem: GUI.operating_system }));
     gui_log(i18n.getMessage("infoVersionConfigurator", { configuratorVersion: CONFIGURATOR.getDisplayVersion() }));
@@ -127,7 +128,7 @@ function startProcess() {
         const tabName = $(this).attr("class").split(" ")[0];
 
         const tabNameWithoutPrefix = tabName.substring(4);
-        if (tabNameWithoutPrefix !== "cli") {
+        if (tabNameWithoutPrefix !== "cli" && (tabNameWithoutPrefix !== "esc_melody" || GUI.escMelodyEnabled)) {
             // Don't store 'cli' otherwise you can never connect to another tab.
             setConfig({ lastTab: tabName });
         }
@@ -171,7 +172,10 @@ function startProcess() {
                 return;
             }
 
-            if (!GUI.allowedTabs.includes(tab)) {
+            if (!GUI.isTabAllowed(tab)) {
+                if (tab === "esc_melody") {
+                    return;
+                }
                 if (tab === "firmware_flasher") {
                     // Special handling for firmware flasher tab
                     if (GUI.connected_to || GUI.connecting_to) {
