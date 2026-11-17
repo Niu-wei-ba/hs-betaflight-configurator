@@ -242,6 +242,9 @@ function startProcess() {
                             firmware_flasher.initialize(content_ready),
                         );
                         break;
+                    case "download_center":
+                        mountVueTab("download_center", content_ready);
+                        break;
                     case "help":
                         // Vue tab - use mountVueTab instead of jQuery load
                         mountVueTab("help", content_ready);

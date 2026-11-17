@@ -4,6 +4,7 @@ import StatusBar from "../components/status-bar/StatusBar.vue";
 import BatteryIcon from "../components/quad-status/BatteryIcon.vue";
 import PortPicker from "../components/port-picker/PortPicker.vue";
 // Tab components
+import DownloadCenterTab from "../components/tabs/DownloadCenterTab.vue";
 import HelpTab from "../components/tabs/HelpTab.vue";
 import LandingTab from "../components/tabs/LandingTab.vue";
 import OptionsTab from "../components/tabs/OptionsTab.vue";
@@ -18,6 +19,7 @@ import EscMelodyTab from "../components/tabs/EscMelodyTab.vue";
 
 // Registry of Vue tab components - used by main.js for dynamic mounting
 export const VueTabComponents = {
+    download_center: DownloadCenterTab,
     help: HelpTab,
     landing: LandingTab,
     options: OptionsTab,
