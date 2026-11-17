@@ -37,6 +37,7 @@ class GuiControl {
             "options",
             "help",
             "video_tutorials",
+            "esc_melody",
         ];
 
         this.defaultAllowedTabs = [
@@ -57,6 +58,7 @@ class GuiControl {
             "receiver",
             "sensors",
             "video_tutorials",
+            "esc_melody",
         ];
 
         this.defaultCloudBuildTabOptions = ["gps", "led_strip", "osd", "servos", "transponder", "vtx"];
@@ -341,10 +343,26 @@ class GuiControl {
             callback();
         }
     }
+    get escMelodyEnabled() {
+        return getConfig("escMelodyEnabled").escMelodyEnabled === true;
+    }
+
+    updateEscMelodyVisibility() {
+        const enabled = this.escMelodyEnabled;
+        for (const item of document.querySelectorAll("#tabs .tab_esc_melody")) {
+            item.hidden = !enabled;
+        }
+    }
+
+    /** @param {string} tab */
+    isTabAllowed(tab) {
+        return this.allowedTabs.includes(tab) && (tab !== "esc_melody" || this.escMelodyEnabled);
+    }
+
     selectDefaultTabWhenConnected() {
         const result = getConfig(["rememberLastTab", "lastTab"]);
         const tab =
-            result.rememberLastTab && result.lastTab && this.allowedTabs.includes(result.lastTab.substring(4))
+            result.rememberLastTab && result.lastTab && this.isTabAllowed(result.lastTab.substring(4))
                 ? result.lastTab
                 : "tab_setup";
 

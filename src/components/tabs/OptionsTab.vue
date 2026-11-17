@@ -86,6 +86,18 @@
                         <span class="freelabel" v-html="$t('showNotifications')"></span>
                     </div>
 
+                    <div class="margin-bottom">
+                        <div>
+                            <input
+                                id="options-esc-melody"
+                                type="checkbox"
+                                class="toggle"
+                                v-model="settings.escMelodyEnabled"
+                            />
+                        </div>
+                        <label class="freelabel" for="options-esc-melody">{{ $t("tabEscMelody") }}</label>
+                    </div>
+
                     <!-- Backup On Flash -->
                     <div class="backupOnFlash margin-bottom">
                         <select id="backupOnFlashSelect" v-model.number="settings.backupOnFlash">
@@ -183,6 +195,7 @@ export default defineComponent({
             darkTheme: DarkTheme.configSetting,
             showDevToolsOnStartup: !!getConfig("showDevToolsOnStartup").showDevToolsOnStartup,
             showNotifications: !!getConfig("showNotifications").showNotifications,
+            escMelodyEnabled: getConfig("escMelodyEnabled").escMelodyEnabled === true,
             backupOnFlash: getConfig("backupOnFlash", 1).backupOnFlash ?? 1,
             userLanguage: i18n.selectedLanguage,
             showAllSerialDevices: !!getConfig("showAllSerialDevices").showAllSerialDevices,
@@ -193,6 +206,14 @@ export default defineComponent({
         const availableLanguages = i18n.getLanguagesAvailables();
 
         // Watch each setting and persist changes
+        watch(
+            () => settings.escMelodyEnabled,
+            (value) => {
+                setConfig({ escMelodyEnabled: value });
+                GUI.updateEscMelodyVisibility();
+            },
+        );
+
         watch(
             () => settings.rememberLastTab,
             (value) => setConfig({ rememberLastTab: value }),
