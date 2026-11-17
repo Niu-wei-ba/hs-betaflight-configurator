@@ -44,6 +44,13 @@ export const sidebarItems = [
     { key: "onboard_logging", mode: "connected", i18n: "tabOnboardLogging", icon: "i-lucide-database" },
     { key: "autotune", mode: "shared", i18n: "tabAutotune", icon: "i-lucide-gauge", expert: true },
     { key: "blackbox_viewer", mode: "shared", i18n: "tabBlackboxViewer", icon: "i-lucide-line-chart" },
+    {
+        key: "esc_melody_disconnected",
+        tab: "esc_melody",
+        mode: "disconnected",
+        i18n: "tabEscMelody",
+        icon: "i-lucide-music-2",
+    },
 
     { key: "cli", mode: "cli", i18n: "tabCLI", icon: "i-lucide-terminal" },
 

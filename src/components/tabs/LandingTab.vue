@@ -103,8 +103,10 @@
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                 >
-                                    <path d="M3 14h3l2.2-7 3.5 12 2.5-8H21"></path>
-                                    <path d="M3 19h18"></path>
+                                    <circle cx="5" cy="6" r="2"></circle>
+                                    <circle cx="5" cy="18" r="2"></circle>
+                                    <circle cx="19" cy="12" r="2"></circle>
+                                    <path d="M7 6h2a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7m5-6h5"></path>
                                 </svg>
                             </span>
                             <span class="resource-card__text">
@@ -246,7 +248,7 @@ import fieldViewUrl from "../../images/osd-bg-2.png";
 import buckLogoUrl from "../../images/sponsors/buck-logo.png";
 import resourceDocsUrl from "../../images/landing-resource-docs.png";
 import resourceCommunityUrl from "../../images/landing-resource-community.png";
-import resourceBlackboxUrl from "../../images/landing-resource-blackbox.png";
+import resourceWiringUrl from "../../images/landing-resource-wiring.png";
 
 const resourceCards = [
     {
@@ -258,20 +260,20 @@ const resourceCards = [
         image: resourceDocsUrl,
     },
     {
+        id: "wiring",
+        title: "接线模拟器",
+        description: "在线练习飞控、电调与外设接线",
+        action: "开始接线",
+        href: "https://hs-fpv.com/wiring-simulator",
+        image: resourceWiringUrl,
+    },
+    {
         id: "community",
         title: "花生 FPV 社区",
         description: "配置分享、经验交流、问题互助、成长记录",
         action: "进入社区",
         href: "https://hs-fpv.com/",
         image: resourceCommunityUrl,
-    },
-    {
-        id: "blackbox",
-        title: "Blackbox Explorer",
-        description: "高效稳定的日志分析平台，支持在线解析与可视化",
-        action: "使用工具",
-        href: "https://bbe.hs-fpv.com",
-        image: resourceBlackboxUrl,
     },
 ];
 
@@ -541,16 +543,13 @@ export default defineComponent({
         rgba(255, 255, 255, 0.14) 100%
     );
 }
-.resource-card--blackbox .resource-card__image {
-    filter: saturate(0.92) contrast(0.98) brightness(0.82);
+.resource-card--wiring .resource-card__image {
+    object-fit: contain;
+    object-position: right center;
+    filter: none;
 }
-.resource-card--blackbox .resource-card__wash {
-    background: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0.96),
-        rgba(255, 255, 255, 0.83) 52%,
-        rgba(255, 255, 255, 0.4)
-    );
+.resource-card--wiring .resource-card__wash {
+    background: linear-gradient(90deg, var(--paper) 45%, 76%, transparent);
 }
 .resource-card__copy {
     display: flex;
