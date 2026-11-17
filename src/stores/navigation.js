@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import GUI from "../js/gui";
+import { get as getConfig, set as setConfig } from "../js/ConfigStorage";
 
 export const useNavigationStore = defineStore("navigation", () => {
     // Proxy state directly to legacy reactive objects
@@ -17,6 +18,13 @@ export const useNavigationStore = defineStore("navigation", () => {
     });
 
     const expertMode = ref(false);
+    const escMelodyEnabled = ref(getConfig("escMelodyEnabled").escMelodyEnabled === true);
+
+    /** @param {boolean} enabled */
+    function setEscMelodyEnabled(enabled) {
+        escMelodyEnabled.value = enabled;
+        setConfig({ escMelodyEnabled: enabled });
+    }
 
     // Set to true to imperatively open the OptionsDialog (e.g. on first run).
     // Sidebar.vue consumes and resets this flag.
@@ -30,6 +38,8 @@ export const useNavigationStore = defineStore("navigation", () => {
         activeTab,
         tabSwitchInProgress,
         expertMode,
+        escMelodyEnabled,
+        setEscMelodyEnabled,
         optionsDialogOpen,
         cleanup,
     };
