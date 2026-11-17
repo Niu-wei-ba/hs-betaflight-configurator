@@ -5,6 +5,7 @@ import { getOS } from "./utils/checkCompatibility";
 import { i18n } from "./localization";
 import { useDialogStore } from "../stores/dialog";
 import { useConnectionStore } from "../stores/connection";
+import { useNavigationStore } from "../stores/navigation";
 import { pinia } from "./pinia_instance";
 import { getLockManager } from "./lock_manager";
 
@@ -33,6 +34,7 @@ class GuiControl {
             "flight_plan",
             "autotune",
             "blackbox_viewer",
+            "esc_melody",
         ];
 
         this.defaultAllowedTabs = [
@@ -56,6 +58,7 @@ class GuiControl {
             "blackbox_viewer",
             "video_tutorials",
             "support_snapshot",
+            "esc_melody",
         ];
 
         this.defaultCloudBuildTabOptions = ["gps", "led_strip", "osd", "servos", "vtx", "flight_plan"];
@@ -309,10 +312,19 @@ class GuiControl {
             callback();
         }
     }
+    /** @param {string} tabKey */
+    isTabAllowed(tabKey) {
+        return (
+            this.allowedTabs.includes(tabKey) &&
+            (tabKey !== "esc_melody" ||
+                (useNavigationStore(pinia).escMelodyEnabled && !useConnectionStore(pinia).supportSnapshotMode))
+        );
+    }
+
     selectDefaultTabWhenConnected() {
         const result = getConfig(["rememberLastTab", "lastTab"]);
         const tabClass =
-            result.rememberLastTab && result.lastTab && this.allowedTabs.includes(result.lastTab.substring(4))
+            result.rememberLastTab && result.lastTab && this.isTabAllowed(result.lastTab.substring(4))
                 ? result.lastTab
                 : "tab_setup";
         const tabKey = tabClass.substring(4);
