@@ -39,7 +39,9 @@ class Serial extends EventTarget {
 
         // Initialize protocols with metadata for easier lookup
 
-        if (isAndroid()) {
+        if (import.meta.env.VITE_WIRING_VIRTUAL_FC === "1") {
+            this._protocols = [];
+        } else if (isAndroid()) {
             this._protocols = [
                 { name: "serial", instance: new CapacitorSerial() },
                 { name: "bluetooth", instance: new CapacitorBle() },

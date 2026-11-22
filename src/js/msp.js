@@ -1,3 +1,4 @@
+import { dispatchWiringMsp, wiringBuild } from "./virtualWiring";
 import GUI from "./gui.js";
 import CONFIGURATOR from "./data_storage.js";
 import { serial } from "./serial.js";
@@ -519,6 +520,16 @@ const MSP = {
         }
     },
     send_message(code, data, callback_sent, callback_msp, options = {}) {
+        if (wiringBuild) {
+            dispatchWiringMsp(code, data).then(
+                () => callback_msp?.(),
+                (error) => {
+                    console.error("Virtual FC:", error);
+                    callback_msp?.(null, error);
+                },
+            );
+            return true;
+        }
         if (CONFIGURATOR.supportSnapshotMode) {
             const entry = getSupportSnapshotEntry(code, data);
             const fail = (message) => {
@@ -739,6 +750,7 @@ const MSP = {
      * rejects: MspTimeoutError, MspCancelledError or MspCrcError
      */
     async promise(code, data, options = {}) {
+        if (wiringBuild) return dispatchWiringMsp(code, data);
         if (code === undefined || (CONFIGURATOR.virtualMode && !CONFIGURATOR.supportSnapshotMode)) {
             return undefined;
         }

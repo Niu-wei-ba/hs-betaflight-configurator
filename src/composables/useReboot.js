@@ -1,3 +1,4 @@
+import { wiringBuild } from "@/js/virtualWiring";
 import { reinitializeConnection } from "@/js/serial_backend"; // Backend logic
 import { useNavigationStore } from "@/stores/navigation";
 import { mspHelper } from "@/js/msp/MSPHelper";
@@ -51,6 +52,7 @@ export function useReboot() {
      * @returns {Promise<void>} resolves once the reboot sequence has started
      */
     function saveAndReboot() {
+        if (wiringBuild) return saveToEeprom().then(reboot);
         return new Promise((resolve) => {
             mspHelper.writeConfiguration(false, () => cleanupAndReboot(resolve));
         });

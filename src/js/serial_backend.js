@@ -1,3 +1,4 @@
+import { wiringBuild, wiringTabs, hydrateWiringSettings, stopWiringOutputs } from "./virtualWiring";
 import GUI, { TABS } from "./gui";
 import { i18n } from "./localization";
 // NOTE: this is a circular dependency, needs investigating
@@ -496,6 +497,7 @@ function registerCliHotkey() {
 }
 
 export function connectDisconnect() {
+    if (wiringBuild) return;
     if (GUI.connect_lock) {
         return;
     }
@@ -1015,6 +1017,24 @@ function onOpen(openInfo) {
     } else {
         abortConnection();
     }
+}
+
+/** @param {Parameters<typeof hydrateWiringSettings>[0]} settings */
+export function openWiringVirtualController(settings) {
+    GUI.connecting_to = false;
+    GUI.connected_to = "virtual";
+    GUI.allowedTabs = [...wiringTabs];
+    CONFIGURATOR.connectionValid = true;
+    CONFIGURATOR.virtualMode = true;
+    CONFIGURATOR.supportSnapshotMode = false;
+    CONFIGURATOR.virtualApiVersion = "1.48.0";
+    VirtualFC.setVirtualConfig();
+    hydrateWiringSettings(settings);
+    getConnectionState().setLinkOpen(true);
+    getConnectionState().setPhase(ConnPhase.CONNECTED);
+    connectionTimestamp = Date.now();
+    if (globalThis.vm?.CONNECTION) globalThis.vm.CONNECTION.timestamp = connectionTimestamp;
+    switchTab("ports", { mode: "connected" });
 }
 
 function onOpenVirtual() {
@@ -1554,6 +1574,12 @@ export function reinitializeConnection(suppressDialog = false) {
 
     if (CONFIGURATOR.supportSnapshotMode) {
         closeSupportSnapshotSession();
+        return rebootTimestamp;
+    }
+
+    if (wiringBuild) {
+        stopWiringOutputs();
+        getConnectionState().concludeReboot(true);
         return rebootTimestamp;
     }
 

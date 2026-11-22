@@ -192,6 +192,13 @@ export default defineConfig({
         },
     },
     plugins: [
+        {
+            name: "virtual-wiring-html",
+            transformIndexHtml(html) {
+                if (process.env.VITE_WIRING_VIRTUAL_FC !== "1") return html;
+                return html.replace(/<script defer src="https:\/\/umami\.hs-fpv\.cn[^>]*><\/script>/, "");
+            },
+        },
         vue(),
         ui(nuxtUiViteOptions),
         serveLocalesPlugin(),
@@ -213,6 +220,7 @@ export default defineConfig({
             ],
         }).filter((plugin) => plugin.name === "vite-plugin-static-copy:build"),
         VitePWA({
+            disable: process.env.VITE_WIRING_VIRTUAL_FC === "1",
             registerType: "prompt",
             workbox: {
                 // Version channels share an origin, so they must not share a Workbox precache.

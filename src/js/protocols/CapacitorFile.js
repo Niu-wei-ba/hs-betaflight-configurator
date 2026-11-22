@@ -10,7 +10,7 @@ const BetaflightFile = Capacitor?.Plugins?.BetaflightFile;
  */
 class CapacitorFile {
     constructor() {
-        if (!BetaflightFile) {
+        if (import.meta.env.VITE_WIRING_VIRTUAL_FC !== "1" && !BetaflightFile) {
             console.error(`${logHead} Native BetaflightFile plugin is not available`);
         }
     }

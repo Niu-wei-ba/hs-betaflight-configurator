@@ -1,10 +1,12 @@
+import "./virtualWiringIcons";
 import "../components/init.js";
 import { gui_log } from "./gui_log.js";
 import { i18n } from "./localization.js";
 import GUI from "./gui.js";
 import { get as getConfig, set as setConfig } from "./ConfigStorage.js";
-import { checkSetupAnalytics } from "./Analytics.js";
-import { initializeSerialBackend } from "./serial_backend.js";
+import { checkSetupAnalytics, createAnalytics } from "./Analytics.js";
+import { initializeWiringChannel, wiringBuild } from "./virtualWiring";
+import { initializeSerialBackend, openWiringVirtualController } from "./serial_backend.js";
 import CONFIGURATOR from "./data_storage.js";
 import CliAutoComplete from "./CliAutoComplete.js";
 import DarkTheme, { setDarkTheme } from "./DarkTheme.js";
@@ -81,6 +83,18 @@ function cleanupLocalStorage() {
 
 function appReady() {
     readConfiguratorVersionMetadata();
+
+    if (wiringBuild) {
+        createAnalytics({ optOut: true });
+        i18n.init(() => {
+            i18n.localizePage();
+            loadUiScale();
+            DarkTheme.autoSet();
+            document.body.classList.add("wiring-virtual-fc");
+            initializeWiringChannel(openWiringVirtualController);
+        });
+        return;
+    }
 
     cleanupLocalStorage();
 

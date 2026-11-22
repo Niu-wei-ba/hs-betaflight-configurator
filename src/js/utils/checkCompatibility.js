@@ -125,6 +125,7 @@ export function isPwaContext() {
  * @throws {Error} When no compatible browser transport is found.
  */
 export function checkCompatibility() {
+    if (import.meta.env.VITE_WIRING_VIRTUAL_FC === "1") return true;
     if (isEmbeddedDeployment()) {
         console.log("[COMPAT] Embedded deployment detected — skipping browser checks");
         return true;

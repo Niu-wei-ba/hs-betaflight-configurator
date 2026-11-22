@@ -1,3 +1,4 @@
+import { wiringBuild } from "@/js/virtualWiring";
 import { toRaw } from "vue";
 import FC from "../../js/fc";
 import MSP from "../../js/msp";
@@ -8,7 +9,7 @@ import { i18n } from "../../js/localization";
 import { tracking } from "../../js/Analytics";
 import { useReboot } from "../useReboot";
 
-export function usePortsConfiguration(ports, analyticsChanges, functionRules) {
+export function usePortsConfiguration(ports, analyticsChanges, functionRules, markClean) {
     const { saveAndReboot } = useReboot();
 
     const getEnabledFeaturesFromPorts = (portsList) => {
@@ -99,6 +100,13 @@ export function usePortsConfiguration(ports, analyticsChanges, functionRules) {
         });
 
         updateFeatures();
+
+        if (wiringBuild) {
+            const snapshot = JSON.stringify(ports);
+            return saveAndReboot()
+                .then(() => markClean(snapshot))
+                .catch((error) => console.error("Virtual FC:", error));
+        }
 
         const saveEeprom = () => {
             saveAndReboot().then(() => gui_log(i18n.getMessage("portsEepromSave")));

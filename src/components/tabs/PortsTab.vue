@@ -195,12 +195,14 @@ const isDesktop = useMediaQuery("(min-width: 1010px)");
 const { functionRules, mspBaudRates, gpsBaudRates, telemetryBaudRates, blackboxBaudRates, getRules, isRuleDisabled } =
     usePortsRules();
 
-const { ports, analyticsChanges, getPortName, vtxTableNotConfigured, dirty, isLoading } = usePortsState(getRules);
+const { ports, analyticsChanges, getPortName, vtxTableNotConfigured, dirty, markClean, isLoading } =
+    usePortsState(getRules);
 
 const { saveConfig, onTelemetryChange, onPeripheralChange } = usePortsConfiguration(
     ports,
     analyticsChanges,
     functionRules,
+    markClean,
 );
 
 const tabReady = ref(false);

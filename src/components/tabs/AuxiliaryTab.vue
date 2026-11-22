@@ -167,6 +167,7 @@ import BaseTab from "./BaseTab.vue";
 import WikiButton from "../elements/WikiButton.vue";
 import GUI from "../../js/gui";
 import { useInterval } from "../../composables/useInterval";
+import { wiringBuild } from "@/js/virtualWiring";
 import { useDirtyState } from "../../composables/useDirtyState";
 import { useSaving } from "../../composables/useSaving";
 import { useReboot } from "../../composables/useReboot";
@@ -261,8 +262,9 @@ export default defineComponent({
         });
 
         const channelOptions = computed(() => {
-            const options = [{ value: -1, label: i18n.getMessage("auxiliaryAutoChannelSelect") }];
-            for (let channelIndex = 0; channelIndex < auxChannelCount.value; channelIndex++) {
+            const options = wiringBuild ? [] : [{ value: -1, label: i18n.getMessage("auxiliaryAutoChannelSelect") }];
+            const editableChannelCount = wiringBuild ? Math.max(4, auxChannelCount.value) : auxChannelCount.value;
+            for (let channelIndex = 0; channelIndex < editableChannelCount; channelIndex++) {
                 options.push({ value: channelIndex, label: `AUX ${channelIndex + 1}` });
             }
             return options;
@@ -309,7 +311,7 @@ export default defineComponent({
 
         const { dirty, markClean, takeSnapshot } = useDirtyState(() => serializeModes(modes));
 
-        const addRange = (mode, auxChannelIndex = -1, modeLogic = 0, range = DEFAULT_RANGE) => {
+        const addRange = (mode, auxChannelIndex = wiringBuild ? 0 : -1, modeLogic = 0, range = DEFAULT_RANGE) => {
             const sliderRange = normalizeRangeValues([range.start, range.end]);
             mode.entries.push({
                 uid: ++entryUid,

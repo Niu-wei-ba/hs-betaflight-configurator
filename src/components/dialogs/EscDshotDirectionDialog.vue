@@ -45,9 +45,11 @@
                                 pushed: index !== selectedMotor,
                                 highlighted: currentSpinningButton === index,
                             }"
-                            @mousedown="onMotorButtonDown(index)"
-                            @mouseup="onMotorButtonUp(index)"
-                            @mouseout="onMotorButtonUp(index)"
+                            @mousedown="!wiringBuild && onMotorButtonDown(index)"
+                            @mouseup="!wiringBuild && onMotorButtonUp(index)"
+                            @mouseout="!wiringBuild && onMotorButtonUp(index)"
+                            @pointerdown="wiringBuild && holdVirtualButton($event, () => onMotorButtonDown(index))"
+                            @lostpointercapture="wiringBuild && onMotorButtonUp(index)"
                             @click.prevent
                         >
                             {{ motor }}
@@ -70,9 +72,13 @@
                             <button
                                 class="regular-button"
                                 :class="{ highlighted: spinningDirection === 'normal' }"
-                                @mousedown="onDirectionButtonDown('normal')"
-                                @mouseup="onDirectionButtonUp"
-                                @mouseout="onDirectionButtonUp"
+                                @mousedown="!wiringBuild && onDirectionButtonDown('normal')"
+                                @mouseup="!wiringBuild && onDirectionButtonUp()"
+                                @mouseout="!wiringBuild && onDirectionButtonUp()"
+                                @pointerdown="
+                                    wiringBuild && holdVirtualButton($event, () => onDirectionButtonDown('normal'))
+                                "
+                                @lostpointercapture="wiringBuild && onDirectionButtonUp()"
                                 @click.prevent
                             >
                                 {{ normalButtonText }}
@@ -80,9 +86,13 @@
                             <button
                                 class="regular-button"
                                 :class="{ highlighted: spinningDirection === 'reverse' }"
-                                @mousedown="onDirectionButtonDown('reverse')"
-                                @mouseup="onDirectionButtonUp"
-                                @mouseout="onDirectionButtonUp"
+                                @mousedown="!wiringBuild && onDirectionButtonDown('reverse')"
+                                @mouseup="!wiringBuild && onDirectionButtonUp()"
+                                @mouseout="!wiringBuild && onDirectionButtonUp()"
+                                @pointerdown="
+                                    wiringBuild && holdVirtualButton($event, () => onDirectionButtonDown('reverse'))
+                                "
+                                @lostpointercapture="wiringBuild && onDirectionButtonUp()"
                                 @click.prevent
                             >
                                 {{ reverseButtonText }}
@@ -210,6 +220,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useFlightControllerStore } from "@/stores/fc";
 import { getMixerImageSrc } from "@/js/utils/common";
 import EscDshotDirectionMotorDriver from "@/components/EscDshotDirection/EscDshotDirectionMotorDriver";
+import { wiringBuild } from "@/js/virtualWiring";
 import DshotCommand from "@/js/utils/DshotCommand";
 import { i18n } from "@/js/localization";
 
@@ -300,6 +311,12 @@ const secondHintText = computed(() => {
 
 const normalButtonText = ref(i18n.getMessage("escDshotDirectionDialog-CommandNormal"));
 const reverseButtonText = ref(i18n.getMessage("escDshotDirectionDialog-CommandReverse"));
+
+function holdVirtualButton(event, begin) {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    begin();
+}
 
 // Motor button handlers
 const onMotorButtonDown = (index) => {

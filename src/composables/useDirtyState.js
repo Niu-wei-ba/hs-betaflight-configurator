@@ -1,3 +1,4 @@
+import { trackWiringDirty } from "@/js/virtualWiring";
 import { computed, ref } from "vue";
 
 /**
@@ -14,6 +15,8 @@ export function useDirtyState(serialize) {
     const baseline = ref(null);
 
     const dirty = computed(() => baseline.value !== null && baseline.value !== serialize());
+
+    trackWiringDirty(dirty);
 
     /**
      * Adopt the current state as clean, or a snapshot from `takeSnapshot()` taken before an

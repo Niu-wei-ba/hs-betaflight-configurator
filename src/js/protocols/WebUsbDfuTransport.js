@@ -12,6 +12,8 @@ class WebUsbDfuTransport extends EventTarget {
         this.logHead = "[WebUSB Transport]";
         this.usbDevice = null;
 
+        if (import.meta.env.VITE_WIRING_VIRTUAL_FC === "1") return;
+
         if (!navigator?.usb) {
             console.error(`${this.logHead} WebUSB API not supported`);
             return;
@@ -43,7 +45,7 @@ class WebUsbDfuTransport extends EventTarget {
     }
 
     get available() {
-        return !!navigator?.usb;
+        return import.meta.env.VITE_WIRING_VIRTUAL_FC !== "1" && !!navigator?.usb;
     }
 
     createPort(device) {

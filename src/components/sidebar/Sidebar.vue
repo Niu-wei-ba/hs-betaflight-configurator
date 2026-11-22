@@ -8,6 +8,7 @@
         class="sidebar-nav pb-2"
     />
     <div
+        v-if="!wiringBuild"
         class="flex flex-row gap-1 border-t border-default pt-2 mt-auto items-center flex-wrap"
         :class="{ 'sidebar-footer--compact': isCompact }"
     >
@@ -64,11 +65,12 @@
             {{ nativeAppVersion }}
         </div>
     </div>
-    <OptionsDialog v-model="optionsOpen" />
-    <LogDialog v-model="logOpen" />
+    <OptionsDialog v-if="!wiringBuild" v-model="optionsOpen" />
+    <LogDialog v-if="!wiringBuild" v-model="logOpen" />
 </template>
 
 <script setup>
+import { wiringBuild, wiringTabs } from "@/js/virtualWiring";
 import { isSupportSnapshotMenuVisible } from "../../js/support/SnapshotNavigation";
 import { computed, inject, onMounted, onUnmounted, ref, watch } from "vue";
 import { useTranslation } from "i18next-vue";
@@ -96,7 +98,7 @@ const connectionStore = useConnectionStore();
 const authStore = useAuthStore();
 const sidebarExpanded = inject("sidebarExpanded", ref(true));
 const closeMobileSidebar = inject("closeMobileSidebar", () => {});
-const isCompact = computed(() => !sidebarExpanded.value);
+const isCompact = computed(() => !wiringBuild && !sidebarExpanded.value);
 const navMenuUi = computed(() => {
     const linkBase = "data-active:before:bg-primary/10 cursor-pointer";
     return {
@@ -169,6 +171,7 @@ const isAllowed = (item) => {
 
 const activeItems = computed(() =>
     sidebarItems
+        .filter((item) => !wiringBuild || wiringTabs.includes(item.key))
         .filter((item) => isModeVisible(item.mode))
         .filter((item) => item.key !== "support_snapshot" || isSupportSnapshotMenuVisible(connectionStore))
         .filter(

@@ -12,6 +12,7 @@
                 <div v-if="showSaveButtons" id="motorOutputReorderSaveStartOverButtonsPanel">
                     <button
                         class="regular-button left"
+                        :disabled="saving"
                         @click.prevent="save"
                         v-html="i18nMessage('motorsRemapDialogSave')"
                     ></button>
@@ -76,6 +77,7 @@ import { mspHelper } from "@/js/msp/MSPHelper";
 import MSP from "@/js/msp";
 import MSPCodes from "@/js/msp/MSPCodes";
 import { i18n } from "@/js/localization";
+import { wiringBuild } from "@/js/virtualWiring";
 import { useReboot } from "@/composables/useReboot";
 
 const props = defineProps({
@@ -105,6 +107,7 @@ const safetyAgreed = ref(false);
 const showMainContent = ref(false);
 const showSaveButtons = ref(false);
 const actionHintText = ref("");
+const saving = ref(false);
 
 // Motor jerking state
 let currentJerkingTimeout = -1;
@@ -273,8 +276,22 @@ const startOver = () => {
     startUserInteraction();
 };
 
-const save = () => {
+const save = async () => {
+    const previousOrder = [...fcStore.motorOutputOrder];
     fcStore.motorOutputOrder = Array.from(newMotorOutputReorder);
+    if (wiringBuild) {
+        saving.value = true;
+        try {
+            await saveAndReboot();
+            close();
+        } catch (error) {
+            fcStore.motorOutputOrder = previousOrder;
+            actionHintText.value = error.message;
+        } finally {
+            saving.value = false;
+        }
+        return;
+    }
 
     MSP.send_message(
         MSPCodes.MSP2_SET_MOTOR_OUTPUT_REORDERING,

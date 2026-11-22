@@ -11,7 +11,11 @@
                     <div class="flex flex-col gap-4">
                         <!-- MIXER -->
                         <UiBox :title="$t('configurationMixer')">
-                            <USelect v-model="fcStore.mixerConfig.mixer" :items="sortedMixerListItems" />
+                            <USelect
+                                v-model="fcStore.mixerConfig.mixer"
+                                :items="sortedMixerListItems"
+                                :disabled="wiringBuild"
+                            />
                             <SettingRow
                                 :label="$t('configurationReverseMotorSwitch')"
                                 :help="$t('configurationReverseMotorSwitchHelp')"
@@ -535,6 +539,7 @@ import { useFlightControllerStore } from "@/stores/fc";
 import { useDialog } from "@/composables/useDialog";
 import { mixerList } from "@/js/model";
 import { getMixerImageSrc } from "@/js/utils/common";
+import { trackWiringDirty, wiringBuild } from "@/js/virtualWiring";
 import EscProtocols from "@/js/utils/EscProtocols";
 import semver from "semver";
 import MSP from "@/js/msp";
@@ -562,6 +567,7 @@ const dialog = useDialog();
 // Initialize motors state management
 const motorsState = useMotorsState();
 const { configHasChanged, resetChanges } = motorsState;
+trackWiringDirty(configHasChanged);
 
 // Shared save discipline: runSave owns isSaving and swallows benign MspCancelledError.
 const { isSaving, runSave } = useSaving();

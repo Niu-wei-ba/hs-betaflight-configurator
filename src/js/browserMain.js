@@ -16,7 +16,7 @@ import { registerSW } from "virtual:pwa-register";
 import { isPwaContext } from "./utils/checkCompatibility.js";
 import { monitorServiceWorkerUpdates } from "./pwaUpdates";
 
-if (isPwaContext()) {
+if (import.meta.env.VITE_WIRING_VIRTUAL_FC !== "1" && isPwaContext()) {
     const dialogStore = useDialogStore(pinia);
     const updateSW = registerSW({
         /**

@@ -1,6 +1,6 @@
 <template>
     <UApp :tooltip="{ delayDuration: 100 }" portal="#main-wrapper">
-        <div class="app-wrapper">
+        <div class="app-wrapper" :class="{ 'wiring-virtual-fc': wiringBuild }">
             <div id="background" v-if="isMobileSidebarOpen" aria-hidden="true" @click="isRevealed = false"></div>
             <div id="side_menu_swipe"></div>
             <div class="mobile-topbar" :class="{ 'mobile-topbar--hidden': topbarHidden }">
@@ -28,7 +28,7 @@
                         :firmware-id="FC.CONFIG.flightControllerIdentifier"
                         :hardware-id="FC.CONFIG.hardwareName"
                     ></betaflight-logo>
-                    <ConnectButton />
+                    <ConnectButton v-if="!wiringBuild" />
                     <Sidebar />
                     <div class="clear-both"></div>
                 </div>
@@ -43,7 +43,7 @@
                         ref="activeTabInstance"
                     />
                 </div>
-                <VideoTutorialSearchPanel />
+                <VideoTutorialSearchPanel v-if="!wiringBuild" />
             </div>
             <status-bar
                 :port-usage-down="PortUsage.port_usage_down"
@@ -65,7 +65,7 @@
                     >皖公网安备34030002001370号</a
                 >
             </footer>
-            <VideoTutorialFloatingPlayer />
+            <VideoTutorialFloatingPlayer v-if="!wiringBuild" />
             <div id="cache">
                 <div class="data-loading">
                     <p i18n="dataWaitingForData">Waiting for data ...</p>
@@ -78,6 +78,7 @@
 
 <script setup>
 import { computed, nextTick, provide, reactive, ref, shallowRef, watch } from "vue";
+import { wiringBuild } from "./js/virtualWiring";
 import { useMediaQuery } from "@vueuse/core";
 import ConnectButton from "./components/device-picker/ConnectButton.vue";
 import GlobalDialogs from "./components/dialogs/GlobalDialogs.vue";
@@ -244,6 +245,11 @@ watch(
 
 <style>
 /* Main app content wrapper - flex column to push status bar to bottom */
+.wiring-virtual-fc .tab_container {
+    width: 10rem;
+    flex-shrink: 0;
+}
+
 .app-wrapper {
     display: flex;
     flex-direction: column;
