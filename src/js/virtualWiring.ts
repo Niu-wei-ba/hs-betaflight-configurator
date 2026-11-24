@@ -4,6 +4,7 @@ import CONFIGURATOR from "./data_storage.js";
 import MSPCodes from "./msp/MSPCodes.js";
 import EscProtocols from "./utils/EscProtocols.js";
 import { vueTabState } from "./vue_tab_mounter.js";
+import { defaultRadioMap, mapRadioChannels, validRadioChannels, validRadioMap } from "./wiringRadio";
 
 const protocol = "hs-fpv-virtual-fc";
 export const wiringBuild = import.meta.env.VITE_WIRING_VIRTUAL_FC === "1";
@@ -18,6 +19,7 @@ interface Motor {
     powered: boolean;
 }
 interface Peripheral {
+    id?: string;
     kind: string;
     connected: boolean;
     powered: boolean | null;
@@ -25,6 +27,7 @@ interface Peripheral {
 }
 interface Hardware {
     controllerId: string;
+    controllerPowered?: boolean;
     batteryVoltage: number;
     motors: Motor[];
     peripherals: Peripheral[];
@@ -41,6 +44,8 @@ interface Reply {
     hardware?: unknown;
     settings?: Settings;
     revision?: number;
+    receiverId?: unknown;
+    channels?: unknown;
     ok?: boolean;
 }
 type Save = { resolve: () => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> };
@@ -49,6 +54,7 @@ const groups = [
     "SERIAL_CONFIG",
     "GPS_CONFIG",
     "RX_CONFIG",
+    "RC_MAP",
     "MIXER_CONFIG",
     "MOTOR_CONFIG",
     "MOTOR_3D_CONFIG",
@@ -81,10 +87,11 @@ function send(type: string, fields: Record<string, unknown> = {}) {
 
 function validHardware(value: unknown): value is Hardware {
     if (!value || typeof value !== "object") return false;
-    const { controllerId, batteryVoltage, motors, peripherals } = value as Partial<Hardware>;
+    const { controllerId, controllerPowered, batteryVoltage, motors, peripherals } = value as Partial<Hardware>;
     return (
         typeof controllerId === "string" &&
         controllerId.length <= 80 &&
+        (controllerPowered === undefined || typeof controllerPowered === "boolean") &&
         typeof batteryVoltage === "number" &&
         Number.isFinite(batteryVoltage) &&
         batteryVoltage >= 0 &&
@@ -96,6 +103,7 @@ function validHardware(value: unknown): value is Hardware {
         peripherals.every(
             (part) =>
                 typeof part?.kind === "string" &&
+                (part.id === undefined || (typeof part.id === "string" && /^[\w-]{1,80}$/.test(part.id))) &&
                 typeof part.connected === "boolean" &&
                 (part.powered === null || typeof part.powered === "boolean") &&
                 (part.port === null || (Number.isInteger(part.port) && part.port >= 0 && part.port < 5)),
@@ -151,6 +159,55 @@ function updateDetectedSensors() {
     Object.assign(FC.BATTERY_STATE, { voltage: batteryVoltage, cellCount: batteryVoltage > 0 ? 6 : 0 });
 }
 
+let radio: { receiverId: string; channels: number[] } | undefined;
+let radioTimeout: ReturnType<typeof setTimeout> | undefined;
+let radioActive = false;
+
+function updateRadio() {
+    const config = savedSettings?.receiver;
+    const receiver =
+        radio && hardware?.peripherals.find((part) => part.id === radio?.receiverId && part.kind === "elrs");
+    const canReceive =
+        hardware?.controllerPowered &&
+        receiver?.connected &&
+        receiver.powered &&
+        receiver.port !== null &&
+        config?.enabled &&
+        config.ports.length === 1 &&
+        config.ports[0] === receiver.port &&
+        config.protocol === "CRSF";
+    const channels = radio && canReceive ? mapRadioChannels(radio.channels, config.map) : [];
+    if (
+        FC.RC &&
+        (FC.RC.active_channels !== channels.length || channels.some((value, index) => value !== FC.RC.channels[index]))
+    ) {
+        FC.RC = { active_channels: channels.length, channels };
+    }
+    const active = channels.length > 0;
+    if (radio && active !== radioActive) send("radio-status", { receiverId: radio.receiverId, active });
+    radioActive = active;
+}
+
+function clearRadio() {
+    clearTimeout(radioTimeout);
+    if (radioActive && radio) send("radio-status", { receiverId: radio.receiverId, active: false });
+    radio = undefined;
+    updateRadio();
+}
+
+function receiveRadio(receiverId: unknown, channels: unknown) {
+    if (typeof receiverId !== "string" || !/^[\w-]{1,80}$/.test(receiverId)) return;
+    if (Array.isArray(channels) && channels.length === 0) {
+        if (radio?.receiverId === receiverId) clearRadio();
+        return;
+    }
+    if (!validRadioChannels(channels)) return;
+    radio = { receiverId, channels };
+    updateRadio();
+    clearTimeout(radioTimeout);
+    radioTimeout = setTimeout(clearRadio, 850);
+}
+
 export function initializeWiringChannel(open: (settings?: Settings) => void) {
     if (!wiringBuild || !origin || window.parent === window) return;
     let heartbeat: ReturnType<typeof setInterval> | undefined;
@@ -187,6 +244,9 @@ export function initializeWiringChannel(open: (settings?: Settings) => void) {
             hardware = message.hardware;
             updateDetectedSensors();
             stopWiringOutputs();
+            updateRadio();
+        } else if (message.type === "radio") {
+            receiveRadio(message.receiverId, message.channels);
         } else if (message.type === "save-result" && typeof message.revision === "number") {
             const request = waiting.get(message.revision);
             if (!request) return;
@@ -195,6 +255,7 @@ export function initializeWiringChannel(open: (settings?: Settings) => void) {
             if (message.ok) request.resolve();
             else request.reject(new Error("无法保存虚拟飞控设置。"));
         } else if (message.type === "disconnect") {
+            clearRadio();
             stopWiringOutputs();
             clearInterval(heartbeat);
             for (const request of waiting.values()) {
@@ -207,7 +268,10 @@ export function initializeWiringChannel(open: (settings?: Settings) => void) {
         }
     });
     watch(() => vueTabState.activeTabName, stopWiringOutputs);
-    window.addEventListener("pagehide", stopWiringOutputs);
+    window.addEventListener("pagehide", () => {
+        stopWiringOutputs();
+        clearRadio();
+    });
     send("ready");
 }
 
@@ -242,11 +306,13 @@ export function hydrateWiringSettings(settings?: Settings) {
     FC.MODE_RANGES = Array.from({ length: 20 }, () => ({ id: 0, auxChannelIndex: 0, range: { start: 900, end: 900 } }));
     FC.MODE_RANGES_EXTRA = Array.from({ length: 20 }, () => ({ id: 0, modeLogic: 0, linkedTo: 0 }));
     FC.RC = { active_channels: 0, channels: [] };
+    FC.RC_MAP = [...defaultRadioMap];
     directions = {};
     if (!settings?.groups) return;
     const target = FC as unknown as Record<string, unknown>;
     for (const key of groups) {
-        if (Object.hasOwn(settings.groups, key)) target[key] = settings.groups[key];
+        const value = settings.groups[key];
+        if (Object.hasOwn(settings.groups, key) && (key !== "RC_MAP" || validRadioMap(value))) target[key] = value;
     }
     if (typeof settings.groups.features === "number") FC.FEATURE_CONFIG.features.setMask(settings.groups.features);
     if (typeof settings.groups.beepers === "number") FC.BEEPER_CONFIG.beepers.setDisabledMask(settings.groups.beepers);
@@ -294,6 +360,14 @@ function currentSettings() {
                 beepers: beepers.getDisabledMask(),
             },
             ports: FC.SERIAL_CONFIG.ports,
+            receiver: {
+                enabled: features.isEnabled("RX_SERIAL"),
+                ports: FC.SERIAL_CONFIG.ports
+                    .filter((entry) => entry.functions.includes("RX_SERIAL"))
+                    .map((entry) => entry.identifier),
+                protocol: FC.getSerialRxTypes()[Number(FC.RX_CONFIG.serialrx_provider)],
+                map: FC.RC_MAP,
+            },
             gps: { enabled: features.isEnabled("GPS"), provider: Number(FC.GPS_CONFIG.provider) },
             led: {
                 enabled: features.isEnabled("LED_STRIP"),
@@ -384,6 +458,7 @@ export async function dispatchWiringMsp(code: number, data: ArrayLike<number> | 
             await directionQueue;
             await persist(currentSettings());
             updateDetectedSensors();
+            updateRadio();
             break;
         case MSPCodes.MSP_SET_MOTOR:
             if (data) setMotorValues(data);

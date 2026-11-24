@@ -1202,6 +1202,7 @@ function updateRxPlot() {
     const channels = rc.value?.channels || [];
     const activeChannels = rc.value?.active_channels || 0;
 
+    if (activeChannels > 0 && activeChannels !== rxPlotData.length) setupRxPlot();
     if (activeChannels > 0) {
         // Push latest data
         for (let i = 0; i < activeChannels && i < rxPlotData.length; i++) {
